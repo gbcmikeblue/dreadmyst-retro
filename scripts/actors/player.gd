@@ -1,23 +1,29 @@
 class_name Player
 extends CharacterBody3D
-## 玩家角色：移动 / 冲刺 / 扇形挥砍 / 生命 / 装备属性加成。
+## 玩家角色：移动 / 冲刺 / 职业与技能 / 生命与蓝量 / 装备属性加成。
 ##
 ## 玩法逻辑（距离、朝向夹角）全部在 Vector2「玩法平面」上计算，
-## 只在写入 velocity 与位置时转成 Vector3，所以攻击判定等逻辑与 2D 版完全一致。
+## 只在写入 velocity 与位置时转成 Vector3，所以技能判定等逻辑与 2D 版完全一致。
 ## 视觉：billboard 精灵（程序化占位贴图，接入真美术后无需改代码）。
+##
+## M7 起：属性来自「职业」（data/professions.json），攻击由「技能」（data/skills.json）驱动。
+## 每个技能有自己的冷却 / 耗蓝 / 伤害倍率 / 射程 / 扇角，普攻 = 技能槽 0，大招 = 技能槽 1。
 
-const BASE_STATS := {
+## 职业 / 技能数据缺失时的兜底属性。正常路径走 Profession.base_stats。
+const FALLBACK_STATS := {
 	"attack": 10.0,
 	"max_hp": 120.0,
 	"armor": 0.0,
 	"crit": 0.05,
 	"speed": 235.0,
+	"max_mana": 60.0,
+	"mana_regen": 4.0,
 }
 
-const ATTACK_INTERVAL := 0.42      # 攻击间隔（秒）
-const ATTACK_RANGE := 84.0         # 挥砍半径
-const ATTACK_HALF_ANGLE := 1.0     # 扇形半角（弧度，约 57°）
-const ATTACK_ANIM_TIME := 0.18
+## 职业注册表读不到任何数据时的兜底职业 id。
+const DEFAULT_PROFESSION := "warrior"
+
+const ATTACK_ANIM_TIME := 0.18     # 技能挥砍动画时长（秒）
 const DASH_SPEED := 780.0
 const DASH_TIME := 0.16
 const DASH_COOLDOWN := 1.1
@@ -28,22 +34,34 @@ const BODY_HEIGHT := 34.0          # 碰撞圆柱高度
 const SPRITE_PIXELS := 64          # 占位贴图分辨率
 const SPRITE_WORLD_HEIGHT := 44.0  # 精灵在世界中的高度
 
+## 当前职业（Profession，来自 data/professions.json）
+var profession: Profession = null
+
 ## GearItem.Slot -> GearItem
 var equipment: Dictionary = {}
 var hp: float = 0.0
+var mana: float = 0.0
 var facing: Vector2 = Vector2.RIGHT
 var dead: bool = false
 
-var _attack_cd: float = 0.0
+## {skill_id: 剩余冷却秒数}
+var _cooldowns: Dictionary = {}
+## 当前职业的技能（Array[SkillDef]），约定下标 0 = 普攻、1 = 大招
+var _skills: Array = []
+## 正在播放挥砍动画的技能槽下标
+var _active_slot: int = 0
 var _attack_anim: float = 0.0
 var _dash_cd: float = 0.0
 var _dash_time: float = 0.0
 var _dash_dir: Vector2 = Vector2.RIGHT
 var _hit_flash: float = 0.0
+## 上一帧是否有冷却在走。用于在冷却全部走完时补发一次「已清空」
+var _had_cooldowns: bool = false
 
 var _sprite: Sprite3D
 var _marker: MeshInstance3D
-var _arc: MeshInstance3D
+## 每个技能槽一个弧光网格，下标与 _skills 对齐
+var _arcs: Array = []
 var _dash_fx: MeshInstance3D
 
 
@@ -66,15 +84,19 @@ func _ready() -> void:
 	add_child(shape)
 
 	_build_visuals()
+	set_profession(_default_profession_id())
 	_update_visuals()
 
 	hp = max_hp()
+	mana = max_mana()
+	_emit_mana()
 	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
 	Events.player_stats_changed.emit(total_stats())
+	Events.skill_cooldowns_changed.emit({})
 
 
 func _physics_process(delta: float) -> void:
-	_attack_cd = maxf(0.0, _attack_cd - delta)
+	_tick_cooldowns(delta)
 	_attack_anim = maxf(0.0, _attack_anim - delta)
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	_dash_time = maxf(0.0, _dash_time - delta)
@@ -95,7 +117,7 @@ func _physics_process(delta: float) -> void:
 		_dash_time = DASH_TIME
 		_dash_dir = input.normalized()
 
-	var speed: float = total_stats().get("speed", BASE_STATS["speed"])
+	var speed: float = total_stats().get("speed", FALLBACK_STATS["speed"])
 	var move2: Vector2
 	if _dash_time > 0.0:
 		move2 = _dash_dir * DASH_SPEED
@@ -103,28 +125,44 @@ func _physics_process(delta: float) -> void:
 		move2 = input * speed
 	velocity = Vector3(move2.x, 0.0, move2.y)
 
+	# 技能输入：空格 / 左键按住 = 普攻（槽 0，可长按连击）；1/2 = 槽 0 / 槽 1
 	if Input.is_action_pressed("attack"):
-		_try_attack()
+		cast_slot(0)
+	if Input.is_action_just_pressed("skill_1"):
+		cast_slot(0)
+	if Input.is_action_just_pressed("skill_2"):
+		cast_slot(1)
 
 	move_and_slide()
 	_clamp_to_arena()
 	_update_visuals()
+	_try_profession_switch()
 
-	# 简化脱战回血
+	# 简化脱战回血 / 回蓝
 	if hp < max_hp():
 		hp = minf(max_hp(), hp + REST_HP_REGEN * delta)
 		Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
+	if mana < max_mana():
+		mana = minf(max_mana(), mana + float(total_stats().get("mana_regen", 0.0)) * delta)
+		_emit_mana()
 
 
 # ---------------------------------------------------------------- 属性
 
 func max_hp() -> float:
-	return float(total_stats().get("max_hp", BASE_STATS["max_hp"]))
+	return float(total_stats().get("max_hp", FALLBACK_STATS["max_hp"]))
 
 
-## 基础属性 + 所有装备词条的汇总。
+func max_mana() -> float:
+	return float(total_stats().get("max_mana", FALLBACK_STATS["max_mana"]))
+
+
+## 基础属性（职业基础，缺职业时用兜底）+ 所有装备词条的汇总。
 func total_stats() -> Dictionary:
-	var result: Dictionary = BASE_STATS.duplicate(true)
+	var result: Dictionary = FALLBACK_STATS.duplicate(true)
+	if profession != null:
+		for key in profession.base_stats:
+			result[key] = float(profession.base_stats[key])
 	for slot in equipment:
 		var gear: GearItem = equipment[slot]
 		if gear == null:
@@ -134,19 +172,139 @@ func total_stats() -> Dictionary:
 	return result
 
 
-# ---------------------------------------------------------------- 攻击
+# ---------------------------------------------------------------- 职业
 
-func _try_attack() -> void:
-	if _attack_cd > 0.0:
+func profession_id() -> String:
+	return profession.id if profession != null else ""
+
+
+## 当前职业的技能（Array[SkillDef]），下标 0 = 普攻、1 = 大招。
+func skills() -> Array:
+	return _skills
+
+
+## 切换职业：重算属性、重置蓝量与冷却、重建技能弧光，并广播给 UI。
+## 原型期由 main.gd 的 F1/F2/F3 调用；正式版应改为角色创建流程。
+func set_profession(id: String) -> void:
+	var prof := ProfessionRegistry.get_profession(id)
+	if prof == null:
+		push_warning("Player: 找不到职业 '%s'，回退到 %s" % [id, DEFAULT_PROFESSION])
+		prof = ProfessionRegistry.get_profession(DEFAULT_PROFESSION)
+	profession = prof
+	_skills = profession.skills() if profession != null else []
+
+	_cooldowns.clear()
+	for skill in _skills:
+		_cooldowns[skill.id] = 0.0
+
+	hp = clampf(hp, 0.0, max_hp())
+	mana = max_mana()
+	_attack_anim = 0.0
+
+	_rebuild_skill_arcs()
+	_emit_profession()
+	_emit_skills()
+	_emit_mana()
+	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
+	Events.player_stats_changed.emit(total_stats())
+	Events.skill_cooldowns_changed.emit(_cooldowns.duplicate())
+	if profession != null:
+		Events.toast.emit("职业：%s" % profession.display_name, profession.color)
+
+
+func _default_profession_id() -> String:
+	var ids := ProfessionRegistry.ids()
+	return ids[0] if not ids.is_empty() else DEFAULT_PROFESSION
+
+
+## 原型期的切职业快捷键：F1/F2/F3 依次对应注册表里前 3 个职业。
+## 正式版应改为角色创建流程，这里的目的只是让三个职业立刻可试。
+func _try_profession_switch() -> void:
+	var ids := ProfessionRegistry.ids()
+	for i in range(mini(ids.size(), 3)):
+		var action := "profession_%d" % (i + 1)
+		if not InputMap.has_action(action):
+			continue
+		if Input.is_action_just_pressed(action):
+			set_profession(ids[i])
+			return
+
+
+func _emit_profession() -> void:
+	if profession == null:
+		Events.player_profession_changed.emit("", "未知职业", Color.WHITE)
 		return
-	_attack_cd = ATTACK_INTERVAL
-	_attack_anim = ATTACK_ANIM_TIME
+	Events.player_profession_changed.emit(profession.id, profession.display_name, profession.color)
 
+
+func _emit_skills() -> void:
+	Events.player_skills_changed.emit(_skills.duplicate())
+
+
+func _emit_mana() -> void:
+	Events.player_mana_changed.emit(int(round(mana)), int(round(max_mana())))
+
+
+# ---------------------------------------------------------------- 技能
+
+## 施放指定技能槽（0 = 普攻，1 = 大招）。成功返回 true。
+func cast_slot(slot: int) -> bool:
+	if slot < 0 or slot >= _skills.size():
+		return false
+	var skill: SkillDef = _skills[slot]
+	return cast_skill(skill.id)
+
+
+## 施放指定 id 的技能。死亡 / 冷却未走完 / 蓝不足时返回 false，且不消耗资源。
+func cast_skill(skill_id: String) -> bool:
+	if dead:
+		return false
+	var skill: SkillDef = SkillRegistry.get_skill(skill_id)
+	if skill == null:
+		return false
+	if float(_cooldowns.get(skill_id, 0.0)) > 0.0:
+		return false
+	if mana < skill.mana_cost:
+		Events.toast.emit("法力不足：%s 需要 %d 点" % [
+			skill.display_name, int(ceil(skill.mana_cost))], Color(0.55, 0.70, 1.0))
+		return false
+
+	_cooldowns[skill_id] = skill.cooldown
+	mana = maxf(0.0, mana - skill.mana_cost)
+	_attack_anim = ATTACK_ANIM_TIME
+	_active_slot = maxi(0, _skills.find(skill))
+	_apply_skill_damage(skill)
+
+	_emit_mana()
+	Events.skill_cooldowns_changed.emit(_cooldowns.duplicate())
+	return true
+
+
+## 冷却每帧递减。有任何冷却在走（或刚好走完）时广播一次状态给 UI，空闲时不发信号。
+func _tick_cooldowns(delta: float) -> void:
+	var any_active := false
+	for skill_id in _cooldowns:
+		var remain := float(_cooldowns[skill_id])
+		if remain <= 0.0:
+			continue
+		remain = maxf(0.0, remain - delta)
+		_cooldowns[skill_id] = remain
+		if remain > 0.0:
+			any_active = true
+	if any_active or _had_cooldowns:
+		_had_cooldowns = any_active
+		Events.skill_cooldowns_changed.emit(_cooldowns.duplicate())
+
+
+## 按技能自身的扇形参数判定命中，返回命中敌人数。
+## 判定全部在 Vector2 玩法平面上做（距离 + 朝向夹角），不用 Area3D，行为可预测。
+func _apply_skill_damage(skill: SkillDef) -> int:
 	var stats := total_stats()
 	var attack_power: float = float(stats.get("attack", 0.0))
 	var crit_chance: float = clampf(float(stats.get("crit", 0.0)), 0.0, 0.9)
 
 	var my_plane := Game.plane(global_position)
+	var hits := 0
 	# 用无类型 Array 承载，避免静态类型分析把元素推断为 Node 而报「找不到成员」
 	var enemies: Array = get_tree().get_nodes_in_group("enemies")
 	for enemy in enemies:
@@ -155,14 +313,17 @@ func _try_attack() -> void:
 		if enemy.has_method("is_alive") and not enemy.is_alive():
 			continue
 		var to_enemy: Vector2 = Game.plane(enemy.global_position) - my_plane
-		if to_enemy.length() > ATTACK_RANGE:
+		if to_enemy.length() > skill.cast_range:
 			continue
-		if absf(facing.angle_to(to_enemy)) > ATTACK_HALF_ANGLE:
+		# half_angle >= PI 视为 360°（旋风斩这类），不做夹角限制
+		if not skill.is_full_circle() and absf(facing.angle_to(to_enemy)) > skill.half_angle:
 			continue
 		var is_crit := randf() < crit_chance
-		var damage := attack_power * (1.6 if is_crit else 1.0)
+		var damage := attack_power * skill.damage_mult * (1.6 if is_crit else 1.0)
 		damage *= randf_range(0.9, 1.1)
 		enemy.take_damage(damage, is_crit)
+		hits += 1
+	return hits
 
 
 # ---------------------------------------------------------------- 受伤 / 死亡
@@ -191,8 +352,10 @@ func _die() -> void:
 func _respawn() -> void:
 	dead = false
 	hp = max_hp()
+	mana = max_mana()
 	global_position = Game.world(Game.arena.get_center())
 	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
+	_emit_mana()
 	Events.toast.emit("你已复活", Color(0.6, 1.0, 0.6))
 
 
@@ -204,9 +367,11 @@ func receive_loot(gear: GearItem) -> void:
 	if current == null or gear.power_score() > current.power_score():
 		equipment[gear.slot] = gear
 		hp = minf(hp, max_hp())
+		mana = minf(mana, max_mana())
 		Events.equipment_changed.emit(equipment)
 		Events.player_stats_changed.emit(total_stats())
 		Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
+		_emit_mana()
 		Events.toast.emit("已装备 %s（%s）" % [gear.item_name, gear.slot_name()], gear.rarity_color())
 	else:
 		var value := int(round(gear.power_score() / 4.0)) + gear.item_level * 2
@@ -229,18 +394,32 @@ func _build_visuals() -> void:
 	_marker = SpriteFactory.box_marker(Vector3(20.0, 2.6, 3.0), Color(0.92, 0.76, 0.22))
 	add_child(_marker)
 
-	# 挥砍弧光
-	_arc = SpriteFactory.arc_fx(
-		ATTACK_RANGE * 0.30, ATTACK_RANGE, ATTACK_HALF_ANGLE * 0.78, 24,
-		Color(1.0, 0.95, 0.7, 0.85))
-	_arc.position.y = 0.12
-	_arc.visible = false
-	add_child(_arc)
+	# 技能弧光不在这里建：每个技能槽一个网格，由 _rebuild_skill_arcs() 在转职时重建
+	# （不同技能的射程 / 扇角 / 颜色都不同，共用一个网格无法表达）。
 
 	# 冲刺残影
 	_dash_fx = SpriteFactory.flat_disc(BODY_RADIUS * 1.5, Color(0.6, 0.8, 1.0, 0.25), 0.08)
 	_dash_fx.visible = false
 	add_child(_dash_fx)
+
+
+## 按当前职业技能重建弧光网格（转职时调用，运行时零分配）。
+func _rebuild_skill_arcs() -> void:
+	for old in _arcs:
+		if is_instance_valid(old):
+			old.queue_free()
+	_arcs.clear()
+	for skill in _skills:
+		var arc := SpriteFactory.arc_fx(
+			skill.cast_range * 0.30,
+			skill.cast_range,
+			skill.half_angle,
+			24,
+			Color(skill.color.r, skill.color.g, skill.color.b, 0.75))
+		arc.position.y = 0.12
+		arc.visible = false
+		add_child(arc)
+		_arcs.append(arc)
 
 
 func _update_visuals() -> void:
@@ -259,15 +438,19 @@ func _update_visuals() -> void:
 		_marker.position = dir3 * 12.0 + Vector3(0.0, BODY_HEIGHT * 0.45, 0.0)
 		_marker.rotation.y = -facing.angle()
 
-	if _arc != null:
-		if _attack_anim > 0.0:
+	var playing := _attack_anim > 0.0
+	for i in range(_arcs.size()):
+		var arc: MeshInstance3D = _arcs[i]
+		if arc == null or not is_instance_valid(arc):
+			continue
+		if playing and i == _active_slot:
 			var p := 1.0 - _attack_anim / ATTACK_ANIM_TIME
-			var s := lerpf(0.78, 1.06, p)
-			_arc.visible = true
-			_arc.rotation.y = -facing.angle()
-			_arc.scale = Vector3(s, 1.0, s)
+			var s := lerpf(0.80, 1.06, p)
+			arc.visible = true
+			arc.rotation.y = -facing.angle()
+			arc.scale = Vector3(s, 1.0, s)
 		else:
-			_arc.visible = false
+			arc.visible = false
 
 	if _dash_fx != null:
 		_dash_fx.visible = _dash_time > 0.0

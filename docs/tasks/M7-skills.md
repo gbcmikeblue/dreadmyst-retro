@@ -4,7 +4,7 @@
 > **优先级**：**P0（当前最高）**  
 > **预计出图量**：~30 张（6 技能图标 + 6 特效参考，含废稿）  
 > **预计人工后期**：~6h  
-> **状态**：待开始  
+> **状态**：**代码骨架已完成（2026-10-09）**，剩出图部分待开始  
 > **完成前置**：Forge 已起来 + 至少 1 个"UI/图标"LoRA 已下载并登记
 
 ---
@@ -139,13 +139,23 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 
 > 这些是 M7 需要新建/修改的代码位置（出图前先改好结构，再出图填字段）。
 
-| 文件 | 状态 | 改动 |
+> ✅ **代码骨架已于 2026-10-09 落地**，下面表格是**实际路径**（与最初拆卡片时的设想略有出入：
+> 数据层统一放 `scripts/data/`、UI 统一放 `scripts/ui/`）。模块说明见 [../modules/skills.md](../modules/skills.md)。
+
+| 文件 | 状态 | 实际改动 |
 | --- | --- | --- |
-| `data/skills.json` | **新建** | 6 个技能定义：id, name, profession, cooldown, mana_cost, damage_formula, **icon**（res://...） |
-| `scripts/skills/skill.gd` | **新建** | `class_name Skill`：`icon`, `cooldown`, `mana_cost`, `cast(target)` |
-| `scripts/skills/skill_bar.gd` | **新建** | 玩家底部技能栏，引用 `data/skills.json` |
-| `scripts/ui/hud.gd` | 改 | 加技能栏子节点 |
-| `scripts/actors/player.gd` | 改 | 加 `cast_skill(id)` 方法 + 蓝条逻辑 |
+| `data/skills.json` | ✅ 已建 | 6 个技能：id / name / profession / kind / cooldown / mana_cost / damage_mult / cast_range / half_angle_deg / color / **icon** |
+| `data/professions.json` | ✅ 已建 | 3 个职业：id / display_name / color / base_stats / skills（技能 id 列表） |
+| `scripts/data/skill_def.gd` | ✅ 已建 | `class_name SkillDef`（含 `is_full_circle()` / `short_label()`） |
+| `scripts/data/skill_registry.gd` | ✅ 已建 | `class_name SkillRegistry`：`load_default()` / `get_skill(id)` / `skills_of(profession)` |
+| `scripts/data/profession.gd` | ✅ 已建 | `class_name Profession` |
+| `scripts/data/profession_registry.gd` | ✅ 已建 | `class_name ProfessionRegistry` |
+| `scripts/ui/skill_bar.gd` | ✅ 已建 | 底部技能栏：冷却遮罩 + 蓝量可用性 + 程序化占位图标 |
+| `scripts/ui/hud.gd` | ✅ 已改 | 加蓝条 / 职业标签；挂载 `SkillBar` 子节点 |
+| `scripts/actors/player.gd` | ✅ 已改 | 职业驱动属性 + `cast_slot()` / `cast_skill()` + 冷却表 + 蓝量 + 每技能弧光 |
+| `tests/test_skills.gd` | ✅ 已建 | 5 个用例：施放 / 冷却拦截 / 360° 判定 / 转职 / 蓝量门槛 |
+
+**本卡片仍未完成的部分**：6 个技能图标 + 6 张特效参考（纯出图工作）。
 
 ---
 
@@ -156,9 +166,10 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 - [ ] 6 个图标导入 `res://assets/icons/skills/`
 - [ ] 6 个图标已写到 `data/skills.json` 的 `icon` 字段
 - [ ] 至少 1 个特效参考切出 4+ 帧 spritesheet
-- [ ] 至少 1 个技能可以在游戏中释放并看到图标 + 粒子
-- [ ] 玩家蓝条 UI 显示正常
-- [ ] 冷却倒计时显示正常
+- [ ] 至少 1 个技能可以在游戏中释放并看到图标 + 粒子（技能已可释放，图标与粒子待出图）
+- [x] 玩家蓝条 UI 显示正常 —— 代码部分 2026-10-09 完成
+- [x] 冷却倒计时显示正常 —— 代码部分 2026-10-09 完成
+- [x] 6 个技能可释放，伤害 / 冷却 / 蓝耗 / 360° 判定正确 —— `tests/test_skills.gd` 5 用例通过
 - [ ] `_LICENSES.md` 已登记所有用到的 LoRA
 - [ ] git 提交 + push
 
@@ -169,3 +180,5 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 | 日期 | 变更 |
 | --- | --- |
 | 2026-10-09 | 初版：M7 任务卡片，从 `ai-asset-generation.md` §7 拆分 |
+| 2026-10-09 | **代码骨架落地**：`data/skills.json` + `data/professions.json` + 4 个数据层类 + `SkillBar` + `Player` 职业/技能改造 + `tests/test_skills.gd`；§6 表格改为实际路径；状态改为「出图待开始」 |
+| 2026-10-09 | §2 技能列表的**名字已确定**（裂颅斩 / 旋风斩 / 火球术 / 陨石术 / 穿刺箭 / 箭雨），不再用占位关键词 |

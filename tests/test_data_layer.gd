@@ -58,6 +58,39 @@ func _initialize() -> void:
 		counts[a.id] = int(counts.get(a.id, 0)) + 1
 	print("[OK] pick_weighted × 200 分布：", counts)
 
+	# ---------- 职业 / 技能（M7）----------
+	var profs: Array = ProfessionRegistry.load_default()
+	if profs.is_empty():
+		print("FAIL: ProfessionRegistry.load_default() 返回空")
+		quit(1)
+		return
+	print("[OK] ProfessionRegistry 加载成功，共 ", profs.size(), " 个职业：")
+	for p in profs:
+		var prof_skills: Array = p.skills()
+		print("     - ", p.id, " / ", p.display_name, "  base=", p.base_stats)
+		# 约定：下标 0 = 普攻，1 = 大招
+		if prof_skills.size() < 2:
+			print("FAIL: 职业 ", p.id, " 的技能不足 2 个（约定 0=普攻、1=大招）")
+			failed = true
+		for s in prof_skills:
+			if s.profession_id != p.id:
+				print("FAIL: 技能 ", s.id, " 的 profession 字段与所属职业不一致")
+				failed = true
+
+	var all_skills: Array = SkillRegistry.load_default()
+	if all_skills.is_empty():
+		print("FAIL: SkillRegistry.load_default() 返回空")
+		quit(1)
+		return
+	print("[OK] SkillRegistry 加载成功，共 ", all_skills.size(), " 个技能：")
+	for s in all_skills:
+		print("     - ", s.id, " / ", s.display_name, " [", s.kind_name(), "]",
+			"  cd=", s.cooldown, "s",
+			"  mp=", s.mana_cost,
+			"  mult=", s.damage_mult,
+			"  range=", s.cast_range,
+			"  half_angle=", int(round(rad_to_deg(s.half_angle))), "°")
+
 	if failed:
 		print("========== 测试失败 ==========")
 		quit(1)

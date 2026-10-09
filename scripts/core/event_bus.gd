@@ -22,3 +22,14 @@ signal enemy_died(enemy_level: int, world_position: Vector3)
 signal loot_picked_up(gear)
 ## 屏幕提示(message, color)
 signal toast(message: String, color: Color)
+
+# ---------------------------------------------------------------- M7 技能
+
+## 玩家蓝量变化(current, maximum)
+signal player_mana_changed(current: int, maximum: int)
+## 玩家职业变化(职业 id, 显示名, 职业色)
+signal player_profession_changed(profession_id: String, display_name: String, color: Color)
+## 玩家技能列表变化（Array[SkillDef]，约定第 0 个是普攻、第 1 个是大招）
+signal player_skills_changed(skills: Array)
+## 技能冷却变化 {skill_id: 剩余秒数}。冷却全部走完时也会发一次（值为空字典）
+signal skill_cooldowns_changed(cooldowns: Dictionary)

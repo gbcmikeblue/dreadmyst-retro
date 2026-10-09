@@ -1,0 +1,51 @@
+{
+    "version": 1,
+    "_note": "⚠️ 所有数值为自行设计的占位值（原作官网 403，无法校准）。改数值只改本文件，不改代码。",
+    "professions": [
+        {
+            "id": "warrior",
+            "display_name": "战士",
+            "color": [0.85, 0.35, 0.30],
+            "base_stats": {
+                "attack": 12.0,
+                "max_hp": 150.0,
+                "armor": 10.0,
+                "crit": 0.05,
+                "speed": 225.0,
+                "max_mana": 60.0,
+                "mana_regen": 4.0
+            },
+            "skills": ["warrior_slash", "warrior_whirlwind"]
+        },
+        {
+            "id": "mage",
+            "display_name": "法师",
+            "color": [0.40, 0.62, 1.00],
+            "base_stats": {
+                "attack": 16.0,
+                "max_hp": 95.0,
+                "armor": 0.0,
+                "crit": 0.08,
+                "speed": 215.0,
+                "max_mana": 140.0,
+                "mana_regen": 10.0
+            },
+            "skills": ["mage_fireball", "mage_meteor"]
+        },
+        {
+            "id": "ranger",
+            "display_name": "游侠",
+            "color": [0.45, 0.85, 0.45],
+            "base_stats": {
+                "attack": 11.0,
+                "max_hp": 115.0,
+                "armor": 4.0,
+                "crit": 0.16,
+                "speed": 250.0,
+                "max_mana": 90.0,
+                "mana_regen": 7.0
+            },
+            "skills": ["ranger_arrow", "ranger_multishot"]
+        }
+    ]
+}

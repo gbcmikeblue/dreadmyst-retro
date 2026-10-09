@@ -2,6 +2,7 @@
 
 **文件**：`scripts/data/gear_item.gd`、`loot_config.gd`、`loot_table.gd`、`enemy_archetype.gd`、`enemy_registry.gd`
 **数据**：`data/loot.json`、`data/enemies.json`
+**注意**：职业与技能的数据层**不在本模块**，见 [skills.md](skills.md)（`data/professions.json`、`data/skills.json`）。
 
 本模块是数据驱动改造（M5）的产物：**加内容只改 JSON，不改代码**。
 

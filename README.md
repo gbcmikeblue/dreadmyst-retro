@@ -37,7 +37,10 @@ godot --headless --path . --script res://tests/test_data_layer.gd
 # 3) 3D 冒烟测试：实例化主场景跑 300 帧，清点实体与渲染节点
 godot --headless --path . --script res://tests/test_smoke_3d.gd
 
-# 4) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
+# 4) 技能自测：施放 / 冷却拦截 / 360° 判定 / 转职 / 蓝量门槛
+godot --headless --path . --script res://tests/test_skills.gd
+
+# 5) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
@@ -56,8 +59,11 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 | 操作 | 按键 |
 | --- | --- |
 | 移动 | `W` `A` `S` `D` / 方向键 |
-| 攻击（扇形挥砍） | `空格` / `J` / 鼠标左键（可长按连击） |
+| 普攻（技能槽 0） | `空格` / `J` / 鼠标左键（可长按连击） |
+| 大招（技能槽 1） | `2` / `E` |
+| 强制施放普攻 | `1` / `Q` |
 | 冲刺 | `Shift` / `K` |
+| 切换职业（原型期） | `F1` 战士 / `F2` 法师 / `F3` 游侠 |
 
 ---
 
@@ -65,9 +71,14 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 
 - **2.5D 渲染**：真 3D 空间（XZ 为地面、Y 为高度）+ 固定正交俯角相机（-45°）+ billboard 精灵；
   角色数值与 AI 逻辑仍以 `Vector2` 平面计算，只在读写位置时转 `Vector3`。
-- **角色移动与朝向**：八向移动，攻击方向跟随最后一次移动方向。
-- **扇形攻击判定**：范围 + 朝向夹角判定，无需配置碰撞层，行为可预测。
-- **玩家属性体系**：攻击力 / 生命上限 / 护甲（递减减伤公式）/ 暴击率 / 移动速度。
+- **角色移动与朝向**：八向移动，技能方向跟随最后一次移动方向。
+- **技能扇形判定**：范围 + 朝向夹角判定，无需配置碰撞层，行为可预测；180° 技能即 360° 全方位。
+- **职业与技能（M7）**：3 职业（战士 / 法师 / 游侠）× 2 技能（普攻 + 大招），
+  每个技能有独立冷却 / 耗蓝 / 伤害倍率 / 射程 / 扇角；蓝条回蓝、冷却倒计时、底部技能栏。
+  数据全在 `data/professions.json` 与 `data/skills.json` —— 加职业 / 改数值不改代码。
+  **数值为自设占位（原作官网 403），待资料校准。**
+- **玩家属性体系**：攻击力 / 生命上限 / 护甲（递减减伤公式）/ 暴击率 / 移动速度 / 蓝量上限 / 回蓝，
+  基数来自职业，再叠加装备词条。
 - **敌人 AI**：按等级缩放数值、索敌追击、近身攻击、敌人之间简单排斥避免堆叠。
 - **刷怪节奏**：随玩家等级提升场上敌人上限与刷怪数量。
 - **掉落系统**：`LootTable` 按等级随机生成装备，含 5 部位 × 5 品质（普通→传说）。
@@ -86,7 +97,9 @@ dreadmyst-retro/
 ├── AGENTS.md                     # AI 协作约定（硬性规范 + 文档索引）
 ├── data/                         # 数据表（JSON，策划可改，不改代码）
 │   ├── loot.json                 #   掉落表：掉率 / 部位权重 / 品质权重 / 名字池 / 词条公式
-│   └── enemies.json              #   敌人原型（3 种，含 sprite_path）
+│   ├── enemies.json              #   敌人原型（3 种，含 sprite_path）
+│   ├── professions.json          #   职业：基础属性 + 技能 id 列表（M7）
+│   └── skills.json               #   技能：冷却 / 耗蓝 / 倍率 / 射程 / 扇角（M7）
 ├── scenes/
 │   └── main.tscn                 # 唯一场景：根 Node3D，仅挂载 scripts/main.gd
 ├── scripts/
@@ -99,9 +112,13 @@ dreadmyst-retro/
 │   │   ├── loot_config.gd        # class_name LootConfig：loot.json 加载器（含加权抽取）
 │   │   ├── loot_table.gd         # class_name LootTable：掉落与随机词条生成
 │   │   ├── enemy_archetype.gd    # class_name EnemyArchetype：敌人原型（数值公式 + 外观）
-│   │   └── enemy_registry.gd     # class_name EnemyRegistry：enemies.json 加载 + 加权抽取
+│   │   ├── enemy_registry.gd     # class_name EnemyRegistry：enemies.json 加载 + 加权抽取
+│   │   ├── profession.gd         # class_name Profession：职业（基础属性 + 技能 id）（M7）
+│   │   ├── profession_registry.gd # class_name ProfessionRegistry：professions.json 加载（M7）
+│   │   ├── skill_def.gd          # class_name SkillDef：单技能定义（M7）
+│   │   └── skill_registry.gd     # class_name SkillRegistry：skills.json 加载 / 按 id 查询（M7）
 │   ├── actors/
-│   │   ├── player.gd             # class_name Player：移动 / 冲刺 / 扇形攻击 / 装备加成
+│   │   ├── player.gd             # class_name Player：移动 / 冲刺 / 职业与技能 / 装备加成
 │   │   └── enemy.gd              # class_name Enemy：AI 追击攻击 / 受击 / 死亡
 │   ├── world/
 │   │   ├── arena_background.gd   # class_name ArenaBackground：3D 地面网格 + 边界 + 装饰
@@ -109,13 +126,15 @@ dreadmyst-retro/
 │   │   ├── gear_pickup.gd        # class_name GearPickup：地面掉落物与拾取
 │   │   └── sprite_factory.gd     # class_name SpriteFactory：程序化占位贴图 / 网格工厂
 │   └── ui/
-│       ├── hud.gd                # class_name HUD：血条 / 经验 / 金币 / 装备栏 / 提示
+│       ├── hud.gd                # class_name HUD：血条 / 蓝条 / 职业 / 经验 / 金币 / 装备栏 / 提示
+│       ├── skill_bar.gd          # class_name SkillBar：底部技能栏（冷却 + 耗蓝 + 快捷键）（M7）
 │       ├── damage_number.gd      # class_name DamageNumber：Label3D 漂浮伤害数字
 │       └── dev_pause.gd          # class_name DevPause：开发用暂停面板（DEV_TOOLS 开关）
 ├── tests/                        # headless 自测（命令见 docs/architecture.md §6）
-│   ├── test_data_layer.gd        #   数据层：JSON 加载 / 装备生成 / 加权分布
+│   ├── test_data_layer.gd        #   数据层：JSON 加载 / 装备生成 / 职业技能 / 加权分布
 │   ├── test_smoke_3d.gd          #   3D 冒烟：实例化主场景跑 300 帧
-│   └── test_input_move.gd        #   输入链路诊断：按键 → 动作 → 移动
+│   ├── test_input_move.gd        #   输入链路诊断：按键 → 动作 → 移动
+│   └── test_skills.gd            #   技能：施放 / 冷却 / 360° 判定 / 转职 / 蓝量门槛（M7）
 ├── assets/                       # 美术素材；_LICENSES.md / _PROMPTS.md 为出图登记与模板
 └── docs/                         # 文档体系（索引见 docs/README.md）
 ```
@@ -135,9 +154,10 @@ dreadmyst-retro/
 
 按 Dreadmyst 的玩法深度，建议的扩展顺序：
 
-- [ ] **技能系统**：多技能 + 冷却 + 蓝条，替换当前单一普攻（对应"混合能力流派"）。
-- [ ] **属性加点**：升级给自由属性点，玩家自行分配（对应 Dreadmyst 的 stat points）。
-- [ ] **职业**：战士 / 法师 / 游侠等，不同初始属性与技能树。
+- [x] **技能系统**：3 职业 × 2 技能，各自冷却 + 蓝条 + 技能栏（M7）。
+- [x] **职业**：战士 / 法师 / 游侠，不同初始属性与技能（M7）。
+- [ ] **属性加点**：升级给自由属性点，玩家自行分配（对应 Dreadmyst 的 stat points）← *下一步*。
+- [ ] **职业选择 UI**：当前是原型期 `F1`/`F2`/`F3` 硬切。
 - [ ] **地下城（Dungeon）**：独立场景 + 房间流程 + Boss。
 - [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店。
 - [ ] **PVP 区域**：玩家之间的对抗场景。

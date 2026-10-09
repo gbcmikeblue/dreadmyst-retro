@@ -93,12 +93,19 @@ godot --headless --path . --script res://tests/test_smoke_3d.gd
 # 3) 输入链路诊断：按键 -> 动作 -> 移动（键盘失灵时先跑这个）
 godot --headless --path . --script res://tests/test_input_move.gd
 
-# 4) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落
+# 4) 技能自测：施放 / 冷却拦截 / 360° 判定 / 转职 / 蓝量门槛
+godot --headless --path . --script res://tests/test_skills.gd
+
+# 5) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
 全部脚本**自行 `quit(0/1)`**，所以看退出码即可判断成败。
-验收口径：4 条全过，且第 4 条 **0 ERROR / 0 WARNING**。
+验收口径：5 条全过，且最后一条 **0 ERROR / 0 WARNING**。
+
+> ⚠️ 写新的 `--script` 测试时**不要**引用 `Events` / `Game` 单例名 —— 入口脚本的编译早于
+> autoload 注册，会直接 `Identifier not found` 编译失败。需要坐标转换时手写
+> `Vector2(pos.x, pos.z)` / `Vector3(p.x, 0.0, p.y)`，见 `tests/test_skills.gd`。
 详细说明与「验证时的已知非问题」见 [`docs/architecture.md`](docs/architecture.md) §6。
 
 ---
@@ -111,6 +118,7 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 | 改渲染 / 相机 / 精灵 | [`docs/modules/render3d.md`](docs/modules/render3d.md) |
 | 改自动加载 / 输入映射 / 坐标转换 | [`docs/modules/core.md`](docs/modules/core.md) |
 | 改玩家 / 敌人 / 战斗公式 | [`docs/modules/combat.md`](docs/modules/combat.md) |
+| 改职业 / 技能 / 冷却与蓝条 | [`docs/modules/skills.md`](docs/modules/skills.md) |
 | 改掉落 / 装备 / 敌人数值 | [`docs/modules/loot.md`](docs/modules/loot.md) |
 | 改竞技场 / 掉落物 | [`docs/modules/world.md`](docs/modules/world.md) |
 | 改 HUD / 伤害数字 | [`docs/modules/ui.md`](docs/modules/ui.md) |
@@ -129,10 +137,15 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ## 6. 当前状态与下一步（2026-10-09）
 
 已完成：M0 工程骨架 / M1 玩家 / M2 敌人 AI / M3 掉落系统 / M4 HUD / M5 数据驱动 /
-M6 工程规范 / **M9 2.5D 渲染（2D → 真 3D 重构，数据层零改动）**。
+M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 + 技能栏）** /
+**M9 2.5D 渲染（2D → 真 3D 重构，数据层零改动）**。
 
-下一步：**M7 职业与技能系统**（多职业 + 多技能 + 冷却 / 蓝条），
-是后续所有玩法素材的"风格基线"。细节见 [`docs/tasks/M7-skills.md`](docs/tasks/M7-skills.md)。
+下一步：**M8 属性加点**（升级给自由属性点）。
+细节见 [`docs/tasks/M8-attributes.md`](docs/tasks/M8-attributes.md)。
+
+> ⚠️ **数据校准欠账**：M7 的职业与技能数值**全部是自行设计的占位值**（原作官网 403 无法访问）。
+> 拿到原作资料后只需改 `data/professions.json` 与 `data/skills.json`，代码一行不用动。
+> 技能图标的出图任务见 [`docs/tasks/M7-skills.md`](docs/tasks/M7-skills.md)。
 
 ---
 

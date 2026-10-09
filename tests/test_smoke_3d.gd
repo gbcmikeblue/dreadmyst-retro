@@ -45,6 +45,18 @@ func _report() -> void:
 		var p = players[0]
 		print("     玩家 class = ", p.get_class(), "  pos = ", p.global_position, "  hp = ", p.hp)
 		_check(p.get_class() == "CharacterBody3D", "玩家应为 CharacterBody3D")
+		# M7：职业 / 技能 / 蓝量
+		print("     职业 = ", p.profession_id(),
+			"  蓝 = ", int(round(p.mana)), "/", int(round(p.max_mana())),
+			"  技能 = ", p.skills().size())
+		_check(p.has_method("cast_slot"), "玩家应有 cast_slot 方法（M7 技能）")
+		_check(p.max_mana() > 0.0, "玩家应有大于 0 的蓝量上限")
+		_check(p.skills().size() >= 2, "玩家应至少有 2 个技能槽（普攻 / 大招）")
+		_check(p.profession != null, "玩家应已选定职业")
+
+	# M7：技能栏应存在于 HUD 之下
+	var skill_bar = _main.find_child("SkillBar", true, false)
+	_check(skill_bar != null, "应存在名为 SkillBar 的技能栏节点")
 
 	if not enemies.is_empty():
 		var e = enemies[0]

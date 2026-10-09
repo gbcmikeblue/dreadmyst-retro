@@ -109,7 +109,7 @@ func _action(action_name: StringName, keys: Array) -> void:
 - [ ] 新跨模块通知走 `Events`，没在 actor 内自建 signal
 - [ ] 玩法逻辑用 `Vector2`，只有写 `position` / `velocity` 时转 `Vector3`
 - [ ] 静态类型完整；`get_nodes_in_group` 结果先赋给无类型 `Array`
-- [ ] 跑通 4 条验证命令（见下），第 4 条 0 ERROR / 0 WARNING
+- [ ] 跑通 5 条验证命令（见下），最后一条 0 ERROR / 0 WARNING
 - [ ] 用低于 4.7 的引擎验证过 → `git checkout -- icon.svg.import` 还原
 - [ ] 相关 `docs/modules/*.md` 与 `docs/roadmap.md` 变更记录已更新
 
@@ -118,8 +118,12 @@ godot --headless --import --path .                                      # 首次
 godot --headless --path . --script res://tests/test_data_layer.gd
 godot --headless --path . --script res://tests/test_smoke_3d.gd
 godot --headless --path . --script res://tests/test_input_move.gd
+godot --headless --path . --script res://tests/test_skills.gd
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
+
+写新的 `--script` 测试时**不要**引用 `Events` / `Game` 单例名（入口脚本编译早于 autoload 注册，
+会 `Identifier not found` 编译失败）。需要坐标转换时手写等价代码，见 `tests/test_skills.gd`。
 
 ## 参考
 

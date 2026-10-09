@@ -92,3 +92,19 @@
 
 - **成因**：git 把进度信息写到 stderr，而 PowerShell 5.1 把 stderr 当作错误流。
 - **判定**：看 `$LASTEXITCODE` 与实际输出行（如 `- [deleted] xxx`）。退出码 0 即成功。
+
+### 4.7 `--script` 测试脚本里引用 `Events` / `Game` 会编译失败
+
+- **症状**：`SCRIPT ERROR: Compile Error: Identifier not found: Game`，随后
+  `Failed to load script "res://tests/xxx.gd" with error "Compilation failed"`。
+- **成因**：用 `godot --headless --script res://tests/xxx.gd` 跑测试时，入口脚本的**编译早于
+  autoload 单例注册**，所以 `Events` / `Game` 这两个单例名在编译期还不可解析。
+  （`class_name` 类名不受影响，它们来自 `.godot/global_script_class_cache.cfg`。
+  场景内脚本如 `player.gd` 也不受影响，它们的编译发生在 autoload 注册之后。）
+- **处置**：测试脚本里**不要**写 `Events` / `Game`。需要坐标转换时手写等价代码：
+  ```gdscript
+  var pos: Vector3 = node.global_position
+  var plane := Vector2(pos.x, pos.z)                       # 等价于 Game.plane()
+  node.global_position = Vector3(plane.x, 0.0, plane.y)    # 等价于 Game.world()
+  ```
+- **参考**：`tests/test_skills.gd` 是这么写的。

@@ -1,0 +1,84 @@
+{
+    "version": 1,
+    "_note": "⚠️ 数值为自行设计的占位值，待原作资料校准。half_angle_deg = 180 表示 360° 全方位命中。icon 留空则用程序化占位图标。",
+    "skills": [
+        {
+            "id": "warrior_slash",
+            "name": "裂颅斩",
+            "profession": "warrior",
+            "kind": "basic",
+            "cooldown": 0.45,
+            "mana_cost": 0.0,
+            "damage_mult": 1.00,
+            "cast_range": 88.0,
+            "half_angle_deg": 60.0,
+            "color": [1.00, 0.90, 0.62],
+            "icon": ""
+        },
+        {
+            "id": "warrior_whirlwind",
+            "name": "旋风斩",
+            "profession": "warrior",
+            "kind": "ultimate",
+            "cooldown": 6.0,
+            "mana_cost": 20.0,
+            "damage_mult": 2.40,
+            "cast_range": 112.0,
+            "half_angle_deg": 180.0,
+            "color": [1.00, 0.72, 0.40],
+            "icon": ""
+        },
+        {
+            "id": "mage_fireball",
+            "name": "火球术",
+            "profession": "mage",
+            "kind": "basic",
+            "cooldown": 0.70,
+            "mana_cost": 4.0,
+            "damage_mult": 1.15,
+            "cast_range": 150.0,
+            "half_angle_deg": 28.0,
+            "color": [1.00, 0.55, 0.25],
+            "icon": ""
+        },
+        {
+            "id": "mage_meteor",
+            "name": "陨石术",
+            "profession": "mage",
+            "kind": "ultimate",
+            "cooldown": 8.0,
+            "mana_cost": 35.0,
+            "damage_mult": 3.20,
+            "cast_range": 170.0,
+            "half_angle_deg": 80.0,
+            "color": [1.00, 0.40, 0.15],
+            "icon": ""
+        },
+        {
+            "id": "ranger_arrow",
+            "name": "穿刺箭",
+            "profession": "ranger",
+            "kind": "basic",
+            "cooldown": 0.50,
+            "mana_cost": 0.0,
+            "damage_mult": 0.90,
+            "cast_range": 170.0,
+            "half_angle_deg": 24.0,
+            "color": [0.75, 0.95, 0.55],
+            "icon": ""
+        },
+        {
+            "id": "ranger_multishot",
+            "name": "箭雨",
+            "profession": "ranger",
+            "kind": "ultimate",
+            "cooldown": 7.0,
+            "mana_cost": 25.0,
+            "damage_mult": 2.00,
+            "cast_range": 145.0,
+            "half_angle_deg": 90.0,
+            "color": [0.55, 0.90, 0.45],
+            "icon": ""
+        }
+    ]
+}

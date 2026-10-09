@@ -35,12 +35,15 @@ func get_player() -> Node3D
 
 ### 输入映射（`_setup_input()` 代码注册）
 
-| 动作 | 键 |
-| --- | --- |
-| `move_up / move_down / move_left / move_right` | WASD + 方向键 |
-| `attack` | 空格 / J / 鼠标左键 |
-| `dash` | Shift / K |
-| `pause` | Esc / P（开发用暂停） |
+| 动作 | 键 | 说明 |
+| --- | --- | --- |
+| `move_up / move_down / move_left / move_right` | WASD + 方向键 | 移动 |
+| `attack` | 空格 / J / 鼠标左键 | 当前职业**普攻**（按住可连击） |
+| `dash` | Shift / K | 冲刺 |
+| `skill_1` | 1 / Q | 技能槽 0（普攻） |
+| `skill_2` | 2 / E | 技能槽 1（大招） |
+| `profession_1 / 2 / 3` | F1 / F2 / F3 | **原型期**切职业（战 / 法 / 游）——正式版应改为角色创建流程 |
+| `pause` | Esc / P | 开发用暂停 |
 
 移动输入是 `Vector2`，直接就是玩法平面上的方向，无需变换。
 
@@ -80,10 +83,15 @@ InputMap.action_add_event(action_name, logical)
 | `gold_changed` | `(gold: int)` | Game → HUD |
 | `loot_picked_up` | `(gear)` | Player → 订阅者 |
 | `toast` | `(text: String, color: Color)` | 各处 → HUD |
+| `player_mana_changed` | `(current: int, maximum: int)` | Player → HUD（M7 蓝条） |
+| `player_profession_changed` | `(profession_id: String, display_name: String, color: Color)` | Player → HUD（M7 职业标签） |
+| `player_skills_changed` | `(skills: Array)` | Player → SkillBar（M7 技能栏槽位） |
+| `skill_cooldowns_changed` | `(cooldowns: Dictionary)` | Player → SkillBar（M7 冷却遮罩；**无冷却时不发**，避免每帧刷 UI） |
 
 **转 3D 时的唯一改动**：位置类参数从 `Vector2` 改为 `Vector3`。
 
 ## 已知问题 / TODO
 
-- [ ] 玩家死亡时 Game 无感知（复活逻辑在 Player 内），职业系统引入后应上移
+- [ ] 玩家死亡时 Game 无感知（复活逻辑在 Player 内）；M7 职业系统引入后仍未上移
 - [ ] 输入映射建议最终移到 `project.godot` 的 `[input]` 段，便于玩家改键
+- [ ] 职业选择应为正式流程（当前是 F1/F2/F3 原型期硬切，见 [skills.md](skills.md) §7）

@@ -6,20 +6,23 @@
 d:/github/dreadmyst-retro/
 ├── data/                    # 数据表（JSON，策划可改，不改代码）
 │   ├── loot.json            #   掉落表：掉率/部位权重/品质权重/名字池/词条公式
-│   └── enemies.json         #   敌人原型：3 种（含 sprite_path）
+│   ├── enemies.json         #   敌人原型：3 种（含 sprite_path）
+│   ├── professions.json     #   职业：基础属性 + 技能 id（M7）
+│   └── skills.json          #   技能：冷却/耗蓝/倍率/射程/扇角（M7）
 ├── scenes/
 │   └── main.tscn            # 唯一场景（根 Node3D + main.gd，其余节点代码构建）
 ├── scripts/
 │   ├── core/                # Autoload（见 modules/core.md）
 │   ├── actors/              # 玩家、敌人（见 modules/combat.md）
-│   ├── data/                # 数据层：模型 + 加载器（见 modules/loot.md）
+│   ├── data/                # 数据层：模型 + 加载器（见 modules/loot.md、modules/skills.md）
 │   ├── world/               # 竞技场/装饰/掉落物/程序化美术工厂（见 modules/world.md、render3d.md）
-│   ├── ui/                  # HUD/伤害数字/开发面板（见 modules/ui.md）
+│   ├── ui/                  # HUD/技能栏/伤害数字/开发面板（见 modules/ui.md）
 │   └── main.gd              # 入口：世界搭建/相机/光照/刷怪/事件接线
 ├── tests/
-│   ├── test_data_layer.gd   # 数据层自测
+│   ├── test_data_layer.gd   # 数据层自测（JSON / 装备 / 职业技能 / 加权分布）
 │   ├── test_smoke_3d.gd     # 3D 冒烟测试（实例化主场景跑帧）
-│   └── test_input_move.gd   # 输入链路诊断（按键→动作 / 动作→移动）
+│   ├── test_input_move.gd   # 输入链路诊断（按键→动作 / 动作→移动）
+│   └── test_skills.gd       # 技能自测（施放/冷却/360°/转职/蓝量）
 ├── assets/                  # 美术素材 + _LICENSES.md / _PROMPTS.md（出图配套）
 ├── AGENTS.md                # AI 协作约定（硬性规范 + 文档索引，改代码前先读）
 └── docs/                    # 本文档体系
@@ -81,6 +84,9 @@ godot --headless --path . --script res://tests/test_smoke_3d.gd
 # 输入链路诊断（分段验证「按键→动作」与「动作→移动」，键盘失灵时先跑这个）
 godot --headless --path . --script res://tests/test_input_move.gd
 
+# 技能自测（施放 / 冷却拦截 / 360° 判定 / 转职 / 蓝量门槛）
+godot --headless --path . --script res://tests/test_skills.gd
+
 # 导入 + 短跑
 godot --headless --import --quit --path .
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
@@ -90,7 +96,8 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 
 | 日期 | 引擎 | 结果 |
 | --- | --- | --- |
-| 2026-10-09 | Godot **4.4.1** stable | `--import` 成功（20 个全局类注册，0 ERROR）；`test_data_layer.gd` 全部通过；`test_smoke_3d.gd` 冒烟通过；`test_input_move.gd` 输入链路正常；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。四项均 exit 0。 |
+| 2026-10-09（**M7 后**） | Godot **4.4.1** stable | `--import` 成功（新增 `Profession` / `ProfessionRegistry` / `SkillDef` / `SkillRegistry` / `SkillBar` 共 5 个全局类，0 ERROR）；**4 项**自测全部通过（含新增 `test_skills.gd` 的 5 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。 |
+| 2026-10-09（M9 后基线） | Godot **4.4.1** stable | `--import` 成功（20 个全局类注册，0 ERROR）；`test_data_layer.gd` 全部通过；`test_smoke_3d.gd` 冒烟通过；`test_input_move.gd` 输入链路正常；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。四项均 exit 0。 |
 
 **验证时的已知非问题（勿误判为回归）**：
 
@@ -101,6 +108,9 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
    `main.tscn` 实例，属测试写法所致，与游戏代码无关；主场景自身 900 帧运行无此警告。
 3. **冒烟测试输出里 `player.hp = 0.0`。** 该测试把 `Engine.time_scale` 设为 30（300 帧 ≈ 150 秒游戏时间），
    且不注入任何输入（玩家不攻击），所以玩家被敌人打至阵亡属**预期行为**，不是回归。
+4. **`--script` 测试脚本里不能写 `Events` / `Game`。** 入口脚本的编译早于 autoload 单例注册，
+   写这两个名字会直接 `Identifier not found` 编译失败（`class_name` 类名不受影响）。
+   需要坐标转换时手写等价代码，见 `tests/test_skills.gd`。
 
 ## 7. 工程规范 skill
 

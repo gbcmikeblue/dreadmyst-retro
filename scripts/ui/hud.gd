@@ -8,6 +8,9 @@ var kills: int = 0
 
 var _hp_bar: ProgressBar
 var _hp_label: Label
+var _mana_bar: ProgressBar
+var _mana_label: Label
+var _profession_label: Label
 var _level_label: Label
 var _xp_bar: ProgressBar
 var _stats_label: Label
@@ -18,10 +21,15 @@ var _toast_label: Label
 var _hint_label: Label
 var _toast_tween: Tween
 
+## 底部技能栏（M7）。自身监听 Events，HUD 只负责把它挂上来。
+var skill_bar: SkillBar = null
+
 
 func _ready() -> void:
 	layer = 10
 	_build()
+	skill_bar = SkillBar.new()
+	add_child(skill_bar)
 	_connect_events()
 
 
@@ -33,13 +41,21 @@ func _build() -> void:
 	_hp_bar.value = 100.0
 
 	_hp_label = _make_label(Vector2(36, 26), "HP 100 / 100", 15, Color(1, 1, 1, 0.95))
-	_level_label = _make_label(Vector2(24, 58), "等级 1", 15, Color(0.9, 0.85, 1.0))
 
-	_xp_bar = _make_bar(Vector2(24, 84), Vector2(320, 8), Color(0.45, 0.75, 1.0))
+	# 蓝条（M7 技能耗蓝）压在血条下方，颜色用青蓝以区别于蓝色的经验条
+	_mana_bar = _make_bar(Vector2(24, 54), Vector2(320, 12), Color(0.28, 0.72, 0.95))
+	_mana_bar.max_value = 100.0
+	_mana_bar.value = 100.0
+	_mana_label = _make_label(Vector2(352, 51), "MP 100 / 100", 11, Color(0.62, 0.86, 1.0))
+
+	_profession_label = _make_label(Vector2(24, 72), "战士", 15, Color(0.9, 0.85, 1.0))
+	_level_label = _make_label(Vector2(150, 72), "等级 1", 15, Color(0.9, 0.85, 1.0))
+
+	_xp_bar = _make_bar(Vector2(24, 96), Vector2(320, 8), Color(0.45, 0.75, 1.0))
 	_xp_bar.max_value = 100.0
 	_xp_bar.value = 0.0
 
-	_stats_label = _make_label(Vector2(24, 100), "", 13, Color(0.75, 0.78, 0.85))
+	_stats_label = _make_label(Vector2(24, 110), "", 13, Color(0.75, 0.78, 0.85))
 
 	_gold_label = _make_label(Vector2(940, 24), "金币 0", 18, Color(1.0, 0.84, 0.25))
 	_kill_label = _make_label(Vector2(940, 52), "击杀 0", 14, Color(0.8, 0.8, 0.85))
@@ -53,7 +69,9 @@ func _build() -> void:
 	add_child(_equip_label)
 
 	_toast_label = _make_label(Vector2(420, 120), "", 20, Color.WHITE)
-	_hint_label = _make_label(Vector2(24, 690), "WASD/方向键 移动   空格/左键 攻击   Shift 冲刺", 13, Color(0.6, 0.6, 0.7))
+	_hint_label = _make_label(Vector2(24, 690),
+		"WASD/方向键 移动   空格/左键 攻击   1/2 技能   Shift 冲刺   F1/F2/F3 切职业",
+		13, Color(0.6, 0.6, 0.7))
 
 
 func _make_bar(pos: Vector2, size: Vector2, fill_color: Color) -> ProgressBar:
@@ -95,6 +113,8 @@ func _make_label(pos: Vector2, text: String, font_size: int, color: Color) -> La
 
 func _connect_events() -> void:
 	Events.player_health_changed.connect(_on_health_changed)
+	Events.player_mana_changed.connect(_on_mana_changed)
+	Events.player_profession_changed.connect(_on_profession_changed)
 	Events.player_level_changed.connect(_on_level_changed)
 	Events.player_stats_changed.connect(_on_stats_changed)
 	Events.equipment_changed.connect(_on_equipment_changed)
@@ -106,6 +126,17 @@ func _on_health_changed(current: int, maximum: int) -> void:
 	_hp_bar.max_value = maxi(1, maximum)
 	_hp_bar.value = current
 	_hp_label.text = "HP %d / %d" % [current, maximum]
+
+
+func _on_mana_changed(current: int, maximum: int) -> void:
+	_mana_bar.max_value = maxi(1, maximum)
+	_mana_bar.value = current
+	_mana_label.text = "MP %d / %d" % [current, maximum]
+
+
+func _on_profession_changed(_id: String, display_name: String, color: Color) -> void:
+	_profession_label.text = display_name
+	_profession_label.add_theme_color_override("font_color", color)
 
 
 func _on_level_changed(level: int, xp: int, xp_to_next: int) -> void:

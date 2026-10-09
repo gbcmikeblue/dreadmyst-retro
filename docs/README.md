@@ -10,7 +10,8 @@
 | [architecture.md](architecture.md) | 架构约定、目录结构、玩法平面转换、数据驱动、验证方式、陷阱备忘 |
 | [modules/render3d.md](modules/render3d.md) | **2.5D 渲染**：正交固定相机、billboard 精灵、程序化占位美术、接入真 sprite |
 | [modules/core.md](modules/core.md) | 自动加载：Game 全局状态、Events 事件总线、坐标转换、输入映射 |
-| [modules/combat.md](modules/combat.md) | 玩家（移动/攻击/冲刺/装备加成）与敌人 AI |
+| [modules/combat.md](modules/combat.md) | 玩家（移动/技能/冲刺/装备加成）与敌人 AI |
+| [modules/skills.md](modules/skills.md) | **职业与技能（M7）**：3 职业 / 6 技能 / 冷却与蓝条 / 扇形判定 / 技能栏；**数值为自设占位待校准** |
 | [modules/loot.md](modules/loot.md) | 装备模型、掉落表、词条公式、敌人原型数据层 |
 | [modules/world.md](modules/world.md) | 竞技场（3D 地面/矮墙/岩石）、掉落物拾取 |
 | [modules/ui.md](modules/ui.md) | HUD、`Label3D` 伤害数字、Toast |
@@ -43,5 +44,8 @@
 | M5 数据驱动 | ✅ | loot.json + enemies.json，加内容不改代码 |
 | M6 工程规范 | ✅ | 专属 skill + 文档体系 |
 | M9 2.5D 渲染 | ✅ | 真 3D + 固定正交相机 + billboard 精灵，数据层零改动 |
-| M7 职业与技能 | ⬜ | ← 下一步 |
-| M8+ | ⬜ | 见 roadmap.md |
+| M7 职业与技能 | ✅ 代码 | 3 职业（战/法/游）+ 6 技能 + 冷却/蓝条 + 技能栏；**数值为自设占位，待原作资料校准** |
+| M8 属性加点 | ⬜ | ← 下一步 |
+| M10 地城与 Boss | ⬜ | 见 roadmap.md |
+| M11 背包 / 商店 / 交易 | ⬜ | 见 roadmap.md |
+| M14 联机 | ⬜ | 见 roadmap.md |

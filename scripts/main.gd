@@ -192,11 +192,18 @@ func _connect_events() -> void:
 
 
 ## HUD 创建之前 player 已经发出过初始信号，这里补发一次让 UI 同步。
+## （Player 在 _ready 里选职业，而 HUD 是之后才 add_child 的，所以必须补发。）
 func _push_initial_state() -> void:
 	Events.player_health_changed.emit(int(round(player.hp)), int(round(player.max_hp())))
+	Events.player_mana_changed.emit(int(round(player.mana)), int(round(player.max_mana())))
 	Events.player_stats_changed.emit(player.total_stats())
 	Events.player_level_changed.emit(Game.level, Game.xp, Game.xp_to_next_level())
 	Events.gold_changed.emit(Game.gold)
+	Events.player_skills_changed.emit(player.skills())
+	Events.skill_cooldowns_changed.emit({})
+	if player.profession != null:
+		Events.player_profession_changed.emit(
+			player.profession_id(), player.profession.display_name, player.profession.color)
 
 
 func _on_enemy_died(enemy_level: int, world_position: Vector3) -> void:

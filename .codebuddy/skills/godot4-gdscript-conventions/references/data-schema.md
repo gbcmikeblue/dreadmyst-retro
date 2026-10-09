@@ -102,7 +102,58 @@ roll_drop(enemy_level)
 
 ---
 
-## 3. 新增一张数据表的标准做法
+## 3. `data/professions.json` / `data/skills.json`（M7 职业与技能）
+
+两张表配套使用：职业引用技能 id，技能自带 `profession` 字段。
+
+### `professions.json`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `id` | String | 唯一标识（`warrior` / `mage` / `ranger`） |
+| `display_name` | String | 中文名 |
+| `color` | `[r,g,b]` | 职业色：HUD 职业标签 + 技能栏换色 |
+| `base_stats` | Dictionary | **属性基数**，键必须与 `Player.total_stats()` 一致：`attack` / `max_hp` / `armor` / `crit` / `speed` / `max_mana` / `mana_regen` |
+| `skills` | `[String]` | 技能 id 列表。**约定下标 0 = 普攻、1 = 大招**（`Player.cast_slot(0/1)` 依赖这个顺序） |
+
+### `skills.json`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `id` | String | 唯一标识 |
+| `name` | String | 中文名（占位图标取它的首字） |
+| `profession` | String | 所属职业 id，必须能在 `professions.json` 里找到 |
+| `kind` | String | `basic`（普攻）/ `ultimate`（大招），只影响显示 |
+| `cooldown` | float | 冷却秒数。0 表示可连续施放 |
+| `mana_cost` | float | 单次耗蓝。0 表示不耗蓝 |
+| `damage_mult` | float | 伤害倍率，实际伤害 = `总攻击力 × damage_mult × (暴击 ? 1.6 : 1.0) × 0.9~1.1` |
+| `cast_range` | float | 命中半径（玩法平面单位） |
+| `half_angle_deg` | float 1~180 | 扇形**半角**（写角度，读取时转弧度）。**180 = 360° 全方位命中** |
+| `color` | `[r,g,b]` | 弧光与技能栏边框色 |
+| `icon` | String | 真图标路径（`res://...`）。**留空 → 程序化占位图标（技能名首字 + 技能色）** |
+
+### 加载器
+
+| 类 | 文件 | 接口 |
+| --- | --- | --- |
+| `Profession` / `ProfessionRegistry` | `scripts/data/profession.gd`、`profession_registry.gd` | `load_default()` / `get_profession(id)` / `ids()` / `clear_cache()`；`Profession.skills()` 返回 `Array[SkillDef]` |
+| `SkillDef` / `SkillRegistry` | `scripts/data/skill_def.gd`、`skill_registry.gd` | `load_default()` / `get_skill(id)` / `skills_of(profession_id)` / `clear_cache()`；`is_full_circle()` / `short_label()` / `kind_name()` |
+
+### 加内容的最小改动
+
+| 想做什么 | 改哪里 |
+| --- | --- |
+| 改数值（伤害 / 冷却 / 耗蓝 / 射程 / 扇角） | 只改 `skills.json` |
+| 改职业基础属性 | 只改 `professions.json` 的 `base_stats` |
+| 给技能换图标 | 只改 `skills.json` 的 `icon` |
+| **加职业** | `professions.json` 追加一条 + 在 `skills.json` 补它的 2 个技能；`F1/F2/F3` 只覆盖前 3 个职业，第 4 个起需要另加切换入口 |
+| **加技能** | `skills.json` 追加 + 把 id 加进对应职业的 `skills` 数组；若超过 2 个技能，需要新增技能槽的输入动作与 UI 槽位（当前 SkillBar 固定 2 槽） |
+
+> 数值口径与设计取舍见 `docs/modules/skills.md`。**当前所有数值均为自设占位值，待原作资料校准。**
+
+---
+
+## 4. 新增一张数据表的标准做法
 
 1. `data/<name>.json`，顶层 `{"version": N, "<items>": [...]}`，颜色用 `[r,g,b]`。
 2. `scripts/data/<name>_archetype.gd`：

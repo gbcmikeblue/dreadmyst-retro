@@ -29,6 +29,15 @@ func _setup_input() -> void:
 	_action("pause", [KEY_ESCAPE, KEY_P])
 	_add_mouse("attack", MOUSE_BUTTON_LEFT)
 
+	# M7 技能：1/2 = 当前职业的普攻 / 大招（Q/E 为同义键）
+	_action("skill_1", [KEY_1, KEY_Q])
+	_action("skill_2", [KEY_2, KEY_E])
+	# 原型期切职业：F1/F2/F3 = 战/法/游。
+	# 正式版应改为角色创建流程，这里的目的是让三个职业立刻可试。
+	_action("profession_1", [KEY_F1])
+	_action("profession_2", [KEY_F2])
+	_action("profession_3", [KEY_F3])
+
 func _action(action_name: StringName, keys: Array) -> void:
 	if InputMap.has_action(action_name):
 		InputMap.erase_action(action_name)
