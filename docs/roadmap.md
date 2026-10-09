@@ -64,3 +64,4 @@
 | 2026-10-09 | **修复 WASD 失效**：`_action()` 原来只注册 `physical_keycode`，环境不提供物理键码时键盘完全失灵（鼠标点击不受影响，故症状为「左键能攻击、WASD 死了」）。改为同时注册 `physical_keycode` + `keycode` |
 | 2026-10-09 | 新增开发工具 `DevPause`（右上角暂停按钮 / Esc·P 快捷键 / 暂停遮罩 / 实时输入显示），由 `main.gd` 的 `DEV_TOOLS` 开关控制；新增输入链路诊断 `tests/test_input_move.gd` |
 | 2026-10-09 | **基线回归验证（Godot 4.4.1）**：3 项自测 + 主场景 900 帧全部通过，0 ERROR / 0 WARNING；M9 迁移后无回归。验证细节与 3 条「已知非问题」见 [architecture.md](architecture.md) §6 |
+| 2026-10-09 | **统一里程碑编号**：以本文件为唯一权威，`docs/tasks/` 的 4 张卡片重命名对齐（M8→**M11** 背包、M9→**M10** 地城、M10→**M8** 属性、M11→**M14** 联机），并同步 `ai-asset-generation.md` §7 与全部交叉引用 |

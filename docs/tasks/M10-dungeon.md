@@ -1,6 +1,6 @@
-# M9 · 2.5D 斜俯视 + 地城 + Boss · 出图任务卡
+# M10 · 地城与 Boss · 出图任务卡
 
-> **里程碑**：M9 2.5D 斜俯视 + 地城 + Boss  
+> **里程碑**：M10 地城与 Boss（房间流 + Boss 战）  
 > **优先级**：P1（视觉骨架，所有玩法的背景）  
 > **预计出图量**：~80 张（3 套 tileset × 25 + 5 张 Boss 概念图）  
 > **预计人工后期**：~30h（tileset 切片 + 拼接 + 调整是大头）  
@@ -18,7 +18,8 @@
 - [ ] 3 套 tileset（每套 ~100 tile）出图并切片
 - [ ] 1 张 Boss 概念图（SDXL）
 - [ ] 至少 1 个地城能完整铺设 tileset
-- [ ] 玩家/敌人 sprite 已替换为 2.5D 视角（参考 `architecture.md` §4 的 `scale.y` + `y_sort` 方案）
+- [ ] 玩家/敌人已接入真实 sprite（填 `data/enemies.json` 的 `sprite_path` + `SpriteFactory.actor_texture`），
+      渲染路径不变（见 `docs/modules/render3d.md` §接入真实 sprite）
 - [ ] Boss 战有视觉氛围
 
 ---
@@ -102,11 +103,16 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 2. 后期加 `CanvasModulate` 调暗 50%，避免抢戏
 3. **可选**：用 Real-ESRGAN 2x 放大到 2048×3072（仅当原图细节不够时）
 
-### 5.3 2.5D 视角适配
+### 5.3 与当前 2.5D 渲染的衔接（M9 已完成，方案已变更）
 
-- 玩家/敌人 sprite 加 `scale.y = 0.7`（拉扁）
-- 启用 `y_sort` 节点属性
-- 相机加 `position.y` 偏移，让角色脚底对齐 tile 中心
+> ⚠️ 本节原先写的是 2D 时代的「`scale.y` 拉扁 + `y_sort`」方案。项目在 **M9 已改为真 3D +
+> 固定正交相机 + billboard 精灵**，`scale.y` / `y_sort` **不再适用**。
+
+地城地面应改用 3D 网格（`PlaneMesh` / 自建 `ArrayMesh`）铺贴，相机与坐标转换沿用现有约定：
+
+- 坐标：`Game.world(v2)` / `Game.plane(v3)`（XZ 为地面，Y 为高度）
+- 相机：固定正交 + 俯角 `CAMERA_TILT_DEG`，详见 `docs/modules/render3d.md`
+- 像素贴图导入设 **Nearest** 滤波（`Sprite3D.texture_filter = TEXTURE_FILTER_NEAREST`）
 
 ---
 
@@ -114,11 +120,11 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 
 | 文件 | 状态 | 改动 |
 | --- | --- | --- |
-| `scripts/world/tileset_loader.gd` | **新建** | 加载 TileSet 资源 + 铺地城 |
+| `scripts/world/tileset_loader.gd` | **新建** | 加载 TileSet / 贴图集，铺 3D 地面网格 |
 | `scripts/world/dungeon_room.gd` | **新建** | 单个房间（20×20 tile） |
 | `scripts/world/dungeon_generator.gd` | **新建** | 房间流（多房间 + 连接） |
-| `scripts/actors/player.gd` | 改 | `scale.y = 0.7` + 启用 y_sort |
-| `scripts/actors/enemy.gd` | 改 | 同上 |
+| `scripts/actors/player.gd` | 改 | 引入数据驱动的 `sprite_path`（当前硬编码程序化贴图），billboard 精灵不改渲染逻辑 |
+| `scripts/actors/enemy.gd` | 改 | 已支持 `sprite_path`，只需填数据 |
 | `scripts/world/boss_arena.gd` | **新建** | Boss 战场景，挂 Boss 概念图背景 |
 | `scenes/world/dungeon/dungeon_01.tscn` | **新建** | 第 1 个地城场景 |
 
@@ -143,3 +149,5 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 | 日期 | 变更 |
 | --- | --- |
 | 2026-10-09 | 初版 |
+| 2026-10-09 | **编号由 M9 改为 M10**（原 M9 已被已完成的「2.5D 渲染」占用），与 `docs/roadmap.md` 统一 |
+| 2026-10-09 | 修正过期内容：删除 2D 时代的 `scale.y` + `y_sort` 方案，改为真 3D billboard / 3D 地面网格 |

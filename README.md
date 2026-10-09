@@ -80,29 +80,44 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 ## 目录结构
 
 ```
-dreadmyst-1/
+dreadmyst-retro/
 ├── project.godot                 # 工程配置（主场景 / 自动加载 / 渲染 / 窗口）
 ├── icon.svg                      # 工程图标
+├── AGENTS.md                     # AI 协作约定（硬性规范 + 文档索引）
+├── data/                         # 数据表（JSON，策划可改，不改代码）
+│   ├── loot.json                 #   掉落表：掉率 / 部位权重 / 品质权重 / 名字池 / 词条公式
+│   └── enemies.json              #   敌人原型（3 种，含 sprite_path）
 ├── scenes/
-│   └── main.tscn                 # 唯一场景：仅挂载 scripts/main.gd
-└── scripts/
-    ├── main.gd                   # 入口：搭世界、生成玩家、刷怪、掉落、伤害数字
-    ├── core/
-    │   ├── event_bus.gd          # Autoload「Events」：全局信号总线
-    │   └── game.gd               # Autoload「Game」：竞技场范围 / 等级 / 金币 / 输入映射
-    ├── data/
-    │   ├── gear_item.gd          # class_name GearItem：装备数据模型（部位/品质/词条）
-    │   └── loot_table.gd         # class_name LootTable：掉落与随机词条生成
-    ├── actors/
-    │   ├── player.gd             # class_name Player：移动 / 冲刺 / 攻击 / 装备加成
-    │   └── enemy.gd              # class_name Enemy：AI 追击攻击 / 受击 / 死亡
-    ├── world/
-    │   ├── arena_background.gd   # class_name ArenaBackground：地面网格 + 边界 + 装饰
-    │   ├── arena_prop.gd         # class_name ArenaProp：装饰石头
-    │   └── gear_pickup.gd        # class_name GearPickup：地面掉落物与拾取
-    └── ui/
-        ├── hud.gd                # class_name HUD：血条 / 经验 / 金币 / 装备栏 / 提示
-        └── damage_number.gd      # class_name DamageNumber：漂浮伤害数字
+│   └── main.tscn                 # 唯一场景：根 Node3D，仅挂载 scripts/main.gd
+├── scripts/
+│   ├── main.gd                   # 入口：搭 3D 环境 / 正交相机 / 刷怪 / 事件接线
+│   ├── core/
+│   │   ├── event_bus.gd          # Autoload「Events」：全局信号总线
+│   │   └── game.gd               # Autoload「Game」：竞技场 / 等级 / 金币 / 输入映射 / 坐标转换
+│   ├── data/
+│   │   ├── gear_item.gd          # class_name GearItem：装备数据模型（部位 / 品质 / 词条）
+│   │   ├── loot_config.gd        # class_name LootConfig：loot.json 加载器（含加权抽取）
+│   │   ├── loot_table.gd         # class_name LootTable：掉落与随机词条生成
+│   │   ├── enemy_archetype.gd    # class_name EnemyArchetype：敌人原型（数值公式 + 外观）
+│   │   └── enemy_registry.gd     # class_name EnemyRegistry：enemies.json 加载 + 加权抽取
+│   ├── actors/
+│   │   ├── player.gd             # class_name Player：移动 / 冲刺 / 扇形攻击 / 装备加成
+│   │   └── enemy.gd              # class_name Enemy：AI 追击攻击 / 受击 / 死亡
+│   ├── world/
+│   │   ├── arena_background.gd   # class_name ArenaBackground：3D 地面网格 + 边界 + 装饰
+│   │   ├── arena_prop.gd         # class_name ArenaProp：装饰石头
+│   │   ├── gear_pickup.gd        # class_name GearPickup：地面掉落物与拾取
+│   │   └── sprite_factory.gd     # class_name SpriteFactory：程序化占位贴图 / 网格工厂
+│   └── ui/
+│       ├── hud.gd                # class_name HUD：血条 / 经验 / 金币 / 装备栏 / 提示
+│       ├── damage_number.gd      # class_name DamageNumber：Label3D 漂浮伤害数字
+│       └── dev_pause.gd          # class_name DevPause：开发用暂停面板（DEV_TOOLS 开关）
+├── tests/                        # headless 自测（命令见 docs/architecture.md §6）
+│   ├── test_data_layer.gd        #   数据层：JSON 加载 / 装备生成 / 加权分布
+│   ├── test_smoke_3d.gd          #   3D 冒烟：实例化主场景跑 300 帧
+│   └── test_input_move.gd        #   输入链路诊断：按键 → 动作 → 移动
+├── assets/                       # 美术素材；_LICENSES.md / _PROMPTS.md 为出图登记与模板
+└── docs/                         # 文档体系（索引见 docs/README.md）
 ```
 
 ### 三点设计说明

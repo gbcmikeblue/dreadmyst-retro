@@ -3,7 +3,7 @@
 ## 1. 目录结构
 
 ```
-d:/yiyi/dreadmyst-1/
+d:/github/dreadmyst-retro/
 ├── data/                    # 数据表（JSON，策划可改，不改代码）
 │   ├── loot.json            #   掉落表：掉率/部位权重/品质权重/名字池/词条公式
 │   └── enemies.json         #   敌人原型：3 种（含 sprite_path）
@@ -14,11 +14,14 @@ d:/yiyi/dreadmyst-1/
 │   ├── actors/              # 玩家、敌人（见 modules/combat.md）
 │   ├── data/                # 数据层：模型 + 加载器（见 modules/loot.md）
 │   ├── world/               # 竞技场/装饰/掉落物/程序化美术工厂（见 modules/world.md、render3d.md）
-│   ├── ui/                  # HUD/伤害数字（见 modules/ui.md）
+│   ├── ui/                  # HUD/伤害数字/开发面板（见 modules/ui.md）
 │   └── main.gd              # 入口：世界搭建/相机/光照/刷怪/事件接线
 ├── tests/
 │   ├── test_data_layer.gd   # 数据层自测
-│   └── test_smoke_3d.gd     # 3D 冒烟测试（实例化主场景跑帧）
+│   ├── test_smoke_3d.gd     # 3D 冒烟测试（实例化主场景跑帧）
+│   └── test_input_move.gd   # 输入链路诊断（按键→动作 / 动作→移动）
+├── assets/                  # 美术素材 + _LICENSES.md / _PROMPTS.md（出图配套）
+├── AGENTS.md                # AI 协作约定（硬性规范 + 文档索引，改代码前先读）
 └── docs/                    # 本文档体系
 ```
 
