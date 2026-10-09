@@ -83,7 +83,21 @@ godot --headless --import --quit --path .
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
-最近一次验证（2026-10-09）：两项自测全部通过，主场景 900 帧 0 ERROR / 0 WARNING。
+### 验证记录
+
+| 日期 | 引擎 | 结果 |
+| --- | --- | --- |
+| 2026-10-09 | Godot **4.4.1** stable | `--import` 成功（20 个全局类注册，0 ERROR）；`test_data_layer.gd` 全部通过；`test_smoke_3d.gd` 冒烟通过；`test_input_move.gd` 输入链路正常；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。四项均 exit 0。 |
+
+**验证时的已知非问题（勿误判为回归）**：
+
+1. **用低于 4.7 的引擎导入会改写 `icon.svg.import`。** 4.4.1 会删掉它不认识的键
+   （`compress/uastc_level`、`compress/rdo_quality_loss`、`process/channel_remap/*`）。
+   验证完请 `git checkout -- icon.svg.import` 还原，**不要提交这个降级改动**。
+2. **冒烟测试退出时报 `WARNING: ObjectDB instances leaked at exit`。** 原因是脚本 `quit()` 时未释放
+   `main.tscn` 实例，属测试写法所致，与游戏代码无关；主场景自身 900 帧运行无此警告。
+3. **冒烟测试输出里 `player.hp = 0.0`。** 该测试把 `Engine.time_scale` 设为 30（300 帧 ≈ 150 秒游戏时间），
+   且不注入任何输入（玩家不攻击），所以玩家被敌人打至阵亡属**预期行为**，不是回归。
 
 ## 7. 工程规范 skill
 
