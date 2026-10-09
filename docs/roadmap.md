@@ -61,3 +61,5 @@
 | 2026-10-09 | M5：数据驱动改造（loot.json / enemies.json，新增 3 敌人原型） |
 | 2026-10-09 | M6：创建工程规范 skill；开发文档拆分为多模块（docs/） |
 | 2026-10-09 | M9：2D → 2.5D 重构（真 3D + 固定正交相机 + billboard 精灵 + 程序化占位美术） |
+| 2026-10-09 | **修复 WASD 失效**：`_action()` 原来只注册 `physical_keycode`，环境不提供物理键码时键盘完全失灵（鼠标点击不受影响，故症状为「左键能攻击、WASD 死了」）。改为同时注册 `physical_keycode` + `keycode` |
+| 2026-10-09 | 新增开发工具 `DevPause`（右上角暂停按钮 / Esc·P 快捷键 / 暂停遮罩 / 实时输入显示），由 `main.gd` 的 `DEV_TOOLS` 开关控制；新增输入链路诊断 `tests/test_input_move.gd` |

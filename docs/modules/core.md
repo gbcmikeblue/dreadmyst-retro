@@ -40,8 +40,30 @@ func get_player() -> Node3D
 | `move_up / move_down / move_left / move_right` | WASD + 方向键 |
 | `attack` | 空格 / J / 鼠标左键 |
 | `dash` | Shift / K |
+| `pause` | Esc / P（开发用暂停） |
 
 移动输入是 `Vector2`，直接就是玩法平面上的方向，无需变换。
+
+### ⚠ 每个键必须注册两套事件
+
+`_action()` 对每个键同时注册 `physical_keycode` 与 `keycode` 两个 `InputEventKey`：
+
+```gdscript
+var physical := InputEventKey.new()
+physical.physical_keycode = key     # 按物理位置，与键盘布局无关
+InputMap.action_add_event(action_name, physical)
+
+var logical := InputEventKey.new()
+logical.keycode = key               # 按字符，与布局相关
+InputMap.action_add_event(action_name, logical)
+```
+
+**只注册 `physical_keycode` 会导致该动作在部分环境下完全失效**（远程桌面 / 虚拟机 /
+部分键盘驱动 / 某些输入法状态下不提供物理键码）。此时鼠标点击仍正常，于是会出现
+「左键能攻击、WASD 却是死的」这种迷惑现象。
+
+验证：`godot --headless --path . --script res://tests/test_input_move.gd`
+（诊断脚本会分别报告「按键→动作」与「动作→移动」两个环节的结果）
 
 ## Events（事件总线）
 

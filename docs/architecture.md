@@ -75,6 +75,9 @@ godot --headless --path . --script res://tests/test_data_layer.gd
 # 3D 冒烟测试（实例化主场景跑 300 帧，清点实体与渲染节点）
 godot --headless --path . --script res://tests/test_smoke_3d.gd
 
+# 输入链路诊断（分段验证「按键→动作」与「动作→移动」，键盘失灵时先跑这个）
+godot --headless --path . --script res://tests/test_input_move.gd
+
 # 导入 + 短跑
 godot --headless --import --quit --path .
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
@@ -93,6 +96,14 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 - `randi_range(a, b)` 包含两端
 - `move_and_slide()` 之后修改 `velocity` 不再生效
 - `JSON.parse_string` 失败返回 `null`，必须校验
+
+**输入 / InputMap**
+- **只注册 `physical_keycode` 会在部分环境下让该动作彻底收不到键盘输入**（远程桌面 / 虚拟机 /
+  部分驱动不提供物理键码）。必须 `physical_keycode` 与 `keycode` 两套都注册。
+  症状具有迷惑性：鼠标点击正常，只有键盘失灵。
+- `InputMap.erase_action()` 再 `add_action()` 是运行时重建动作的标准做法，但要在 autoload `_ready()` 里做。
+- 暂停后 `CanvasLayer` 上的 UI 默认也停止响应，需要 `process_mode = PROCESS_MODE_ALWAYS`。
+- `Button.focus_mode = FOCUS_NONE`：否则点过按钮后，空格/回车会重复触发按钮而不是游戏内动作。
 
 **Godot 3D**
 - **必须先 `add_child()` 才能写 `global_position`**，否则报 `Condition "!is_inside_tree()" is true`

@@ -1,6 +1,6 @@
 # 模块：UI 与表现
 
-**文件**：`scripts/ui/hud.gd`、`damage_number.gd`
+**文件**：`scripts/ui/hud.gd`、`damage_number.gd`、`dev_pause.gd`
 
 ## HUD（CanvasLayer）
 
@@ -49,6 +49,29 @@
 | 玩家受伤 | 红 (1.0, 0.35, 0.35) |
 | 暴击 | 金 (1.0, 0.85, 0.2) |
 | 普通 | 白 |
+
+## 开发用暂停控件（DevPause, CanvasLayer）
+
+由 `main.gd` 的 `DEV_TOOLS` 常量控制，设为 `false` 即整体移除。
+
+| 元素 | 说明 |
+| --- | --- |
+| 右上角按钮 | 用锚点贴住右上角（窗口尺寸变化自动跟随），文字在「暂停 / 继续」间切换 |
+| 快捷键 | `Esc` / `P`（`pause` 动作，注册在 `game.gd`） |
+| 全屏遮罩 | 暂停时显示半透明黑 + 居中「已暂停」 |
+| 实时输入显示 | 左上角显示 `输入 (x, y)   按住: ...` |
+
+### 为什么单独成文件而不放进 HUD
+HUD 的职责是「读 `Events` 显示状态」（只读）；暂停是「写全局 `get_tree().paused`」的开发工具，
+是写操作。职责不同，混在一起会让 HUD 不再纯粹。
+
+### 三个必须注意的点
+1. **`process_mode = PROCESS_MODE_ALWAYS`** —— 否则暂停后按钮点不动、快捷键也收不到。
+2. **`layer = 100`** —— 要盖在 HUD（`layer = 10`）之上。
+3. **`Button.focus_mode = FOCUS_NONE`** —— 否则点过一次按钮后，空格/回车会重复触发按钮
+   而不是游戏里的攻击。
+
+暂停会冻结 `Main` 下所有默认 `PROCESS_MODE_INHERIT` 的节点：玩家、敌人、相机跟随、刷怪计时、掉落物全部停住。
 
 ## TODO
 
