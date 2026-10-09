@@ -1,0 +1,62 @@
+{
+    "version": 1,
+    "archetypes": [
+        {
+            "id": "slime",
+            "display_name": "粘液怪",
+            "spawn_weight": 5.0,
+
+            "hp_base": 34.0,  "hp_per_lv": 16.0,
+            "attack_base": 5.0,  "attack_per_lv": 2.4,
+            "speed_base": 105.0, "speed_jitter": 20.0, "speed_per_lv": 2.0,
+            "radius_base": 18.0, "radius_jitter": 3.0,
+
+            "attack_range": 48.0, "attack_interval": 1.2,
+            "knockback_distance": 6.0,
+
+            "body_color": [0.36, 0.66, 0.36],
+            "outline_color": [0.12, 0.30, 0.12],
+            "eye_color": [0.06, 0.10, 0.06],
+            "body_outline_width": 3.0,
+            "hp_bar_color": [0.36, 0.66, 0.36]
+        },
+        {
+            "id": "brute",
+            "display_name": "重甲兽人",
+            "spawn_weight": 1.0,
+
+            "hp_base": 110.0, "hp_per_lv": 42.0,
+            "attack_base": 9.0,  "attack_per_lv": 3.2,
+            "speed_base": 75.0,  "speed_jitter": 12.0, "speed_per_lv": 1.5,
+            "radius_base": 26.0, "radius_jitter": 3.0,
+
+            "attack_range": 56.0, "attack_interval": 1.6,
+            "knockback_distance": 4.0,
+
+            "body_color": [0.55, 0.30, 0.18],
+            "outline_color": [0.20, 0.08, 0.04],
+            "eye_color": [0.95, 0.85, 0.20],
+            "body_outline_width": 3.0,
+            "hp_bar_color": [0.92, 0.40, 0.18]
+        },
+        {
+            "id": "wisp",
+            "display_name": "幽影",
+            "spawn_weight": 1.5,
+
+            "hp_base": 22.0,  "hp_per_lv": 9.0,
+            "attack_base": 4.5, "attack_per_lv": 1.8,
+            "speed_base": 145.0, "speed_jitter": 25.0, "speed_per_lv": 3.0,
+            "radius_base": 14.0, "radius_jitter": 2.0,
+
+            "attack_range": 42.0, "attack_interval": 0.9,
+            "knockback_distance": 8.0,
+
+            "body_color": [0.62, 0.42, 0.86],
+            "outline_color": [0.20, 0.08, 0.34],
+            "eye_color": [0.95, 0.90, 1.00],
+            "body_outline_width": 2.0,
+            "hp_bar_color": [0.76, 0.42, 1.00]
+        }
+    ]
+}

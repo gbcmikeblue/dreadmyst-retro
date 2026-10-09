@@ -1,0 +1,13 @@
+# Godot 4
+.godot/
+/android/
+/export/
+export_presets.cfg
+*.translation
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
