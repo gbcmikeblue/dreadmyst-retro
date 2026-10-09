@@ -58,7 +58,7 @@
 - **标识**：`id`、`display_name`、`spawn_weight`
 - **数值公式**：`hp_base/hp_per_lv`、`attack_base/attack_per_lv`、`speed_base/speed_jitter/speed_per_lv`、`radius_base/radius_jitter`
 - **行为**：`attack_range`、`attack_interval`、`knockback_distance`
-- **外观**：`body_color`、`outline_color`、`eye_color`、`hp_bar_color`（均 [r,g,b]）、`body_outline_width`
+- **外观**：`sprite_path`（真实贴图路径，**留空则用程序化占位贴图**）、`body_color`、`outline_color`、`eye_color`、`hp_bar_color`（均 [r,g,b]）、`body_outline_width`
 
 派生：`hp = hp_base + hp_per_lv×lv`；`speed = base ± jitter + per_lv×lv`；`radius = base ± jitter`。
 

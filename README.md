@@ -5,6 +5,12 @@
 
 当前版本聚焦一件事：**能跑起来、能操作、能刷怪、能掉装备**。
 
+- **渲染**：真 3D 空间 + 固定正交相机（俯角 -45°）+ billboard 精灵 —— 标准 2.5D 做法。
+- **零外部素材**：贴图由代码逐像素生成（`SpriteFactory`），克隆工程即可运行。
+- **数据驱动**：怪物 / 掉落 / 词条全在 `data/*.json`，加内容不改代码。
+
+开发文档：[`docs/README.md`](docs/README.md)
+
 ---
 
 ## 运行方式
@@ -25,11 +31,14 @@
 # 1) 首次必须先导入：生成 .godot 缓存 + 全局类名注册表
 godot --headless --import --path .
 
-# 2) 冒烟测试：跑一帧后退出，任何脚本或运行时错误都会打到 stderr
-godot --headless --path . --quit
+# 2) 数据层自测：JSON 加载 / 装备生成 / 加权分布
+godot --headless --path . --script res://tests/test_data_layer.gd
 
-# 3) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
-godot --headless --path . --quit-after 1200
+# 3) 3D 冒烟测试：实例化主场景跑 300 帧，清点实体与渲染节点
+godot --headless --path . --script res://tests/test_smoke_3d.gd
+
+# 4) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
+godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
 Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出日志。
@@ -54,6 +63,8 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 
 ## 已实现的玩法
 
+- **2.5D 渲染**：真 3D 空间（XZ 为地面、Y 为高度）+ 固定正交俯角相机（-45°）+ billboard 精灵；
+  角色数值与 AI 逻辑仍以 `Vector2` 平面计算，只在读写位置时转 `Vector3`。
 - **角色移动与朝向**：八向移动，攻击方向跟随最后一次移动方向。
 - **扇形攻击判定**：范围 + 朝向夹角判定，无需配置碰撞层，行为可预测。
 - **玩家属性体系**：攻击力 / 生命上限 / 护甲（递减减伤公式）/ 暴击率 / 移动速度。
@@ -94,13 +105,14 @@ dreadmyst-1/
         └── damage_number.gd      # class_name DamageNumber：漂浮伤害数字
 ```
 
-### 两点设计说明
+### 三点设计说明
 
-1. **场景文件极简，节点用代码构建。** `main.tscn` 只有一个 `Node2D`，其余角色、掉落物、HUD
+1. **场景文件极简，节点用代码构建。** `main.tscn` 只有一个 `Node3D`，其余角色、掉落物、HUD
    都用 `class_name` 在脚本里实例化。这样场景文件不会因为手工编辑而损坏，逻辑集中易读。
 2. **模块间只通过 `Events` 信号通信。** 玩家、敌人、掉落物、HUD 互不直接引用，
    后续替换任意一块（比如把 HUD 换成正式 UI 场景）不会级联改代码。
-3. **零外部美术资源。** 所有角色与地面都用 `_draw()` 绘制，克隆工程即可运行。
+3. **零外部美术资源。** 角色 / 地面 / 特效的贴图由 `SpriteFactory` 用 `Image` 逐像素生成。
+   接入真美术时只需在 `data/enemies.json` 填 `sprite_path`，渲染代码一行都不用改。
 
 ---
 
@@ -114,7 +126,8 @@ dreadmyst-1/
 - [ ] **地下城（Dungeon）**：独立场景 + 房间流程 + Boss。
 - [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店。
 - [ ] **PVP 区域**：玩家之间的对抗场景。
-- [x] **数据驱动**：掉落表抽到 `data/loot.json`（`LootConfig`），敌人原型抽到 `data/enemies.json`（`EnemyArchetype` + `EnemyRegistry`），含 3 种原型（粘液怪/重甲兽人/幽影）。新增敌人/词条/名字池 = 改 JSON，不改代码。数据层自测：`godot --headless --path . --script res://tests/test_data_layer.gd`。
+- [x] **数据驱动**：掉落表抽到 `data/loot.json`（`LootConfig`），敌人原型抽到 `data/enemies.json`（`EnemyArchetype` + `EnemyRegistry`），含 3 种原型（粘液怪/重甲兽人/幽影）。新增敌人/词条/名字池 = 改 JSON，不改代码。
+- [x] **2.5D 渲染**：由 2D 重构为真 3D + 固定正交俯角相机 + billboard 精灵，数据层零改动（详见 `docs/modules/render3d.md` 与 `docs/roadmap.md` 的 M9 迁移记录）。
 - [ ] **存档**：`user://` 序列化角色等级、装备与金币。
 - [ ] **联机**：Godot 高层多人 API（ENet）实现客户端-服务器同步。
 

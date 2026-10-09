@@ -1,5 +1,5 @@
 {
-    "version": 1,
+    "version": 2,
     "archetypes": [
         {
             "id": "slime",
@@ -14,6 +14,7 @@
             "attack_range": 48.0, "attack_interval": 1.2,
             "knockback_distance": 6.0,
 
+            "sprite_path": "",
             "body_color": [0.36, 0.66, 0.36],
             "outline_color": [0.12, 0.30, 0.12],
             "eye_color": [0.06, 0.10, 0.06],
@@ -33,6 +34,7 @@
             "attack_range": 56.0, "attack_interval": 1.6,
             "knockback_distance": 4.0,
 
+            "sprite_path": "",
             "body_color": [0.55, 0.30, 0.18],
             "outline_color": [0.20, 0.08, 0.04],
             "eye_color": [0.95, 0.85, 0.20],
@@ -52,6 +54,7 @@
             "attack_range": 42.0, "attack_interval": 0.9,
             "knockback_distance": 8.0,
 
+            "sprite_path": "",
             "body_color": [0.62, 0.42, 0.86],
             "outline_color": [0.20, 0.08, 0.34],
             "eye_color": [0.95, 0.90, 1.00],

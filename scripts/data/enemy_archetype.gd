@@ -28,6 +28,8 @@ var attack_interval: float = 1.2
 var knockback_distance: float = 6.0
 
 # --- 外观 ---
+## 真实精灵贴图路径（res://...）。留空则用 SpriteFactory 生成程序化占位贴图。
+var sprite_path: String = ""
 var body_color: Color = Color(0.76, 0.26, 0.30)
 var outline_color: Color = Color(0.20, 0.05, 0.08)
 var eye_color: Color = Color(0.10, 0.04, 0.05)
@@ -59,6 +61,7 @@ static func from_dict(d: Dictionary) -> EnemyArchetype:
 	a.attack_interval = float(d.get("attack_interval", 1.2))
 	a.knockback_distance = float(d.get("knockback_distance", 6.0))
 
+	a.sprite_path = String(d.get("sprite_path", ""))
 	a.body_color = _parse_color(d.get("body_color", [0.76, 0.26, 0.30]))
 	a.outline_color = _parse_color(d.get("outline_color", [0.20, 0.05, 0.08]))
 	a.eye_color = _parse_color(d.get("eye_color", [0.10, 0.04, 0.05]))

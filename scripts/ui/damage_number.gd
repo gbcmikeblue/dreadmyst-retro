@@ -1,34 +1,37 @@
 class_name DamageNumber
-extends Node2D
-## 漂浮伤害数字，受伤/暴击时弹出后上浮淡出。
+extends Label3D
+## 漂浮伤害数字。用 Label3D 而不是 CanvasLayer 手动画字，
+## 好处是自动跟随 3D 世界坐标 + 自带描边，无需世界坐标转屏幕。
 
 const LIFETIME := 0.75
-const FONT_SIZE := 18
+## 世界单位/像素：让文字在当前正交视野下大小合适
+const TEXT_PIXEL_SIZE := 0.18
+const RISE_SPEED := 56.0
+const GRAVITY := 110.0
 
 var amount: int = 0
 var color: Color = Color.WHITE
 
 var _life: float = LIFETIME
-var _velocity: Vector2 = Vector2(0, -56.0)
+var _rise: float = RISE_SPEED
+
+
+func _ready() -> void:
+	billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	no_depth_test = true
+	fixed_size = false
+	font_size = 64
+	outline_size = 14
+	outline_modulate = Color(0.0, 0.0, 0.0, 0.8)
+	pixel_size = TEXT_PIXEL_SIZE
+	text = str(amount)
+	modulate = color
 
 
 func _process(delta: float) -> void:
 	_life -= delta
-	position += _velocity * delta
-	_velocity.y += 110.0 * delta       # 简单的重力，先快后慢
+	position.y += _rise * delta
+	_rise = maxf(10.0, _rise - GRAVITY * delta)   # 先快后慢，同 2D 版
 	modulate.a = clampf(_life / LIFETIME, 0.0, 1.0)
-	queue_redraw()
 	if _life <= 0.0:
 		queue_free()
-
-
-func _draw() -> void:
-	var font: Font = ThemeDB.fallback_font
-	if font == null:
-		return
-	var text := str(amount)
-	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
-	var origin := Vector2(-width * 0.5, 0.0)
-	# 描边效果：先画深色偏移，再画本体
-	draw_string(font, origin + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(0, 0, 0, 0.8))
-	draw_string(font, origin, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, color)

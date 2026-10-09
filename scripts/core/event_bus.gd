@@ -15,9 +15,9 @@ signal equipment_changed(equipment: Dictionary)
 ## 金币变化
 signal gold_changed(amount: int)
 ## 造成伤害(世界坐标, 数值, 是否暴击, 是否是玩家受伤)
-signal damage_dealt(world_position: Vector2, amount: int, is_crit: bool, on_player: bool)
+signal damage_dealt(world_position: Vector3, amount: int, is_crit: bool, on_player: bool)
 ## 敌人死亡(敌人等级, 世界坐标)
-signal enemy_died(enemy_level: int, world_position: Vector2)
+signal enemy_died(enemy_level: int, world_position: Vector3)
 ## 拾取到装备
 signal loot_picked_up(gear)
 ## 屏幕提示(message, color)

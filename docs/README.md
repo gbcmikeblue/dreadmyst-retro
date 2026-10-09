@@ -7,14 +7,17 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [architecture.md](architecture.md) | 架构约定、目录结构、数据驱动模式、2.5D 预留、验证方式 |
-| [modules/core.md](modules/core.md) | 自动加载：Game 全局状态、Events 事件总线、输入映射 |
+| [architecture.md](architecture.md) | 架构约定、目录结构、玩法平面转换、数据驱动、验证方式、陷阱备忘 |
+| [modules/render3d.md](modules/render3d.md) | **2.5D 渲染**：正交固定相机、billboard 精灵、程序化占位美术、接入真 sprite |
+| [modules/core.md](modules/core.md) | 自动加载：Game 全局状态、Events 事件总线、坐标转换、输入映射 |
 | [modules/combat.md](modules/combat.md) | 玩家（移动/攻击/冲刺/装备加成）与敌人 AI |
 | [modules/loot.md](modules/loot.md) | 装备模型、掉落表、词条公式、敌人原型数据层 |
-| [modules/world.md](modules/world.md) | 竞技场、背景、装饰、掉落物拾取 |
-| [modules/ui.md](modules/ui.md) | HUD、漂浮伤害数字、Toast 提示 |
-| [roadmap.md](roadmap.md) | Roadmap、待用户提供的信息、变更记录 |
-| [reference/mmo-opensource/](reference/mmo-opensource/) | 开源 MMO 参考研究：Kaetram-Open / Stendhal / Intersect Engine 的结构与素材分析，作为开发规范与参考 |
+| [modules/world.md](modules/world.md) | 竞技场（3D 地面/矮墙/岩石）、掉落物拾取 |
+| [modules/ui.md](modules/ui.md) | HUD、`Label3D` 伤害数字、Toast |
+| [roadmap.md](roadmap.md) | Roadmap、待补信息、里程碑、M9 迁移记录、变更记录 |
+| [reference/ai-asset-generation.md](reference/ai-asset-generation.md) | **AI 资产生图方案**：Forge + SD 1.5/SDXL + 8GB 显存纪律 + 版权登记 |
+| [reference/mmo-opensource/](reference/mmo-opensource/) | 开源 MMO 参考研究：Kaetram-Open / Stendhal / Intersect Engine 的结构与素材分析 |
+| [tasks/](tasks/) | **出图任务卡片**（M7–M11）：每个里程碑的可执行出图清单 + Prompt + 验收 |
 
 ## 项目信息速查
 
@@ -22,10 +25,11 @@
 | --- | --- |
 | 引擎 | Godot 4.7.2 stable（`gl_compatibility`） |
 | 语言 | GDScript（静态类型） |
-| 美术 | 零外部素材，全部 `_draw()` 绘制 |
-| 主场景 | `res://scenes/main.tscn`（极简，节点代码构建） |
-| 目标画风 | 2D 斜俯视（伪 2.5D），当前正交俯视 |
-| 运行 | 编辑器 F5 / `godot --path .`；验证命令见 architecture.md §5 |
+| 空间 | **真 3D**（XZ 为地面、Y 为高度），玩法逻辑仍在 Vector2 平面计算 |
+| 视角 | **固定正交相机 + 俯角 -45°**（伪 2.5D） |
+| 美术 | 零外部素材：`SpriteFactory` 逐像素生成占位贴图 |
+| 主场景 | `res://scenes/main.tscn`（根 `Node3D`，节点代码构建） |
+| 运行 | 编辑器 F5 / `godot --path .`；验证命令见 architecture.md §6 |
 
 ## 当前进度（2026-10-09）
 
@@ -38,7 +42,6 @@
 | M4 HUD | ✅ | 血条/经验/金币/装备栏/伤害数字 |
 | M5 数据驱动 | ✅ | loot.json + enemies.json，加内容不改代码 |
 | M6 工程规范 | ✅ | 专属 skill + 文档体系 |
+| M9 2.5D 渲染 | ✅ | 真 3D + 固定正交相机 + billboard 精灵，数据层零改动 |
 | M7 职业与技能 | ⬜ | ← 下一步 |
 | M8+ | ⬜ | 见 roadmap.md |
-
-详细进度与变更记录：[roadmap.md](roadmap.md)

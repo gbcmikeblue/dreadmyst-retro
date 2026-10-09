@@ -26,6 +26,7 @@ func _setup_input() -> void:
 	_action("move_right", [KEY_D, KEY_RIGHT])
 	_action("attack", [KEY_SPACE, KEY_J])
 	_action("dash", [KEY_SHIFT, KEY_K])
+	_action("pause", [KEY_ESCAPE, KEY_P])
 	_add_mouse("attack", MOUSE_BUTTON_LEFT)
 
 func _action(action_name: StringName, keys: Array) -> void:
@@ -33,9 +34,19 @@ func _action(action_name: StringName, keys: Array) -> void:
 		InputMap.erase_action(action_name)
 	InputMap.add_action(action_name)
 	for key in keys:
-		var ev := InputEventKey.new()
-		ev.physical_keycode = key
-		InputMap.action_add_event(action_name, ev)
+		# 同时注册两套事件，缺一不可：
+		#   physical_keycode —— 按键盘上的物理位置，与布局无关
+		#   keycode          —— 按字符，布局相关
+		# 只注册 physical 时，若环境不提供物理码（远程桌面 / 部分驱动 / 虚拟机），
+		# 该动作会完全收不到键盘输入。实测 InputMap.event_is_action() 只认 physical，
+		# 所以这里必须两个都加。
+		var physical := InputEventKey.new()
+		physical.physical_keycode = key
+		InputMap.action_add_event(action_name, physical)
+
+		var logical := InputEventKey.new()
+		logical.keycode = key
+		InputMap.action_add_event(action_name, logical)
 
 func _add_mouse(action_name: StringName, button: int) -> void:
 	var ev := InputEventMouseButton.new()
@@ -66,8 +77,29 @@ func add_gold(amount: int) -> void:
 
 # ---------------------------------------------------------------- 工具
 
-func get_player() -> Node2D:
+func get_player() -> Node3D:
 	var players := get_tree().get_nodes_in_group("player")
 	if players.is_empty():
 		return null
-	return players[0] as Node2D
+	return players[0] as Node3D
+
+
+# ------------------------------------------------------- 玩法平面 <-> 世界坐标
+#
+# 玩法逻辑（距离、方向、角度）仍然全部用 Vector2 在「玩法平面」上计算，
+# 只在读写节点位置时转换成 Vector3。映射约定：Vector2(x, y) -> Vector3(x, 0, y)。
+# 这样转换面积最小，AI/攻击判定等逻辑一行都不用改。
+
+static func world(plane_point: Vector2, height: float = 0.0) -> Vector3:
+	return Vector3(plane_point.x, height, plane_point.y)
+
+
+static func plane(world_point: Vector3) -> Vector2:
+	return Vector2(world_point.x, world_point.z)
+
+
+## 取节点的「玩法平面」坐标，供距离/方向计算使用。
+func plane_of(node: Node3D) -> Vector2:
+	if node == null or not is_instance_valid(node):
+		return Vector2.ZERO
+	return plane(node.global_position)
