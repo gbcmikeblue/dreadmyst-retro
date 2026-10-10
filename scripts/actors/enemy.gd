@@ -71,6 +71,11 @@ func is_alive() -> bool:
 	return alive
 
 
+## 是否是 Boss（血条更大 + 免疫击退 + 脚下光环）。
+func _is_boss() -> bool:
+	return archetype != null and archetype.is_boss
+
+
 func _physics_process(delta: float) -> void:
 	if not alive:
 		return
@@ -114,9 +119,9 @@ func take_damage(amount: float, is_crit: bool = false) -> void:
 	_hit_flash = 0.12
 	Events.damage_dealt.emit(global_position, int(round(amount)), is_crit, false)
 
-	# 轻微击退
+	# 轻微击退（Boss 免疫：体型太大，被推着走会破坏 Boss 战节奏）
 	var player := Game.get_player()
-	if player != null and is_instance_valid(player):
+	if player != null and is_instance_valid(player) and not _is_boss():
 		var my_plane := Game.plane(global_position)
 		var away: Vector2 = my_plane - Game.plane(player.global_position)
 		if away.length() > 0.001:
@@ -185,6 +190,11 @@ func _build_visuals() -> void:
 
 	sprite_world_height = radius * 2.4
 
+	# Boss 脚下光环：普通怪只有影斑，Boss 多一层品质色光晕（纯视觉，方便一眼认出）
+	if _is_boss():
+		add_child(SpriteFactory.flat_disc(
+			radius * 1.9, Color(bar_col.r, bar_col.g, bar_col.b, 0.22), 0.05))
+
 	add_child(SpriteFactory.blob_shadow(radius * 1.25))
 
 	_sprite = SpriteFactory.billboard_sprite(
@@ -210,11 +220,13 @@ func _build_visuals() -> void:
 
 
 func _build_hp_bar(bar_col: Color) -> void:
-	_bar_width = radius * 2.0
-	var bar_h := maxf(4.0, radius * 0.30)
+	# Boss 血条更宽更高，悬得也更高（体型大，贴着头顶会挡视线）
+	var boss := _is_boss()
+	_bar_width = radius * (2.6 if boss else 2.0)
+	var bar_h := maxf(4.0, radius * (0.42 if boss else 0.30))
 
 	_bar_root = Node3D.new()
-	_bar_root.position = Vector3(0.0, sprite_world_height + 14.0, 0.0)
+	_bar_root.position = Vector3(0.0, sprite_world_height + (24.0 if boss else 14.0), 0.0)
 	add_child(_bar_root)
 
 	var bar := SpriteFactory.hp_bar(_bar_width, bar_h, bar_col)

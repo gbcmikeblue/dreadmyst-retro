@@ -1,0 +1,33 @@
+{
+    "version": 1,
+    "_note": "⚠️ 数值为自行设计的占位值。房间流布局：沿 +X 依次排 room_count 个房间，房间之间用 corridor_length 长的走廊连接（走廊正中放一扇门，清空当前房间后开启）。room_size = [宽(X), 深(Z)]，单位是玩法平面单位。enemies_per_room 的下标与房间号对应，长度不足时沿用最后一个值。boss.archetype 必须能在 data/enemies.json 里找到（且该原型 is_boss = true、spawn_weight = 0，否则会混进野外刷怪）。全部可调，代码不用动。",
+    "dungeons": [
+        {
+            "id": "crypt",
+            "display_name": "亡者地窖",
+            "level_bonus": 2,
+            "room_count": 3,
+            "room_size": [560.0, 480.0],
+            "corridor_length": 200.0,
+            "wall_height": 30.0,
+            "wall_thickness": 12.0,
+            "door_width": 140.0,
+            "enemies_per_room": [3, 4, 4],
+
+            "boss": {
+                "archetype": "bone_lord",
+                "level_bonus": 4
+            },
+            "rewards": {
+                "gold": 150,
+                "xp": 250,
+                "guaranteed_rarity": "rare"
+            },
+
+            "ground_color": [0.10, 0.09, 0.13],
+            "line_color": [0.16, 0.14, 0.20],
+            "wall_color": [0.30, 0.24, 0.38],
+            "accent_color": [0.62, 0.45, 0.95]
+        }
+    ]
+}

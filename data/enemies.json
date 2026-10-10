@@ -1,5 +1,6 @@
 {
-    "version": 2,
+    "version": 3,
+    "_note": "is_boss = true 的原型不会进入野外加权刷怪（同时把 spawn_weight 设为 0 双保险），只由 data/dungeon.json 的 boss.archetype 指名生成；is_boss 还决定「免疫击退 + 更大的血条 + 脚下光环」。",
     "archetypes": [
         {
             "id": "slime",
@@ -60,6 +61,27 @@
             "eye_color": [0.95, 0.90, 1.00],
             "body_outline_width": 2.0,
             "hp_bar_color": [0.76, 0.42, 1.00]
+        },
+        {
+            "id": "bone_lord",
+            "display_name": "骸骨领主",
+            "is_boss": true,
+            "spawn_weight": 0.0,
+
+            "hp_base": 260.0, "hp_per_lv": 95.0,
+            "attack_base": 13.0, "attack_per_lv": 4.6,
+            "speed_base": 92.0,  "speed_jitter": 6.0, "speed_per_lv": 1.2,
+            "radius_base": 40.0, "radius_jitter": 2.0,
+
+            "attack_range": 74.0, "attack_interval": 1.8,
+            "knockback_distance": 0.0,
+
+            "sprite_path": "",
+            "body_color": [0.80, 0.76, 0.62],
+            "outline_color": [0.24, 0.16, 0.30],
+            "eye_color": [0.95, 0.30, 0.30],
+            "body_outline_width": 4.0,
+            "hp_bar_color": [0.85, 0.30, 0.95]
         }
     ]
 }

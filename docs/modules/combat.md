@@ -72,6 +72,9 @@
 数值与外观来自 `EnemyArchetype`（`data/enemies.json`），见 [loot.md](loot.md) §3。
 生成方调用 `setup(level, archetype)` → `compute_hp/attack/speed/radius` 按等级派生（速度/半径带随机抖动）。
 
+`EnemyArchetype.is_boss` 只影响**表现与免疫**（M10）：免疫击退、3D 血条更大更高、脚下多一层品质色光环。
+Boss 的生成不由刷怪器负责 —— 它由 [dungeon.md](dungeon.md) 用 `EnemyRegistry.get_archetype(id)` 指名生成。
+
 ### AI 状态机（隐式）
 
 ```
@@ -104,5 +107,9 @@
 | 数量上限 | `8 + level × 2` |
 | 等级 | `Game.level ± 1` |
 | 原型选择 | `EnemyRegistry.pick_weighted()`（`spawn_weight` 加权） |
+| 何时不刷 | `Game.in_dungeon` 为 true 时 `main._process()` 直接返回（副本内由 `Dungeon` 按房间刷） |
+
+`pick_weighted()` **跳过** `is_boss` 与 `spawn_weight <= 0` 的原型，所以 Boss 永远不会出现在野外；
+从野外进地城时，场上的野怪会被 `main._clear_arena_enemies()` 撤掉（立刻退出 `enemies` 组，不给经验/掉落）。
 
 生成位置用玩法平面计算：`center + Vector2(cos(angle), sin(angle)) * distance`，再 `Game.world()` 转世界坐标。

@@ -43,7 +43,10 @@ godot --headless --path . --script res://tests/test_skills.gd
 # 5) 属性加点自测：加点 / 上限 / 满级 / 转职不重置 / 界面开关
 godot --headless --path . --script res://tests/test_attributes.gd
 
-# 6) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
+# 6) 地城自测：进出地城 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原
+godot --headless --path . --script res://tests/test_dungeon.gd
+
+# 7) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
@@ -68,6 +71,7 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 | 冲刺 | `Shift` / `K` |
 | 切换职业（原型期） | `F1` 战士 / `F2` 法师 / `F3` 游侠 |
 | 属性加点面板 | `C`（开关；面板内 `+1` / `+5` 按钮加点） |
+| 交互（传送门） | `F`（靠近竞技场中央下方的传送门进入地城；地城内可原路返回） |
 
 ---
 
@@ -86,7 +90,12 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 - **属性加点（M8）**：每升 1 级得 5 点自由属性点，投入 力量 / 敏捷 / 智力 / 体力 / 精神，
   按 `data/attributes.json` 的 `per_point` 实时计入总属性；`C` 键开界面，支持 `+1` / `+5` 与满级上限，
   加点**不会**自动补血。**数值为自设占位，待原作资料校准。**
-- **敌人 AI**：按等级缩放数值、索敌追击、近身攻击、敌人之间简单排斥避免堆叠。
+- **地城与 Boss（M10）**：竞技场传送门（`F`）进入「亡者地窖」——3 个房间依次刷怪，
+  清空当前房间才会开门；**墙体带真实碰撞**（玩家与怪物都会被挡住，竞技场的矮墙只是装饰）；
+  最后一间是 Boss 房（骸骨领主：免疫击退、专属大血条、HUD 顶部显示血条），
+  击败后发通关奖励（金币 / 经验 / 保底稀有装备）并开启出口传送门。
+  布局与数值全在 `data/dungeon.json` + `data/enemies.json`。**数值为自设占位，美术仍为程序化占位。**
+- **敌人 AI**：按等级缩放数值、索敌追击、近身攻击、敌人之间简单排斥避免堆叠；Boss 免疫击退。
 - **刷怪节奏**：随玩家等级提升场上敌人上限与刷怪数量。
 - **掉落系统**：`LootTable` 按等级随机生成装备，含 5 部位 × 5 品质（普通→传说）。
 - **拾取与装备**：走近自动拾取；更优装备自动穿上，较差的自动分解为金币。
@@ -107,7 +116,8 @@ dreadmyst-retro/
 │   ├── enemies.json              #   敌人原型（3 种，含 sprite_path）
 │   ├── professions.json          #   职业：基础属性 + 技能 id 列表（M7）
 │   ├── skills.json               #   技能：冷却 / 耗蓝 / 倍率 / 射程 / 扇角（M7）
-│   └── attributes.json           #   属性：每点加成 / 上限 / 每级自由点数（M8）
+│   ├── attributes.json           #   属性：每点加成 / 上限 / 每级自由点数（M8）
+│   └── dungeon.json              #   地城：房间流布局 / 每房怪数 / Boss / 通关奖励（M10）
 ├── scenes/
 │   └── main.tscn                 # 唯一场景：根 Node3D，仅挂载 scripts/main.gd
 ├── scripts/
@@ -134,6 +144,10 @@ dreadmyst-retro/
 │   │   ├── arena_background.gd   # class_name ArenaBackground：3D 地面网格 + 边界 + 装饰
 │   │   ├── arena_prop.gd         # class_name ArenaProp：装饰石头
 │   │   ├── gear_pickup.gd        # class_name GearPickup：地面掉落物与拾取
+│   │   ├── portal.gd             # class_name Portal：传送门（靠近提示 + F 交互）（M10）
+│   │   ├── dungeon.gd            # class_name Dungeon：房间流 / 清房开门 / Boss 房 / 奖励（M10）
+│   │   ├── dungeon_room.gd       # class_name DungeonRoom：单间房（3D 地面 + 碰撞墙 + 门洞）（M10）
+│   │   ├── dungeon_door.gd       # class_name DungeonDoor：房间之间的门（清房后开）（M10）
 │   │   └── sprite_factory.gd     # class_name SpriteFactory：程序化占位贴图 / 网格工厂
 │   └── ui/
 │       ├── hud.gd                # class_name HUD：血条 / 蓝条 / 职业 / 经验 / 金币 / 装备栏 / 提示
@@ -146,7 +160,8 @@ dreadmyst-retro/
 │   ├── test_smoke_3d.gd          #   3D 冒烟：实例化主场景跑 300 帧
 │   ├── test_input_move.gd        #   输入链路诊断：按键 → 动作 → 移动
 │   ├── test_skills.gd            #   技能：施放 / 冷却 / 360° 判定 / 转职 / 蓝量门槛（M7）
-│   └── test_attributes.gd        #   属性：加点 / 上限 / 满级 / 转职不重置 / 界面开关（M8）
+│   ├── test_attributes.gd        #   属性：加点 / 上限 / 满级 / 转职不重置 / 界面开关（M8）
+│   └── test_dungeon.gd           #   地城：进出 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原（M10）
 ├── assets/                       # 美术素材；_LICENSES.md / _PROMPTS.md 为出图登记与模板
 └── docs/                         # 文档体系（索引见 docs/README.md）
 ```
@@ -170,7 +185,8 @@ dreadmyst-retro/
 - [x] **职业**：战士 / 法师 / 游侠，不同初始属性与技能（M7）。
 - [x] **属性加点**：升级给自由属性点，玩家自行分配（对应 Dreadmyst 的 stat points）（M8）。5 属性（力量/敏捷/智力/体力/精神），`C` 键加点界面，数值在 `data/attributes.json`。
 - [ ] **职业选择 UI**：当前是原型期 `F1`/`F2`/`F3` 硬切。
-- [ ] **地下城（Dungeon）**：独立场景 + 房间流程 + Boss ← *下一步（M10）*。
+- [x] **地下城（Dungeon）**：房间流程（清房开门）+ Boss 房 + 通关奖励 + 传送门进出（M10）。布局在 `data/dungeon.json`，Boss 数值在 `data/enemies.json`。
+- [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店 ← *下一步（M11）*。
 - [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店。
 - [ ] **PVP 区域**：玩家之间的对抗场景。
 - [x] **数据驱动**：掉落表抽到 `data/loot.json`（`LootConfig`），敌人原型抽到 `data/enemies.json`（`EnemyArchetype` + `EnemyRegistry`），含 3 种原型（粘液怪/重甲兽人/幽影）。新增敌人/词条/名字池 = 改 JSON，不改代码。

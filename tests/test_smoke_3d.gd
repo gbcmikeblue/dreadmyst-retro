@@ -68,6 +68,18 @@ func _report() -> void:
 	var attribute_panel = _main.find_child("AttributePanel", true, false)
 	_check(attribute_panel != null, "应存在名为 AttributePanel 的加点界面节点")
 
+	# M10：竞技场入口传送门 + Boss 原型
+	var portal = _main.find_child("Portal", true, false)
+	_check(portal != null, "竞技场应存在入口传送门节点 Portal")
+	var dungeon_ids: Array = DungeonRegistry.ids()
+	_check(not dungeon_ids.is_empty(), "DungeonRegistry 应至少有一间地城")
+	if not dungeon_ids.is_empty():
+		var dungeon_def := DungeonRegistry.get_dungeon(dungeon_ids[0])
+		var boss_arch: EnemyArchetype = EnemyRegistry.get_archetype(dungeon_def.boss_id)
+		print("     地城 = ", dungeon_def.display_name, "  房间 = ", dungeon_def.room_count,
+			"  Boss = ", dungeon_def.boss_id)
+		_check(boss_arch != null and boss_arch.is_boss, "地城 Boss 原型应存在且 is_boss")
+
 	if not enemies.is_empty():
 		var e = enemies[0]
 		print("     首个敌人 id = ", e.archetype.id, "  lv = ", e.level,

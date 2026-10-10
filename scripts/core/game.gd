@@ -4,8 +4,16 @@ extends Node
 ## 这里只放「全局」的东西：竞技场范围、角色等级/经验/金币、输入动作。
 ## 具体玩法状态（血量、装备）放在 Player 里。
 
-## 竞技场矩形（世界坐标）。同时在 Game 里共享，方便角色边界钳制与背景绘制。
-var arena: Rect2 = Rect2(-960.0, -640.0, 1920.0, 1280.0)
+## 原野（竞技场）的固定边界。`arena` 会随进出地城切换，所以「回家」要看这个常量。
+const ARENA_HOME := Rect2(-960.0, -640.0, 1920.0, 1280.0)
+
+## 当前可行走范围（玩法平面坐标）。原地是竞技场；进入地城后由 main.gd 换成地城范围，
+## 这样玩家 / 敌人 / 相机的边界钳制全部沿用同一份数据，不用各自感知「在不在副本里」。
+var arena: Rect2 = ARENA_HOME
+
+## 当前是否在地城内 + 地城 id（由 main.gd 维护）
+var in_dungeon: bool = false
+var dungeon_id: String = ""
 
 var gold: int = 0
 var level: int = 1
@@ -40,6 +48,9 @@ func _setup_input() -> void:
 
 	# M8 属性加点：C 开关加点界面（Character）
 	_action("attributes", [KEY_C])
+
+	# M10 交互：F 使用传送门（进/出地城）
+	_action("interact", [KEY_F])
 
 func _action(action_name: StringName, keys: Array) -> void:
 	if InputMap.has_action(action_name):

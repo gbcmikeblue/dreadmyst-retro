@@ -20,7 +20,8 @@ func _ready() -> void:
 
 
 func _build_ground() -> void:
-	var rect: Rect2 = Game.arena
+	# 用 ARENA_HOME 而不是 Game.arena：arena 会随进出地城切换，而竞技场只建一次
+	var rect: Rect2 = Game.ARENA_HOME
 	var size := rect.size
 	var center := rect.get_center()
 
@@ -44,7 +45,7 @@ func _build_ground() -> void:
 
 
 func _build_camp() -> void:
-	var center := Game.arena.get_center()
+	var center := Game.ARENA_HOME.get_center()
 
 	var disc := CylinderMesh.new()
 	disc.top_radius = 96.0
@@ -78,7 +79,7 @@ func _build_camp() -> void:
 
 
 func _build_border() -> void:
-	var rect: Rect2 = Game.arena
+	var rect: Rect2 = Game.ARENA_HOME
 	var size := rect.size
 	var hx := size.x * 0.5
 	var hz := size.y * 0.5
@@ -112,7 +113,7 @@ func _wall(local_offset: Vector3, box_size: Vector3) -> void:
 func _scatter_props() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261009
-	var rect: Rect2 = Game.arena
+	var rect: Rect2 = Game.ARENA_HOME
 	for i in range(26):
 		var rock := ArenaProp.new()
 		rock.prop_radius = rng.randf_range(8.0, 22.0)

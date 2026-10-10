@@ -14,6 +14,7 @@
 | [modules/skills.md](modules/skills.md) | **职业与技能（M7）**：3 职业 / 6 技能 / 冷却与蓝条 / 扇形判定 / 技能栏；**数值为自设占位待校准** |
 | [modules/attributes.md](modules/attributes.md) | **属性加点（M8）**：5 属性 / 每点加成 / 每级点数 / 满级上限 / 加点界面；**数值为自设占位待校准** |
 | [modules/loot.md](modules/loot.md) | 装备模型、掉落表、词条公式、敌人原型数据层 |
+| [modules/dungeon.md](modules/dungeon.md) | **地城与 Boss（M10）**：房间流 / 清房开门 / 真墙体碰撞 / Boss 房 / 通关奖励 / 进出流程；**数值为自设占位待校准** |
 | [modules/world.md](modules/world.md) | 竞技场（3D 地面/矮墙/岩石）、掉落物拾取 |
 | [modules/ui.md](modules/ui.md) | HUD、`Label3D` 伤害数字、Toast |
 | [roadmap.md](roadmap.md) | Roadmap、待补信息、里程碑、M9 迁移记录、变更记录 |
@@ -47,6 +48,7 @@
 | M9 2.5D 渲染 | ✅ | 真 3D + 固定正交相机 + billboard 精灵，数据层零改动 |
 | M7 职业与技能 | ✅ 代码 | 3 职业（战/法/游）+ 6 技能 + 冷却/蓝条 + 技能栏；**数值为自设占位，待原作资料校准** |
 | **M8 属性加点** | ✅ 代码 | 5 属性（力/敏/智/体/精）+ 每级 5 点 + 加点界面（C 键）；**数值为自设占位，待原作资料校准** |
-| M10 地城与 Boss | ⬜ | ← 下一步，见 roadmap.md |
+| **M10 地城与 Boss** | ✅ 代码 | 3 房间 + 清房开门 + 真墙体碰撞 + Boss 房（骸骨领主）+ 通关奖励 + 传送门进出；**美术仍为程序化占位** |
+| M11 背包 / 商店 / 交易 | ⬜ | ← 下一步，见 roadmap.md |
 | M11 背包 / 商店 / 交易 | ⬜ | 见 roadmap.md |
 | M14 联机 | ⬜ | 见 roadmap.md |

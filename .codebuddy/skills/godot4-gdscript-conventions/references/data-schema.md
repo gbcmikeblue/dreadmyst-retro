@@ -178,7 +178,38 @@ roll_drop(enemy_level)
 
 ---
 
-## 5. 新增一张数据表的标准做法
+## 5. `data/dungeon.json`（M10 地城与 Boss）
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `id` / `display_name` | String | 唯一标识 / 中文名 |
+| `level_bonus` | int | 地城内敌人等级 = 玩家等级 + 该值 |
+| `room_count` | int | 房间数（沿 +X 排成一条直线，无分支） |
+| `room_size` | `[宽, 深]` | 单个房间的玩法平面尺寸 |
+| `corridor_length` | float | 房间之间的走廊长度（门就开在走廊正中） |
+| `wall_height` / `wall_thickness` | float | 墙体尺寸 |
+| `door_width` | float | 墙上门洞 / 门的宽度 |
+| `enemies_per_room` | `[int]` | 下标 = 房间号；**长度不足时沿用最后一个值** |
+| `boss.archetype` | String | Boss 原型 id，必须能在 `enemies.json` 里找到且 `is_boss = true` |
+| `boss.level_bonus` | int | Boss 等级额外加成 |
+| `rewards.gold` / `rewards.xp` | int | 通关奖励 |
+| `rewards.guaranteed_rarity` | String | 保底掉落品质 key，留空 = 不给保底 |
+| `ground_color` / `line_color` / `wall_color` / `accent_color` | `[r,g,b]` | 程序化占位美术配色 |
+
+| 类 | 文件 | 接口 |
+| --- | --- | --- |
+| `DungeonDef` / `DungeonRegistry` | `scripts/data/dungeon_def.gd`、`dungeon_registry.gd` | `load_default()` / `get_dungeon(id)` / `ids()` / `clear_cache()`；`DungeonDef` 还提供**平面几何派生**：`room_rect()` / `room_center()` / `door_point()` / `bounds()` / `entrance_point()` / `exit_point()` |
+
+- Boss 的标记在 `enemies.json`：`"is_boss": true` + `"spawn_weight": 0`。
+  **`is_boss` 或 `spawn_weight <= 0` 的原型不会进 `EnemyRegistry.pick_weighted()`**，
+  只能由地城用 `get_archetype(id)` 指名生成。
+- `bounds()` 的 Z 起点是 `origin.y - room_size.y * 0.5`，必须与 `room_rect()` 同口径
+  （否则房间会落在 bounds 之外，自测有一条断言专门盯这个）。
+- 加地城 = `dungeons` 数组追加一条 + 在 `enemies.json` 里准备好它的 Boss 原型。
+
+---
+
+## 6. 新增一张数据表的标准做法
 
 1. `data/<name>.json`，顶层 `{"version": N, "<items>": [...]}`，颜色用 `[r,g,b]`。
 2. `scripts/data/<name>_archetype.gd`：

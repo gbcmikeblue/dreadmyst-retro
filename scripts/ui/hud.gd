@@ -22,6 +22,13 @@ var _toast_label: Label
 var _hint_label: Label
 var _toast_tween: Tween
 
+## M10：Boss 血条 / 交互提示 / 地城进度
+var _boss_bar: ProgressBar
+var _boss_label: Label
+var _prompt_label: Label
+var _dungeon_label: Label
+var _dungeon_name: String = ""
+
 ## 底部技能栏（M7）。自身监听 Events，HUD 只负责把它挂上来。
 var skill_bar: SkillBar = null
 
@@ -71,9 +78,36 @@ func _build() -> void:
 	_equip_label.add_theme_font_size_override("normal_font_size", 14)
 	add_child(_equip_label)
 
+	# 地城进度（左上，压着属性行下面）
+	_dungeon_label = _make_label(Vector2(24, 132), "", 14, Color(0.72, 0.58, 1.0))
+	_dungeon_label.visible = false
+
+	# Boss 血条（顶部居中，只在 Boss 出现时显示）
+	_boss_bar = _make_bar(Vector2(340, 34), Vector2(600, 22), Color(0.72, 0.24, 0.82))
+	_boss_bar.max_value = 100.0
+	_boss_bar.value = 100.0
+	_boss_bar.visible = false
+	_boss_label = _make_label(Vector2(340, 10), "", 16, Color(1.0, 0.86, 0.98))
+	_boss_label.size = Vector2(600, 20)
+	_boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_label.visible = false
+
+	# 交互提示（技能栏正上方，屏幕底部居中）
+	_prompt_label = _make_label(Vector2.ZERO, "", 18, Color(1, 1, 1, 0.95))
+	_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prompt_label.anchor_left = 0.5
+	_prompt_label.anchor_right = 0.5
+	_prompt_label.anchor_top = 1.0
+	_prompt_label.anchor_bottom = 1.0
+	_prompt_label.offset_left = -220.0
+	_prompt_label.offset_right = 220.0
+	_prompt_label.offset_top = -152.0
+	_prompt_label.offset_bottom = -128.0
+	_prompt_label.visible = false
+
 	_toast_label = _make_label(Vector2(420, 120), "", 20, Color.WHITE)
 	_hint_label = _make_label(Vector2(24, 690),
-		"WASD/方向键 移动   空格/左键 攻击   1/2 技能   Shift 冲刺   C 属性加点   F1/F2/F3 切职业",
+		"WASD 移动   空格/左键 攻击   1/2 技能   Shift 冲刺   F 交互   C 属性加点   F1/F2/F3 切职业",
 		13, Color(0.6, 0.6, 0.7))
 
 
@@ -124,6 +158,14 @@ func _connect_events() -> void:
 	Events.equipment_changed.connect(_on_equipment_changed)
 	Events.gold_changed.connect(_on_gold_changed)
 	Events.toast.connect(_on_toast)
+	# M10 地城与 Boss
+	Events.dungeon_entered.connect(_on_dungeon_entered)
+	Events.dungeon_room_cleared.connect(_on_dungeon_room_cleared)
+	Events.dungeon_exited.connect(_on_dungeon_exited)
+	Events.boss_spawned.connect(_on_boss_spawned)
+	Events.boss_health_changed.connect(_on_boss_health_changed)
+	Events.boss_defeated.connect(_on_boss_defeated)
+	Events.interact_prompt_changed.connect(_on_interact_prompt_changed)
 
 
 func _on_health_changed(current: int, maximum: int) -> void:
@@ -191,6 +233,48 @@ func _on_toast(message: String, color: Color) -> void:
 	_toast_tween = create_tween()
 	_toast_tween.tween_interval(1.3)
 	_toast_tween.tween_property(_toast_label, "modulate:a", 0.0, 0.8)
+
+
+# ---------------------------------------------------------------- M10 地城 / Boss
+
+func _on_dungeon_entered(display_name: String, room_count: int) -> void:
+	_dungeon_name = display_name
+	_dungeon_label.text = "%s · 房间 0/%d" % [display_name, room_count]
+	_dungeon_label.visible = true
+
+
+func _on_dungeon_room_cleared(room_index: int, room_count: int) -> void:
+	_dungeon_label.text = "%s · 已清 %d/%d 间" % [_dungeon_name, room_index + 1, room_count]
+	_dungeon_label.visible = true
+
+
+func _on_dungeon_exited() -> void:
+	_dungeon_name = ""
+	_dungeon_label.visible = false
+	_on_boss_defeated("")
+
+
+func _on_boss_spawned(display_name: String, level: int, max_hp: int) -> void:
+	_boss_label.text = "%s  Lv.%d" % [display_name, level]
+	_boss_bar.max_value = maxi(1, max_hp)
+	_boss_bar.value = max_hp
+	_boss_label.visible = true
+	_boss_bar.visible = true
+
+
+func _on_boss_health_changed(current: int, maximum: int) -> void:
+	_boss_bar.max_value = maxi(1, maximum)
+	_boss_bar.value = current
+
+
+func _on_boss_defeated(_display_name: String) -> void:
+	_boss_label.visible = false
+	_boss_bar.visible = false
+
+
+func _on_interact_prompt_changed(text: String) -> void:
+	_prompt_label.text = text
+	_prompt_label.visible = not text.is_empty()
 
 
 func refresh_kills() -> void:

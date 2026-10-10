@@ -41,3 +41,23 @@ signal attributes_changed(attributes: Dictionary, free_points: int, spent_points
 ## UI 请求投入属性点(属性 id, 点数)。由 Player 监听并执行，结果通过 attributes_changed 广播。
 ## UI 不直接引用 Player，与「跨模块只走信号总线」的约定保持一致。
 signal attribute_allocate_requested(attribute_id: String, points: int)
+
+# ---------------------------------------------------------------- M10 地城与 Boss
+
+## 传送门请求进入地城(地城 id) / 请求离开地城。由 Portal 发出，main.gd 执行进出流程。
+signal dungeon_enter_requested(dungeon_id: String)
+signal dungeon_exit_requested
+## 已进入地城(地城显示名, 房间总数)
+signal dungeon_entered(display_name: String, room_count: int)
+## 某个房间已清空(房间号从 0 开始, 房间总数)
+signal dungeon_room_cleared(room_index: int, room_count: int)
+## 已离开地城
+signal dungeon_exited
+## Boss 出现(显示名, 等级, 生命上限)
+signal boss_spawned(display_name: String, level: int, max_hp: int)
+## Boss 血量变化(current, maximum)。只在数值变化时发
+signal boss_health_changed(current: int, maximum: int)
+## Boss 被击败(显示名)
+signal boss_defeated(display_name: String)
+## 交互提示文本变化("" 表示隐藏)。由 Portal 发出（靠近/离开时各发一次），HUD 显示
+signal interact_prompt_changed(text: String)

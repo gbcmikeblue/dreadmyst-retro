@@ -49,6 +49,16 @@
 
 所有贴图带静态缓存，重复调用不会重复生成。
 
+## 地城（M10）
+
+竞技场之外的第二个「场地」：房间流、真墙体碰撞、Boss 房与传送门都在这里，
+详见 [dungeon.md](dungeon.md)。与本章相关的两点：
+
+- **竞技场改用固定边界 `Game.ARENA_HOME`**：`Game.arena` 现在会随进出地城切换
+  （进地城后变成地城范围），而 `ArenaBackground` 只建一次，所以它必须读常量而不是 `Game.arena`。
+- **地城建在远处**（`main.DUNGEON_ORIGIN = (0, 20000)`），与竞技场地面不重叠，
+  因此进出地城不需要销毁/重建竞技场，只切边界与玩家位置。
+
 ## 入口装配（main.gd，根 Node3D）
 
 `_ready()` 顺序：
@@ -67,6 +77,8 @@
 
 ## TODO
 
-- [ ] 多区域/地城（当前单一竞技场）
-- [ ] 岩石无碰撞，地城版本应接入 layer 1 墙体
+- [x] 多区域/地城 —— **M10 已完成**（房间流 + Boss，见 [dungeon.md](dungeon.md)）
+- [x] 地城版本接入 layer 1 墙体 —— **M10 已完成**（`DungeonRoom` / `DungeonDoor`）；
+      竞技场的矮墙与岩石**仍是纯视觉**，需要时才补碰撞
+- [ ] 多间地城的选择入口（`dungeon.json` 已支持数组，当前只开第一间）
 - [ ] 相机 `CAMERA_ORTHO_SIZE` / 俯角需目视微调（见 render3d.md）

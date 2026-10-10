@@ -105,12 +105,15 @@ godot --headless --path . --script res://tests/test_skills.gd
 # 5) 属性加点自测：属性表 / 加点 / 上限 / 满级 / 转职不重置 / 界面开关
 godot --headless --path . --script res://tests/test_attributes.gd
 
-# 6) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落
+# 6) 地城自测：进出地城 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原
+godot --headless --path . --script res://tests/test_dungeon.gd
+
+# 7) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
 全部脚本**自行 `quit(0/1)`**，所以看退出码即可判断成败。
-验收口径：6 条全过，且最后一条 **0 ERROR / 0 WARNING**。
+验收口径：7 条全过，且最后一条 **0 ERROR / 0 WARNING**。
 
 > ⚠️ 自测里**别故意触发 `push_warning` 分支**（例如拿未知 id 去调 `Player.allocate_attribute()`）：
 > 会让输出混进 WARNING，破坏上面「0 WARNING」的验收口径。这类分支改在数据层断言。
@@ -132,6 +135,7 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 | 改玩家 / 敌人 / 战斗公式 | [`docs/modules/combat.md`](docs/modules/combat.md) |
 | 改职业 / 技能 / 冷却与蓝条 | [`docs/modules/skills.md`](docs/modules/skills.md) |
 | 改属性加点 / 加点界面 | [`docs/modules/attributes.md`](docs/modules/attributes.md) |
+| 改地城 / 房间流 / Boss / 传送门 | [`docs/modules/dungeon.md`](docs/modules/dungeon.md) |
 | 改掉落 / 装备 / 敌人数值 | [`docs/modules/loot.md`](docs/modules/loot.md) |
 | 改竞技场 / 掉落物 | [`docs/modules/world.md`](docs/modules/world.md) |
 | 改 HUD / 伤害数字 | [`docs/modules/ui.md`](docs/modules/ui.md) |
@@ -152,14 +156,23 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 已完成：M0 工程骨架 / M1 玩家 / M2 敌人 AI / M3 掉落系统 / M4 HUD / M5 数据驱动 /
 M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 + 技能栏）** /
 **M8 属性加点（5 属性 + 每级 5 点自由分配 + 加点界面 C 键）** /
-**M9 2.5D 渲染（2D → 真 3D 重构，数据层零改动）**。
+**M9 2.5D 渲染（2D → 真 3D 重构，数据层零改动）** /
+**M10 地城与 Boss（3 房间房间流 + 清房开门 + 真墙体碰撞 + Boss 房 + 传送门进出）**。
 
-下一步：**M10 地城与 Boss**（房间流 + Boss 战）。
-细节见 [`docs/roadmap.md`](docs/roadmap.md) 与 [`docs/tasks/M10-dungeon.md`](docs/tasks/M10-dungeon.md)。
+下一步：**M11 背包与交易**（多格背包、装备对比、商店）。
+细节见 [`docs/roadmap.md`](docs/roadmap.md) 与 [`docs/tasks/M11-inventory.md`](docs/tasks/M11-inventory.md)。
 
-> ⚠️ **数据校准欠账**：M7 的职业与技能、M8 的属性与加点曲线**全部是自行设计的占位值**（原作官网 403 无法访问）。
-> 拿到原作资料后只需改 `data/professions.json`、`data/skills.json`、`data/attributes.json`，代码一行不用动。
-> 出图任务见 [`docs/tasks/M7-skills.md`](docs/tasks/M7-skills.md) 与 [`docs/tasks/M8-attributes.md`](docs/tasks/M8-attributes.md)。
+> ⚠️ **数据校准欠账**：M7 的职业与技能、M8 的属性与加点曲线、M10 的地城与 Boss 数值
+> **全部是自行设计的占位值**（原作官网 403 无法访问）。拿到原作资料后只需改
+> `data/professions.json`、`data/skills.json`、`data/attributes.json`、`data/dungeon.json`、
+> `data/enemies.json`，代码一行不用动。
+> 出图任务见 [`docs/tasks/M7-skills.md`](docs/tasks/M7-skills.md)、
+> [`docs/tasks/M8-attributes.md`](docs/tasks/M8-attributes.md)、
+> [`docs/tasks/M10-dungeon.md`](docs/tasks/M10-dungeon.md)。
+
+> 💡 **美术欠账**：M7 / M8 / M10 的代码都已落地，但**全部用程序化占位美术**
+> （`SpriteFactory` 逐像素/网格生成），接真素材只需要填 JSON 的 `sprite_path` / `icon`
+> 之类字段，渲染路径不用改。
 
 ---
 
@@ -170,3 +183,4 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 | 2026-10-09 | 初版：把散落在 `docs/` 与历史对话里的硬性约定收敛成单一入口；补 Godot 版本差异、`icon.svg.import` 副作用、里程碑编号权威三条 |
 | 2026-10-10 | §1 登记参考游戏**魔域**（Eudemons Online）：仅借鉴系统设计、不复用素材；参考范围收窄为**副本（M10）+ 属性面板（M8）**，幻兽/转职分支/强化/军团/交易等**明确不做** |
 | 2026-10-10 | **M8 属性加点完成**：§4 增加第 5 条验证命令（`tests/test_attributes.gd`，验收口径 5 条 → 6 条）；§5 索引加 `docs/modules/attributes.md`；§6 下一步切到 M10 地城与 Boss |
+| 2026-10-10 | **M10 地城与 Boss 完成**：§4 增加第 6 条验证命令（`tests/test_dungeon.gd`，验收口径 6 条 → 7 条）；§5 索引加 `docs/modules/dungeon.md`；§6 下一步切到 M11 背包与交易，并补一条「美术欠账」说明 |

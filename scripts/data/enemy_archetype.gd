@@ -8,6 +8,8 @@ extends RefCounted
 # --- 标识 ---
 var id: String = ""
 var display_name: String = "未知道"
+## Boss 标记：不进野外加权刷怪池（由地城指名生成）、免疫击退、血条更大、脚下带光环
+var is_boss: bool = false
 
 # --- 数值公式（level 派生）---
 var hp_base: float = 34.0
@@ -46,6 +48,7 @@ static func from_dict(d: Dictionary) -> EnemyArchetype:
 	var a := EnemyArchetype.new()
 	a.id = String(d.get("id", ""))
 	a.display_name = String(d.get("display_name", "未知道"))
+	a.is_boss = bool(d.get("is_boss", false))
 
 	a.hp_base = float(d.get("hp_base", 34.0))
 	a.hp_per_lv = float(d.get("hp_per_lv", 16.0))

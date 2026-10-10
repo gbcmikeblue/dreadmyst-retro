@@ -112,6 +112,46 @@ func _initialize() -> void:
 		print("FAIL: bonus_for_all 汇总结果缺少 attack / max_hp")
 		failed = true
 
+	# ---------- 地城 / Boss（M10）----------
+	var dungeons: Array = DungeonRegistry.load_default()
+	if dungeons.is_empty():
+		print("FAIL: DungeonRegistry.load_default() 返回空")
+		quit(1)
+		return
+	print("[OK] DungeonRegistry 加载成功，共 ", dungeons.size(), " 间地城：")
+	for d in dungeons:
+		print("     - ", d.id, " / ", d.display_name,
+			"  房间=", d.room_count, "  尺寸=", d.room_size,
+			"  每房怪数=", d.enemies_per_room,
+			"  Boss=", d.boss_id,
+			"  保底品质=", d.guaranteed_rarity)
+		if d.boss_id.is_empty():
+			print("FAIL: 地城 ", d.id, " 没有配置 Boss")
+			failed = true
+		var boss_arch: EnemyArchetype = EnemyRegistry.get_archetype(d.boss_id)
+		if boss_arch == null or not boss_arch.is_boss:
+			print("FAIL: 地城 ", d.id, " 的 Boss 原型 '", d.boss_id, "' 不存在或未标 is_boss")
+			failed = true
+
+		# 布局派生自检：并集矩形必须能包住每一间房（相机/边界钳制都依赖它）
+		var origin := Vector2(0.0, 1000.0)
+		var bounds: Rect2 = d.bounds(origin)
+		for i in range(d.room_count):
+			if not bounds.encloses(d.room_rect(i, origin)):
+				print("FAIL: 地城 ", d.id, " 第 ", i, " 间房不在 bounds 内")
+				failed = true
+
+	# Boss 不应混进野外加权刷怪池
+	var wild_boss := 0
+	for i in range(300):
+		var arch: EnemyArchetype = EnemyRegistry.pick_weighted()
+		if arch != null and arch.is_boss:
+			wild_boss += 1
+	print("[OK] pick_weighted × 300 抽到 Boss 次数 = ", wild_boss, "（期望 0）")
+	if wild_boss > 0:
+		print("FAIL: Boss 混进了野外刷怪池")
+		failed = true
+
 	if failed:
 		print("========== 测试失败 ==========")
 		quit(1)

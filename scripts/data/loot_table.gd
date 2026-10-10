@@ -15,14 +15,15 @@ static func roll_drop(enemy_level: int) -> GearItem:
 	return generate(enemy_level)
 
 
-## 无条件生成一件装备。
-static func generate(enemy_level: int) -> GearItem:
+## 无条件生成一件装备。forced_rarity_key 非空时跳过品质随机（Boss 保底掉落用）。
+static func generate(enemy_level: int, forced_rarity_key: String = "") -> GearItem:
 	var cfg := LootConfig.load_default()
 	if cfg == null:
 		return null
 	var gear := GearItem.new()
 	var slot_key := cfg.pick_slot_key()
-	var rarity_key := cfg.pick_rarity_key()
+	var rarity_key := forced_rarity_key if not forced_rarity_key.is_empty() \
+		else cfg.pick_rarity_key()
 	gear.slot = cfg.slot_enum_for(slot_key)
 	gear.rarity = cfg.rarity_enum_for(rarity_key)
 	gear.item_level = maxi(1, enemy_level + randi_range(-cfg.level_jitter, cfg.level_jitter))

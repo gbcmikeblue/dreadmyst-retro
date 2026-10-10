@@ -4,8 +4,12 @@
 > **优先级**：P1（视觉骨架，所有玩法的背景）  
 > **预计出图量**：~80 张（3 套 tileset × 25 + 5 张 Boss 概念图）  
 > **预计人工后期**：~30h（tileset 切片 + 拼接 + 调整是大头）  
-> **状态**：待开始  
-> **完成前置**：Forge + 至少 1 个"场景 tileset"LoRA
+> **状态**：**代码已完成**（2026-10-10，房间流 + Boss 战，美术仍为程序化占位）；**出图待开始**  
+> **完成前置**：Forge + 至少 1 个"场景 tileset"LoRA  
+> **代码侧已就位**：地城的房间/墙/门/Boss/传送门都可跑，缺的只是 tileset 贴图。
+> 接入真贴图时改 `DungeonRoom`（把程序化网格地面换成 tileset UV）与
+> `data/enemies.json` 的 `sprite_path`，**玩法代码不用动**。详见
+> [`docs/modules/dungeon.md`](../modules/dungeon.md)。
 
 ---
 
@@ -120,23 +124,31 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 
 | 文件 | 状态 | 改动 |
 | --- | --- | --- |
-| `scripts/world/tileset_loader.gd` | **新建** | 加载 TileSet / 贴图集，铺 3D 地面网格 |
-| `scripts/world/dungeon_room.gd` | **新建** | 单个房间（20×20 tile） |
-| `scripts/world/dungeon_generator.gd` | **新建** | 房间流（多房间 + 连接） |
-| `scripts/actors/player.gd` | 改 | 引入数据驱动的 `sprite_path`（当前硬编码程序化贴图），billboard 精灵不改渲染逻辑 |
-| `scripts/actors/enemy.gd` | 改 | 已支持 `sprite_path`，只需填数据 |
-| `scripts/world/boss_arena.gd` | **新建** | Boss 战场景，挂 Boss 概念图背景 |
-| `scenes/world/dungeon/dungeon_01.tscn` | **新建** | 第 1 个地城场景 |
+| `data/dungeon.json` | ✅ 已建 | 房间流布局 / 每房怪数 / Boss / 通关奖励 / 配色 |
+| `scripts/data/dungeon_def.gd`、`dungeon_registry.gd` | ✅ 已建 | 地城定义 + 注册表（含房间平面几何派生） |
+| `scripts/world/dungeon.gd` | ✅ 已建 | 房间流 / 清房开门 / Boss 房 / 通关奖励 / 出入口 |
+| `scripts/world/dungeon_room.gd` | ✅ 已建 | 单间房：3D 地面 + **layer 1 碰撞墙** + 门洞 |
+| `scripts/world/dungeon_door.gd` | ✅ 已建 | 房间之间的门（清房后开） |
+| `scripts/world/portal.gd` | ✅ 已建 | 传送门（靠近提示 + `F` 交互） |
+| `data/enemies.json` | ✅ 已改 | 新增 `bone_lord`（`is_boss = true`、`spawn_weight = 0`） |
+| `scripts/actors/enemy.gd` | ✅ 已改 | Boss 免疫击退 + 大血条 + 脚下光环（外观仍可接 `sprite_path`） |
+| `scripts/actors/player.gd` | ⬜ 待做 | 玩家的 `sprite_path` 尚未数据驱动（仍是硬编码程序化贴图） |
+| `scripts/main.gd`、`scripts/ui/hud.gd`、`scripts/core/game.gd` | ✅ 已改 | 进出地城流程 / Boss 血条 / 房间进度 / 交互提示 / 边界切换 |
+| `tests/test_dungeon.gd` | ✅ 已建 | 6 用例：数据层 / 野外池 / 进入 / 清房 / Boss / 离开 |
+| `scripts/world/boss_arena.gd` | ⬜ 待做 | Boss 战**独立场景**尚未做（当前 Boss 房就是最后一个房间，背景是地城本身） |
+| ~~`scenes/world/dungeon/dungeon_01.tscn`~~ | ❌ 废弃 | 本项目约定只有 `main.tscn` 一个场景（AGENTS.md §2.4），地城由代码构建 |
 
 ---
 
 ## 7. 验收清单
 
+- [x] **1 个完整地城能跑通（3 个房间 + 清房开门 + Boss 房）** —— 代码完成，美术待接入
+- [x] **Boss 战可打**（骸骨领主：免疫击退 + HUD 大血条 + 通关奖励）
+- [x] **地城进出口**（竞技场传送门 `F` 进入，地城内原路返回 / 清空后开出口）
 - [ ] 3 套 tileset 出图
 - [ ] 3 套 tileset 在 Tiled 中切片为 32×32
-- [ ] 3 套 TileSet 资源导入 Godot
-- [ ] 1 个完整地城场景能跑通（至少 3 个房间）
-- [ ] 玩家/敌人 sprite 已切 2.5D 视角
+- [ ] 3 套 TileSet 资源导入 Godot，替换 `DungeonRoom` 的程序化网格地面
+- [ ] 玩家/敌人 sprite 已切 2.5D 视角（`data/enemies.json` 的 `sprite_path`）
 - [ ] Boss 概念图出图
 - [ ] Boss 战场景有视觉氛围
 - [ ] `_LICENSES.md` 已登记所有用到的 LoRA + ControlNet
@@ -151,3 +163,4 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 | 2026-10-09 | 初版 |
 | 2026-10-09 | **编号由 M9 改为 M10**（原 M9 已被已完成的「2.5D 渲染」占用），与 `docs/roadmap.md` 统一 |
 | 2026-10-09 | 修正过期内容：删除 2D 时代的 `scale.y` + `y_sort` 方案，改为真 3D billboard / 3D 地面网格 |
+| 2026-10-10 | **代码部分完成**（房间流 / 真墙体碰撞 / Boss 房 / 奖励 / 传送门 + 自测 + 文档）：地城改为纯代码构建，废弃卡片里的 `dungeon_01.tscn`；tileset 与 Boss 概念图**仍未开始** |

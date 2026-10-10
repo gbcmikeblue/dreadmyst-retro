@@ -15,7 +15,7 @@
 | ID | 里程碑 | 卡片 | AI 出图量 | 人工后期 | 优先级 | 出图状态 |
 | --- | --- | --- | --- | --- | --- | --- |
 | M7 | 职业与技能系统 | [M7-skills.md](M7-skills.md) | ~30 张 | ~6h | **P0** | 待开始 |
-| M10 | 地城与 Boss | [M10-dungeon.md](M10-dungeon.md) | ~80 张 | ~30h | P1 | 待开始 |
+| M10 | 地城与 Boss | [M10-dungeon.md](M10-dungeon.md) | ~80 张 | ~30h | P1 | 待开始（**代码已完成 2026-10-10**） |
 | M11 | 背包/商店/装备对比 | [M11-inventory.md](M11-inventory.md) | ~170 张 | ~23h | P1 | 待开始 |
 | M8 | 属性加点 | [M8-attributes.md](M8-attributes.md) | ~20 张 | ~3h | P2 | 待开始（**代码已完成 2026-10-10**） |
 | M14 | 联机（头像/阵营） | [M14-multiplayer.md](M14-multiplayer.md) | ~15 张 | ~2h | P3 | 待开始 |

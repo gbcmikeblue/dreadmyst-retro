@@ -120,6 +120,7 @@ godot --headless --path . --script res://tests/test_smoke_3d.gd
 godot --headless --path . --script res://tests/test_input_move.gd
 godot --headless --path . --script res://tests/test_skills.gd
 godot --headless --path . --script res://tests/test_attributes.gd
+godot --headless --path . --script res://tests/test_dungeon.gd
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 

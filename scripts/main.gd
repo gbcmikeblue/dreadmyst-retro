@@ -12,6 +12,14 @@ const SPAWN_INTERVAL := 3.5        # 刷怪间隔（秒）
 ## 正式发布时设为 false 即可整体移除。
 const DEV_TOOLS := true
 
+## 地城原点（玩法平面坐标）：故意离竞技场很远，这样地城地面不会和竞技场地面重叠，
+## 进出地城只要切换 Game.arena + 玩家位置，不必销毁/重建竞技场。
+const DUNGEON_ORIGIN := Vector2(0.0, 20000.0)
+## 竞技场入口传送门相对营地中心的偏移
+const ARENA_PORTAL_OFFSET := Vector2(0.0, -180.0)
+## 离开地城回到营地时补刷的野怪数量
+const ARENA_RESPAWN_ON_RETURN := 6
+
 ## 相机俯角：-45 是标准斜俯视；更"平"用 -55，更"俯"用 -35
 const CAMERA_TILT_DEG := -45.0
 ## 正交视野的竖直范围（世界单位）。2D 版是 720 / zoom1.15 ≈ 626，取接近值。
@@ -24,6 +32,11 @@ var player: Player
 var hud: HUD
 var camera: Camera3D
 
+## 当前地城实例（不在副本里时为 null）
+var dungeon: Dungeon = null
+## 竞技场里的入口传送门
+var arena_portal: Portal = null
+
 var _spawn_timer: float = 2.0
 ## 相机的焦点（玩法平面坐标），平滑跟随玩家
 var _focus: Vector2 = Vector2.ZERO
@@ -35,6 +48,7 @@ func _ready() -> void:
 	_build_environment()
 	add_child(ArenaBackground.new())
 	_spawn_player()
+	_spawn_arena_portal()
 
 	hud = HUD.new()
 	add_child(hud)
@@ -53,6 +67,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_camera(delta)
+
+	# 副本里不刷野怪（地城的怪由 Dungeon 自己按房间刷）
+	if Game.in_dungeon:
+		return
 
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0:
@@ -159,6 +177,96 @@ func _clamp_focus(focus: Vector2) -> Vector2:
 	return Vector2(clampf(focus.x, min_x, max_x), clampf(focus.y, min_z, max_z))
 
 
+# ---------------------------------------------------------------- 地城（M10）
+
+## 竞技场里的入口传送门：指向 data/dungeon.json 里的第一间地城。
+func _spawn_arena_portal() -> void:
+	var ids := DungeonRegistry.ids()
+	if ids.is_empty():
+		push_warning("main: DungeonRegistry 为空，竞技场不放入口传送门")
+		return
+	var def := DungeonRegistry.get_dungeon(ids[0])
+	arena_portal = Portal.new()
+	arena_portal.mode = Portal.Mode.ENTER
+	arena_portal.dungeon_id = def.id
+	arena_portal.label = "进入 %s" % def.display_name
+	arena_portal.color = def.accent_color
+	add_child(arena_portal)
+	var center := Game.ARENA_HOME.get_center()
+	arena_portal.position = Vector3(
+		center.x + ARENA_PORTAL_OFFSET.x, 0.0, center.y + ARENA_PORTAL_OFFSET.y)
+
+
+func _on_dungeon_enter_requested(dungeon_id: String) -> void:
+	if Game.in_dungeon:
+		return
+	var def := DungeonRegistry.get_dungeon(dungeon_id)
+	if def == null:
+		push_warning("main: 找不到地城 '%s'" % dungeon_id)
+		return
+	if player == null or not is_instance_valid(player):
+		return
+
+	# 先撤掉野外的怪，再建地城（否则会把刚刷出来的地城怪一起清掉）
+	_clear_arena_enemies()
+
+	dungeon = Dungeon.new()
+	dungeon.setup(def, DUNGEON_ORIGIN, Game.level)
+	add_child(dungeon)
+
+	Game.in_dungeon = true
+	Game.dungeon_id = def.id
+	Game.arena = def.bounds(DUNGEON_ORIGIN)
+
+	# 玩家与相机一起瞬移：否则相机会从竞技场一路平移过去，画面很怪
+	var entrance := def.entrance_point(DUNGEON_ORIGIN)
+	player.global_position = Game.world(entrance)
+	_focus = entrance
+	camera.global_position = _focus_to_world(_clamp_focus(_focus))
+
+	Events.dungeon_entered.emit(def.display_name, def.room_count)
+	Events.toast.emit("进入 %s（%d 个房间）" % [def.display_name, def.room_count],
+		def.accent_color)
+
+
+func _on_dungeon_exit_requested() -> void:
+	if not Game.in_dungeon:
+		return
+	Game.in_dungeon = false
+	Game.dungeon_id = ""
+	Game.arena = Game.ARENA_HOME
+
+	if dungeon != null and is_instance_valid(dungeon):
+		# 地城节点被释放时，它的 Portal._exit_tree 会顺手清掉屏幕上的交互提示
+		dungeon.queue_free()
+	dungeon = null
+
+	if player != null and is_instance_valid(player):
+		player.global_position = Game.world(Game.ARENA_HOME.get_center())
+	_focus = Game.ARENA_HOME.get_center()
+	camera.global_position = _focus_to_world(_clamp_focus(_focus))
+
+	Events.dungeon_exited.emit()
+	Events.toast.emit("回到营地", Color(0.6, 1.0, 0.6))
+
+	for i in range(ARENA_RESPAWN_ON_RETURN):
+		_spawn_enemy(randf_range(380.0, 620.0))
+
+
+## 撤离野外全部敌人。直接 queue_free（不走 take_damage），所以不给经验与掉落。
+func _clear_arena_enemies() -> void:
+	# 用无类型 Array 承载，避免静态类型分析把元素推断为 Node 而报「找不到成员」
+	var enemies: Array = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		if not is_instance_valid(enemy):
+			continue
+		# queue_free() 要等到帧末才生效，这里必须**立刻**退出 enemies 组：
+		# 否则本帧内它们仍会被算作「场上的敌人」（自测与后续 AOI 都会数错）。
+		enemy.remove_from_group("enemies")
+		enemy.set_physics_process(false)
+		enemy.queue_free()
+
+
 # ---------------------------------------------------------------- 构建世界
 
 func _spawn_enemy(distance: float) -> void:
@@ -191,6 +299,8 @@ func _clamp_inside_arena(p: Vector2, margin: float) -> Vector2:
 func _connect_events() -> void:
 	Events.damage_dealt.connect(_on_damage_dealt)
 	Events.enemy_died.connect(_on_enemy_died)
+	Events.dungeon_enter_requested.connect(_on_dungeon_enter_requested)
+	Events.dungeon_exit_requested.connect(_on_dungeon_exit_requested)
 
 
 ## HUD 创建之前 player 已经发出过初始信号，这里补发一次让 UI 同步。
