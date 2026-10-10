@@ -39,15 +39,33 @@
 
 两个 base 模型都放 `D:\AI\models\checkpoints\`。
 
-### 1.3 部署现状
+### 1.3 部署现状（2026-10-10 实测更新）
 
-- **Forge 仓库**：`D:\AI\stable-diffusion-webui-forge\`
-- **模型**：`D:\AI\models\checkpoints\{v1-5-pruned-emaonly, sd_xl_base_1.0}.safetensors`
-- **Python 解释器**：`D:\AI\python-full\python.exe`（3.10.11，完整版，含 venv）
-- **pip 镜像**：`%APPDATA%\pip\pip.ini` 指向清华源
-- **启动入口**：`D:\AI\stable-diffusion-webui-forge\webui.bat`（自动 `call webui.settings.bat`）
-- **首次启动**：会自动建 venv + 装 PyTorch + xformers + 20+ 依赖，约 10–20 分钟
-- **WebUI**：`http://127.0.0.1:7860`
+- **Forge 仓库**：`D:\AI\stable-diffusion-webui-forge\`（克隆停在 `dfdcbab` / 2025-06-26，`main`）
+- **启动入口**：**`webui-user.bat`（双击这个）**，内部 `call webui.bat`。
+  ⚠️ 三个已踩过的坑：① `call webui.bat` 是**相对当前目录**解析的，所以启动器开头必须有
+  `cd /d "%~dp0"`；② `COMMANDLINE_ARGS` **必须写成一行**（原来的 `^` 续行是多余人祸）；
+  ③ 加了 `--api`（这样脚本 / 自测可以直接 HTTP 驱动 txt2img，见 §4.4）。
+- **模型路径**：**不再用 `--ckpt-dir` 等参数**，改为**目录联接（junction）**挂进 Forge 的默认扫描路径
+  （`junction` 对 Python 的 `os.walk` 透明）：
+  ```
+  models\Stable-diffusion\_D_AI_ckpt -> D:\AI\models\checkpoints
+  models\Lora\_D_AI                 -> D:\AI\models\lora
+  models\VAE\_D_AI_vae              -> D:\AI\models\vae
+  outputs                           -> D:\AI\outputs
+  ```
+  ⚠️ 副作用：模型在下拉里显示为 `_D_AI_ckpt\v1-5-pruned-emaonly`（带目录前缀）。
+- **PyTorch**：**必须 `2.7.0+cu128`**。本机是 RTX 5070 Laptop（Blackwell **sm_120**），而 Forge 这份克隆把
+  `launch_utils.py` 的默认 torch 钉死在 `2.3.1+cu121`（arch_list 只到 sm_90）→ 界面能开、**一出图就报
+  `CUDA error: no kernel image is available`**。cu128 才有 `sm_120`。
+- **下载源**：`download.pytorch.org` 在国内**会卡死**（实测 25 分钟 0 字节），改用**上海交大镜像**
+  `https://mirror.sjtu.edu.cn/pytorch-wheels/cu128/`（实测 **17 MB/s**）；下完用官方索引里的 `#sha256` 校验。
+  ⚠️ 装 torch 时**必须写 `+cu128` 本地版本号**，否则 pip 会把清华 PyPI 的普通 torch（Windows 上是 CPU 版）当候选挑走。
+- **Python 解释器**：`D:\AI\python-full\python.exe`（3.10.11）；**`D:\AI\python`、`python-full` 都没有 torch**，只有 venv 有。
+- **网络**：Civitai / HuggingFace 直连不通，本机有代理 **`127.0.0.1:7890`**（系统代理开关是关的，需手动指定）。
+  Git 之外的所有 `Invoke-WebRequest` / curl 都要加 `-Proxy http://127.0.0.1:7890` / `-x`。
+  ⚠️ PowerShell 的 `Invoke-WebRequest` **不认 308 跳转**（Civitai 页面就是 308），需要换 .NET HttpClient。
+- **WebUI**：`http://127.0.0.1:7860`；启动约 16 秒（torch 已装好时）
 
 详见 `D:\AI\forge-manual.md`。
 
@@ -73,15 +91,39 @@
 > 不加 LoRA 时一致性改靠：固定 checkpoint + 固定 seed 家族 + **一图多格** + **调色板收敛**
 > （见 `assets/_PROMPTS.md` 的「后期统一规范」）。
 
+> 📌 **实测结论（2026-10-10，本机跑过）——分工：构图靠 img2img，风格靠 LoRA**
+>
+> 1. **base SD 1.5 不加 LoRA 不可控**：同一个 prompt 换 seed 会分别给出"整张地牢地图 / 8~9 个角色的
+>    sheet / 6 个角色的网格"——模型在猜你要什么，单对象产出不可复现。
+> 2. **img2img 能锁死构图**（零下载）：拿 `SpriteFactory` 的程序化贴图当底图，
+>    3 底图 × 3 档 denoise 扫下来——**轮廓 100% 保留**。关键参数：
+>    - **纯色块底图必须 `denoise ≥ 0.65` 才有内容**（0.5 档几乎只把透明底刷成白底）
+>    - **圆形底图不能当角色底**：模型把圆环当"画框"，把角色**画在圈里**
+>    - **人形剪影底图 → 0.70~0.85 能出正确的单角色**（站姿 / 比例 / 脚位全跟着底图）
+>    - 菱形底图适合**掉落物/宝石**；网格底图 0.85 能出**可用的地砖**
+> 3. **LoRA 有效，但只解决风格**：用 `BG3 Item Icons`（`<lora:bg3_item_icons_v1:0.7>`）实测——
+>    不加 LoRA 时"剑"出成盾牌、"头盔"出成现代自行车盔、"药水"出成徽章；加上后三个物品**全部对上**。
+>    ⚠️ 但它的触发词 **`green background` 会把物体也染绿**（绿剑、绿盔、绿药水）→ 用它时 prompt 里
+>    **显式指定材质颜色**（`silver steel longsword`），负向加 `green item, green object, frame, border, vignette`。
+> 4. **img2img 解决不了风格**：0.85 档出的是"现代扁平插画"，不是"2.5D 复古"→ 复古感仍要 checkpoint / 风格 LoRA / 后期统一。
+
 ---
 
 ## 3. LoRA 获取与登记
 
 ### 3.1 下载流程
 
-1. 打开 <https://civitai.com>，搜索上表里的关键词
+> ⚠️ **网络**：Civitai / HuggingFace **直连不通**，本机有代理 `127.0.0.1:7890`（系统代理开关是关的）。
+> 命令行要显式带：`curl -x http://127.0.0.1:7890` / `Invoke-WebRequest -Proxy http://127.0.0.1:7890`。
+>
+> ⚠️ **许可只能人工看页面**：Civitai **新版 API 已删除许可字段**（`/api/v1/models/{id}` 的版本详情里
+> 只剩 `usageControl`，且所有模型都是同一个值、无法区分是否允许商用），模型页 HTML 又是客户端渲染
+> （308 跳转 + JS，PowerShell 的 `Invoke-WebRequest` 连 308 都不认）。所以**登记时 License / 商用两栏
+> 必须由人打开 `civitai.com/models/<id>` 看 License 区回填**，未回填前按"不得使用"处理。
+
+1. 打开 <https://civitai.com>（或走 SDK/脚本 + 代理），搜索上表里的关键词
 2. 筛选条件：
-   - **License**：选 "Allow Commercial Use" 或 "CreativeML Open RAIL-M"
+   - **License**：选 "Allow Commercial Use" 或 "CreativeML Open RAIL-M"（**页面筛选，API 里没有**）
    - **Model Type**：`LoRA`
    - **Sort by**：Most Downloaded 或 Highest Rated
 3. 点进 LoRA → 下载 `.safetensors`（不是 ckpt）
@@ -293,6 +335,7 @@ Forge 出图 (.png, 1024²)
 | 2026-10-09 | 初稿：基于 RTX 5070 + Forge + SD 1.5/SDXL + 清华 pip 镜像 |
 | 2026-10-09 | §7 工作量估算表的里程碑编号改为与 `docs/roadmap.md` 一致（M7 / M8 / M10 / M11 / M14） |
 | 2026-10-10 | **风格基线改为"不做像素风"**（保留低分辨率 + 复古观感）：§2 表去掉"32×32 像素地砖 / pixel item icon"与 `pixel` 系列关键词，规格上调为角色 128²、地砖 64²、图标 64²，接口字段改回真 3D 时代的 `sprite_path`；§4.2 A/B/C 模板去像素化并补负向 `pixel art, 8-bit, hard pixel edges`（D 无需改）；§5.1 后期流程改"平滑降采样 + 调色板收敛"；§5.3 导入改 `Filter = Linear` + `Mipmaps = on`；给已过期的 §5.2（2D 时代）加警告；§7 标注人工后期为下限；**LoRA 由"起步必建 3–5 个"改为"非必需"**。同步改了 `assets/_PROMPTS.md` |
+| 2026-10-10 | **端到端跑通 + 实测结论入档**：§1.3 全面重写（torch 必须 2.7.0+cu128 / 交大镜像 / junction 替代路径参数 / `--api` / `cd /d "%~dp0"` / 代理 7890 / IWR 不认 308）；§2 新增「构图靠 img2img、风格靠 LoRA」的实测结论块（含"纯色块底图需 denoise≥0.65"、"圆底图不能当角色底"、"green background 触发词会染绿物体"）；§3.1 补代理与"Civitai API 已无许可字段、必须人工核对"。另在 `assets/_LICENSES.md` 登记 2 个 LoRA（许可留待确认） |
 
 ---
 

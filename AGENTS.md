@@ -24,6 +24,15 @@
 沿用既有铁律：**不复制 GPL 项目的代码与素材**（见 [`docs/tasks/README.md`](docs/tasks/README.md) 的全局规则）。
 注意**代码许可 ≠ 素材许可**：例如 DCSS 代码是 GPLv2+，但其 32×32 tiles 是 **CC0**（可自由商用）。
 
+**第三方模型 / 素材许可口径**（2026-10-10 修订，判定基准 = 本项目**非商用**）：
+
+1. 本项目**非商用**：个人自用原型，不售卖、不收费、不投放广告。故**模型的 `allowCommercialUse` 不再作为筛选硬条件**
+   —— 含 `RentCivit` / `Rent` / `Sell` / 空值 的条目**都可以用**，只排除**明确禁止任何使用 / 仅限查看**的条目。
+2. **署名义务不受"非商用"影响**：`allowNoCredit = False` 的条目**必须署名**，在游戏内 credits 或 README 列出作者与出处。
+3. 任何第三方模型 / 素材**一律登记**到 [`assets/_LICENSES.md`](assets/_LICENSES.md)：来源 URL、作者、许可原文、署名义务、放置路径。
+4. ⚠️ **一旦本项目转为商用（上架 / 收费 / 广告变现），必须回头复核 `_LICENSES.md` 全部条目**，
+   以其中「商用」列为依据逐条重判；届时不合格的模型与素材要替换或删除。**转商用时不得跳过这一步**。
+
 | 项 | 值 |
 | --- | --- |
 | 引擎 | Godot 4（`project.godot` 声明 **4.7**；编辑器 4.3+ 可开，本机实测版本 **4.4.1**） |
@@ -179,6 +188,7 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 | 改 HUD / 伤害数字 | [`docs/modules/ui.md`](docs/modules/ui.md) |
 | 看下一步做什么 | [`docs/roadmap.md`](docs/roadmap.md) |
 | 出美术素材 | [`docs/tasks/`](docs/tasks/) 对应卡片 + [`assets/_PROMPTS.md`](assets/_PROMPTS.md) + [`assets/_LICENSES.md`](assets/_LICENSES.md) |
+| 看跨里程碑待办 / 未决项 / 已作废项 | [`docs/tasks/backlog.md`](docs/tasks/backlog.md) |
 | 总索引 | [`docs/README.md`](docs/README.md) |
 
 **里程碑编号以 [`docs/roadmap.md`](docs/roadmap.md) 为唯一权威。** 历史上 `docs/tasks/` 用过
@@ -244,5 +254,7 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 | 2026-10-10 | **M13 存档完成**：§3 新增「存档」陷阱组（存档是外部输入要兜底、解析用 `JSON` 实例别用 `JSON.parse_string()`、**启动会先弹标题选档界面并把世界暂停**因此需要世界跑的自测要自己选槽位）；§4 增加第 8 条验证命令（`tests/test_save.gd`，验收口径 8 条 → 9 条）；§5 索引加 `docs/modules/save.md` |
 | 2026-10-10 | **M14 联机暂不做**：§6 下一步改为 **M15 素材接入**，并注明「M15 阻塞在素材上，素材没到可先做纯代码的 M16 相机微调」；把 M12 / M14 两条范围决定合并成「别再主动提议」清单 |
 | 2026-10-10 | **M16 相机微调完成**：§3 新增 3 条 GDScript 编译期坑（`:=` 推断到 `Variant` 直接编译失败、局部变量叫 `name`、`is_equal_approx` 不吃 `Vector2`）；§4 增加第 9 条验证命令（`tests/test_camera.gd`，验收口径 9 条 → 10 条）；§5 索引不变（相机文档仍在 `docs/modules/render3d.md`）；§6 状态补上 M16，下一步仍是 M15 素材接入 |
+| 2026-10-10 | §1 新增**第三方模型 / 素材许可口径**：本项目**非商用** → 模型的 `allowCommercialUse` **不再作为筛选硬条件**（含 `RentCivit` / `Rent` / `Sell` / 空值 均可用），只排除「明确禁止任何使用」的条目；**署名义务不受影响**（`allowNoCredit=False` 必须署名）；第三方模型一律登记 `assets/_LICENSES.md`；⚠️ **转商用前必须回头复核全部登记项** |
+| 2026-10-10 | §5 索引加 [`docs/tasks/backlog.md`](docs/tasks/backlog.md)（**跨里程碑待办 / 未决 / 已作废清单**）：固化三条口径（非商用 / 不做像素风 / **Forge 未开 CORS，网页工具必须自带本地代理**），列 T-01~T-13 待办、4 条未决、7 条已作废，并附 Forge API 的 checkpoint 标识与 LoRA 命名等接口事实 |
 | 2026-10-10 | §1 登记开源项目清单 **`bobeff/open-source-games`**：记下约 8 个同构候选（Abyss Engine / DCSS / 像素地牢 / Unknown Horizons godot-port / Liblast / Veloren / OpenKO / OpenKore）与「其余无关」的结论；补一条**代码许可 ≠ 素材许可**（DCSS 代码 GPLv2+ 但 tiles 是 CC0），重申**不复制 GPL 代码与素材** |
 | 2026-10-10 | **美术风格基线改为"不做像素风"**（保留低分辨率 + 复古观感）：§1 的「美术」行由"**逐像素生成**"改为"代码生成（占位用、**无固定风格**）"，指向新基线；素材规格整体上调一档（角色 128² / 地砖 64² / 图标 64²），导入滤波由 Nearest 改 **Linear + Mipmaps**；`assets/_PROMPTS.md` 的 A–F 模板去像素化并加负向 `pixel art`，新增「后期统一规范」；**LoRA 改为可选**（先不加跑通一轮）。同步：`docs/reference/ai-asset-generation.md`、`docs/tasks/{README,_template,M7,M10,M11}`、`docs/modules/render3d.md`、`docs/reference/mmo-opensource/{intersect-engine,kaetram-open}.md` |
