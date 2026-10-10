@@ -12,6 +12,7 @@ var _mana_bar: ProgressBar
 var _mana_label: Label
 var _profession_label: Label
 var _level_label: Label
+var _points_label: Label
 var _xp_bar: ProgressBar
 var _stats_label: Label
 var _gold_label: Label
@@ -50,6 +51,8 @@ func _build() -> void:
 
 	_profession_label = _make_label(Vector2(24, 72), "战士", 15, Color(0.9, 0.85, 1.0))
 	_level_label = _make_label(Vector2(150, 72), "等级 1", 15, Color(0.9, 0.85, 1.0))
+	# M8：剩余属性点。有点数时高亮，提示玩家按 C 去加点
+	_points_label = _make_label(Vector2(240, 72), "属性点 0", 15, Color(0.72, 0.74, 0.80))
 
 	_xp_bar = _make_bar(Vector2(24, 96), Vector2(320, 8), Color(0.45, 0.75, 1.0))
 	_xp_bar.max_value = 100.0
@@ -70,7 +73,7 @@ func _build() -> void:
 
 	_toast_label = _make_label(Vector2(420, 120), "", 20, Color.WHITE)
 	_hint_label = _make_label(Vector2(24, 690),
-		"WASD/方向键 移动   空格/左键 攻击   1/2 技能   Shift 冲刺   F1/F2/F3 切职业",
+		"WASD/方向键 移动   空格/左键 攻击   1/2 技能   Shift 冲刺   C 属性加点   F1/F2/F3 切职业",
 		13, Color(0.6, 0.6, 0.7))
 
 
@@ -117,6 +120,7 @@ func _connect_events() -> void:
 	Events.player_profession_changed.connect(_on_profession_changed)
 	Events.player_level_changed.connect(_on_level_changed)
 	Events.player_stats_changed.connect(_on_stats_changed)
+	Events.attributes_changed.connect(_on_attributes_changed)
 	Events.equipment_changed.connect(_on_equipment_changed)
 	Events.gold_changed.connect(_on_gold_changed)
 	Events.toast.connect(_on_toast)
@@ -156,6 +160,13 @@ func _on_stats_changed(stats: Dictionary) -> void:
 
 func _on_gold_changed(amount: int) -> void:
 	_gold_label.text = "金币 %d" % amount
+
+
+## M8：有点数可分配时高亮，玩家一眼能看出该按 C 加点了。
+func _on_attributes_changed(_attributes: Dictionary, free_points: int, _spent_points: int) -> void:
+	_points_label.text = "属性点 %d" % free_points
+	_points_label.add_theme_color_override("font_color",
+		Color(1.0, 0.86, 0.32) if free_points > 0 else Color(0.72, 0.74, 0.80))
 
 
 func _on_equipment_changed(equipment: Dictionary) -> void:

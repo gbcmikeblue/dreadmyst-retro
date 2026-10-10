@@ -38,6 +38,9 @@ func _setup_input() -> void:
 	_action("profession_2", [KEY_F2])
 	_action("profession_3", [KEY_F3])
 
+	# M8 属性加点：C 开关加点界面（Character）
+	_action("attributes", [KEY_C])
+
 func _action(action_name: StringName, keys: Array) -> void:
 	if InputMap.has_action(action_name):
 		InputMap.erase_action(action_name)
@@ -75,8 +78,10 @@ func add_xp(amount: int) -> void:
 		level += 1
 		leveled = true
 	if leveled:
-		Events.toast.emit("等级提升！现在是 %d 级" % level, Color(1.0, 0.85, 0.25))
-	Events.player_level_changed.emit(level, xp, xp_to_next_level())
+		# 升级同时给自由属性点（点数曲线在 data/attributes.json），提示里带上，避免玩家不知道可以加点
+		Events.toast.emit("等级提升！现在是 %d 级（+%d 属性点，按 C 加点）" % [
+			level, AttributeRegistry.free_points_per_level()], Color(1.0, 0.85, 0.25))
+		Events.player_level_changed.emit(level, xp, xp_to_next_level())
 
 # ---------------------------------------------------------------- 金币
 

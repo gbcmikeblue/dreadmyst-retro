@@ -4,8 +4,9 @@
 
 - [x] **M7 职业与技能系统**：3 职业（战/法/游）+ 6 技能 + 冷却/蓝条 + 技能栏。
   **代码完成；数值为自设占位，待原作资料校准**。详见 [modules/skills.md](modules/skills.md)
-- [ ] **M8 属性加点**：升级给自由属性点 ← *当前最高优先级*
-- [ ] **M10 地城与 Boss**：房间流 + Boss 战
+- [x] **M8 属性加点**：升级给自由属性点（5 属性 + 加点界面）。
+  **代码完成；数值为自设占位，待原作资料校准**。详见 [modules/attributes.md](modules/attributes.md)
+- [ ] **M10 地城与 Boss**：房间流 + Boss 战 ← *当前最高优先级*
 - [ ] **M11 背包与交易**：多格背包、装备对比、商店
 - [ ] **M12 PVP 区域**
 - [ ] **M13 存档**：`user://` 序列化等级/装备/金币
@@ -21,6 +22,7 @@
 3. **角色/怪物 sprite 图**：填进 `enemies.json` 的 `sprite_path` 即生效，无需改代码
 4. **中文字体** `.ttf`（HUD 与伤害数字当前用引擎回退字体，有显示异常风险）
 5. **地城/区域规划**：几个区域、连接方式、Boss 机制
+6. **属性公式**：5 个属性的每点加成、每级自由点数、是否有职业系数（M8 开工后拿到资料即可只改 `data/attributes.json`）
 
 ## 已完成里程碑
 
@@ -35,6 +37,7 @@
 | M6 工程规范 | 2026-10-09 | 专属 skill + 文档体系 |
 | **M7 职业与技能** | **2026-10-09** | **3 职业 + 6 技能 + 各自冷却/耗蓝 + 蓝条 + 技能栏；新增 `professions.json` / `skills.json`；数值为自设占位待校准** |
 | **M9 2.5D 渲染** | **2026-10-09** | **转真 3D + 固定正交相机 + billboard 精灵；数据层零改动** |
+| **M8 属性加点** | **2026-10-10** | **新增 `data/attributes.json` + `AttributeDef`/`AttributeRegistry`；5 属性 × 每点加成 × 满级上限；每级 5 点自由分配；`AttributePanel` 加点界面（C 键 / +1·+5 / 满级态 / `modal_ui` 冻结操作）；新增 `tests/test_attributes.gd`（8 用例全通过）。数值为自设占位** |
 
 ## M9 迁移记录（2D → 3D，供参考）
 
@@ -68,3 +71,4 @@
 | 2026-10-09 | **基线回归验证（Godot 4.4.1）**：3 项自测 + 主场景 900 帧全部通过，0 ERROR / 0 WARNING；M9 迁移后无回归。验证细节与 3 条「已知非问题」见 [architecture.md](architecture.md) §6 |
 | 2026-10-09 | **统一里程碑编号**：以本文件为唯一权威，`docs/tasks/` 的 4 张卡片重命名对齐（M8→**M11** 背包、M9→**M10** 地城、M10→**M8** 属性、M11→**M14** 联机），并同步 `ai-asset-generation.md` §7 与全部交叉引用 |
 | 2026-10-09 | **M7 职业与技能（代码骨架完成）**：新增 `data/professions.json` + `data/skills.json`、`Profession`/`SkillDef` 数据层与两个注册表；`Player` 改为职业驱动并支持多技能施放（各自冷却 / 耗蓝 / 伤害倍率 / 射程 / 扇角 / 360° 判定 / F1-F3 转职）；新增 `SkillBar` 技能栏与 HUD 蓝条、职业标签；新增 `tests/test_skills.gd`（5 用例全通过），3 项既有自测 + 主场景 900 帧 0 ERROR / 0 WARNING。**数值为自设占位，待原作资料校准** |
+| 2026-10-10 | **M8 属性加点（代码完成）**：新增 `data/attributes.json` + `AttributeDef`/`AttributeRegistry`（5 属性、`per_point` 每点加成、`max_points` 上限、`free_points_per_level`）；点数经济 = `(等级-1) × 每级点数 - 已投入`，等级只由 `Game` 提供；`Player.allocate_attribute()` + `Events.attribute_allocate_requested/attributes_changed`（UI 不引用 Player）；新增 `AttributePanel` 加点界面（C 键 / +1·+5 / 满级态 / `modal_ui` 冻结操作）+ HUD 剩余点数；新增 `tests/test_attributes.gd`（8 用例），6 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。**数值为自设占位** |

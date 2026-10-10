@@ -91,6 +91,27 @@ func _initialize() -> void:
 			"  range=", s.cast_range,
 			"  half_angle=", int(round(rad_to_deg(s.half_angle))), "°")
 
+	# ---------- 属性（M8）----------
+	var attrs: Array = AttributeRegistry.load_default()
+	if attrs.is_empty():
+		print("FAIL: AttributeRegistry.load_default() 返回空")
+		quit(1)
+		return
+	print("[OK] AttributeRegistry 加载成功，共 ", attrs.size(), " 个属性，每级 ",
+		AttributeRegistry.free_points_per_level(), " 点：")
+	for a in attrs:
+		print("     - ", a.id, " / ", a.display_name,
+			"  max=", a.max_points, "  per_point=", a.per_point)
+		if a.per_point.is_empty():
+			print("FAIL: 属性 ", a.id, " 没有 per_point 加成")
+			failed = true
+
+	var bonus: Dictionary = AttributeRegistry.bonus_for_all({"strength": 2, "vitality": 3})
+	print("[OK] bonus_for_all({strength:2, vitality:3}) = ", bonus)
+	if not bonus.has("attack") or not bonus.has("max_hp"):
+		print("FAIL: bonus_for_all 汇总结果缺少 attack / max_hp")
+		failed = true
+
 	if failed:
 		print("========== 测试失败 ==========")
 		quit(1)

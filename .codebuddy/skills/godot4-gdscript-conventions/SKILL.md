@@ -119,6 +119,7 @@ godot --headless --path . --script res://tests/test_data_layer.gd
 godot --headless --path . --script res://tests/test_smoke_3d.gd
 godot --headless --path . --script res://tests/test_input_move.gd
 godot --headless --path . --script res://tests/test_skills.gd
+godot --headless --path . --script res://tests/test_attributes.gd
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
@@ -129,5 +130,5 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 
 - `references/pitfalls.md` —— GDScript / InputMap / Godot 3D / 运行期的完整陷阱清单（含症状与成因）。
   遇到"代码看起来没错但行为不对"时先查这里。
-- `references/data-schema.md` —— `data/loot.json` 与 `data/enemies.json` 的字段结构、加载器对应关系、
-  以及"加一条内容"的最小改动清单。
+- `references/data-schema.md` —— `data/*.json`（loot / enemies / professions / skills / attributes）的
+  字段结构、加载器对应关系，以及"加一条内容"的最小改动清单与新数据表的标准做法。

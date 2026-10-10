@@ -53,10 +53,20 @@ func _report() -> void:
 		_check(p.max_mana() > 0.0, "玩家应有大于 0 的蓝量上限")
 		_check(p.skills().size() >= 2, "玩家应至少有 2 个技能槽（普攻 / 大招）")
 		_check(p.profession != null, "玩家应已选定职业")
+		# M8：属性加点
+		print("     属性 = ", p.attributes,
+			"  剩余点数 = ", p.free_attribute_points())
+		_check(p.has_method("allocate_attribute"), "玩家应有 allocate_attribute 方法（M8 属性加点）")
+		_check(p.attributes.size() == AttributeRegistry.ids().size(),
+			"玩家的属性表应与 data/attributes.json 一致")
 
 	# M7：技能栏应存在于 HUD 之下
 	var skill_bar = _main.find_child("SkillBar", true, false)
 	_check(skill_bar != null, "应存在名为 SkillBar 的技能栏节点")
+
+	# M8：加点界面应存在
+	var attribute_panel = _main.find_child("AttributePanel", true, false)
+	_check(attribute_panel != null, "应存在名为 AttributePanel 的加点界面节点")
 
 	if not enemies.is_empty():
 		var e = enemies[0]

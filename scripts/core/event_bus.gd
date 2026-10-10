@@ -33,3 +33,11 @@ signal player_profession_changed(profession_id: String, display_name: String, co
 signal player_skills_changed(skills: Array)
 ## 技能冷却变化 {skill_id: 剩余秒数}。冷却全部走完时也会发一次（值为空字典）
 signal skill_cooldowns_changed(cooldowns: Dictionary)
+
+# ---------------------------------------------------------------- M8 属性加点
+
+## 属性点分配变化(属性 id -> 已投入点数, 剩余可加点数, 已投入总点数)
+signal attributes_changed(attributes: Dictionary, free_points: int, spent_points: int)
+## UI 请求投入属性点(属性 id, 点数)。由 Player 监听并执行，结果通过 attributes_changed 广播。
+## UI 不直接引用 Player，与「跨模块只走信号总线」的约定保持一致。
+signal attribute_allocate_requested(attribute_id: String, points: int)

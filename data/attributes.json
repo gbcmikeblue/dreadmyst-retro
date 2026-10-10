@@ -1,0 +1,63 @@
+{
+    "version": 1,
+    "_note": "⚠️ 数值为自行设计的占位值，待原作资料校准。per_point 的键与 Player.total_stats() 一致（attack / max_hp / armor / crit / speed / max_mana / mana_regen）；max_points = 单个属性可投入的上限，0 表示不设上限。free_points_per_level = 每升 1 级获得的自由属性点。改数值只改本文件，不改代码。",
+    "free_points_per_level": 5,
+    "attributes": [
+        {
+            "id": "strength",
+            "name": "力量",
+            "color": [0.90, 0.42, 0.34],
+            "description": "每点 +2 攻击、+0.3 护甲",
+            "max_points": 100,
+            "per_point": {
+                "attack": 2.0,
+                "armor": 0.3
+            }
+        },
+        {
+            "id": "agility",
+            "name": "敏捷",
+            "color": [0.55, 0.85, 0.45],
+            "description": "每点 +0.4% 暴击、+1.2 移动速度",
+            "max_points": 100,
+            "per_point": {
+                "crit": 0.004,
+                "speed": 1.2
+            }
+        },
+        {
+            "id": "intelligence",
+            "name": "智力",
+            "color": [0.45, 0.62, 1.00],
+            "description": "每点 +6 法力上限、+0.3 法力回复",
+            "max_points": 100,
+            "per_point": {
+                "max_mana": 6.0,
+                "mana_regen": 0.3
+            }
+        },
+        {
+            "id": "vitality",
+            "name": "体力",
+            "color": [0.85, 0.30, 0.34],
+            "description": "每点 +8 生命上限、+0.4 护甲",
+            "max_points": 100,
+            "per_point": {
+                "max_hp": 8.0,
+                "armor": 0.4
+            }
+        },
+        {
+            "id": "spirit",
+            "name": "精神",
+            "color": [0.75, 0.60, 0.95],
+            "description": "每点 +0.5 法力回复、+3 生命上限、+0.15% 暴击",
+            "max_points": 100,
+            "per_point": {
+                "mana_regen": 0.5,
+                "max_hp": 3.0,
+                "crit": 0.0015
+            }
+        }
+    ]
+}

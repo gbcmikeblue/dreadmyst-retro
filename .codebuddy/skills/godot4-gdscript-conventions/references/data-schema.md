@@ -153,7 +153,32 @@ roll_drop(enemy_level)
 
 ---
 
-## 4. 新增一张数据表的标准做法
+## 4. `data/attributes.json`（M8 属性加点）
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `id` | String | 唯一标识（`strength` / `agility` / ...） |
+| `name` | String | 中文名（占位图标取它的首字） |
+| `description` | String | 一行说明，直接显示在加点界面 |
+| `color` | `[r,g,b]` | 属性色：图标边框 + 加成文本 |
+| `max_points` | int | 该属性可投入上限。**0 = 不设上限**（此时没有「满级」态） |
+| `per_point` | Dictionary | **每点加成**，键必须与 `Player.total_stats()` 一致：`attack` / `max_hp` / `armor` / `crit` / `speed` / `max_mana` / `mana_regen` |
+
+顶层还有 `free_points_per_level`（每升 1 级给多少自由点）。
+
+| 类 | 文件 | 接口 |
+| --- | --- | --- |
+| `AttributeDef` | `scripts/data/attribute_def.gd` | `from_dict()` / `bonus_for(points)` / `is_capped(points)` / `short_label()` |
+| `AttributeRegistry` | `scripts/data/attribute_registry.gd` | `load_default()` / `get_attribute(id)` / `ids()` / `free_points_per_level()` / **`bonus_for_all(allocation)`** / `clear_cache()` |
+
+- 点数经济在 `Player`：`累计 = (等级-1) × free_points_per_level`，`剩余 = 累计 - 已投入`；
+  等级只由 `Game` 提供（`player_level_changed`），Player 不另存一份已发点数。
+- `AttributeRegistry.bonus_for_all()` 是**纯计算**（不依赖 Player），联机时服务端可直接复算。
+- 加属性 / 调曲线 → 只改 `attributes.json`（界面按 `AttributeRegistry.ids()` 的顺序渲染，自动多出一行）。
+
+---
+
+## 5. 新增一张数据表的标准做法
 
 1. `data/<name>.json`，顶层 `{"version": N, "<items>": [...]}`，颜色用 `[r,g,b]`。
 2. `scripts/data/<name>_archetype.gd`：

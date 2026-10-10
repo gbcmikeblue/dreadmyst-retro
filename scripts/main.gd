@@ -38,6 +38,8 @@ func _ready() -> void:
 
 	hud = HUD.new()
 	add_child(hud)
+	# M8 加点界面：独立 CanvasLayer（layer 20），C 键开关，不塞进 HUD 以保持 HUD 只读
+	add_child(AttributePanel.new())
 	if DEV_TOOLS:
 		add_child(DevPause.new())
 	_connect_events()
@@ -201,6 +203,10 @@ func _push_initial_state() -> void:
 	Events.gold_changed.emit(Game.gold)
 	Events.player_skills_changed.emit(player.skills())
 	Events.skill_cooldowns_changed.emit({})
+	Events.attributes_changed.emit(
+		player.attributes.duplicate(),
+		player.free_attribute_points(),
+		player.attribute_points_spent())
 	if player.profession != null:
 		Events.player_profession_changed.emit(
 			player.profession_id(), player.profession.display_name, player.profession.color)

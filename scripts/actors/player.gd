@@ -8,6 +8,9 @@ extends CharacterBody3D
 ##
 ## M7 起：属性来自「职业」（data/professions.json），攻击由「技能」（data/skills.json）驱动。
 ## 每个技能有自己的冷却 / 耗蓝 / 伤害倍率 / 射程 / 扇角，普攻 = 技能槽 0，大招 = 技能槽 1。
+##
+## M8 起：升级给自由属性点，投入 5 个属性（data/attributes.json）后按各自的 per_point
+## 汇总进 total_stats()。属性点是「角色」级成长，转职不会重置。
 
 ## 职业 / 技能数据缺失时的兜底属性。正常路径走 Profession.base_stats。
 const FALLBACK_STATS := {
@@ -39,6 +42,10 @@ var profession: Profession = null
 
 ## GearItem.Slot -> GearItem
 var equipment: Dictionary = {}
+
+## M8 属性加点：属性 id -> 已投入点数（键集合与 data/attributes.json 一致）
+var attributes: Dictionary = {}
+
 var hp: float = 0.0
 var mana: float = 0.0
 var facing: Vector2 = Vector2.RIGHT
@@ -57,6 +64,10 @@ var _dash_dir: Vector2 = Vector2.RIGHT
 var _hit_flash: float = 0.0
 ## 上一帧是否有冷却在走。用于在冷却全部走完时补发一次「已清空」
 var _had_cooldowns: bool = false
+
+## M8：累计可分配属性点 = (等级 - 1) × 每级点数。等级由 player_level_changed 推来，
+## 不额外存一份「已发点数」，避免与 Game.level 双重记账。
+var _points_total: int = 0
 
 var _sprite: Sprite3D
 var _marker: MeshInstance3D
@@ -85,7 +96,13 @@ func _ready() -> void:
 
 	_build_visuals()
 	set_profession(_default_profession_id())
+	_init_attributes()
 	_update_visuals()
+
+	# 等级 -> 可分配属性点：Game 是等级的唯一来源，Player 只做推导
+	Events.player_level_changed.connect(_on_level_changed)
+	# 加点界面 -> 属性点投入：UI 只发请求，实际动作在 Player 里做
+	Events.attribute_allocate_requested.connect(_on_allocate_requested)
 
 	hp = max_hp()
 	mana = max_mana()
@@ -93,6 +110,7 @@ func _ready() -> void:
 	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
 	Events.player_stats_changed.emit(total_stats())
 	Events.skill_cooldowns_changed.emit({})
+	_emit_attributes()
 
 
 func _physics_process(delta: float) -> void:
@@ -103,6 +121,14 @@ func _physics_process(delta: float) -> void:
 	_hit_flash = maxf(0.0, _hit_flash - delta)
 
 	if dead:
+		velocity = Vector3.ZERO
+		move_and_slide()
+		_update_visuals()
+		return
+
+	# 加点界面等模态 UI 打开时冻结操作：否则点「+」按钮会同时触发普攻 / 移动
+	# （按钮只拦 GUI 事件，拦不住 Input.is_action_pressed 这种轮询式读输入）
+	if _ui_blocking():
 		velocity = Vector3.ZERO
 		move_and_slide()
 		_update_visuals()
@@ -157,12 +183,15 @@ func max_mana() -> float:
 	return float(total_stats().get("max_mana", FALLBACK_STATS["max_mana"]))
 
 
-## 基础属性（职业基础，缺职业时用兜底）+ 所有装备词条的汇总。
+## 基础属性（职业基础，缺职业时用兜底）+ 属性点加成（M8）+ 所有装备词条的汇总。
 func total_stats() -> Dictionary:
 	var result: Dictionary = FALLBACK_STATS.duplicate(true)
 	if profession != null:
 		for key in profession.base_stats:
 			result[key] = float(profession.base_stats[key])
+	var attribute_bonus := AttributeRegistry.bonus_for_all(attributes)
+	for key in attribute_bonus:
+		result[key] = float(result.get(key, 0.0)) + float(attribute_bonus[key])
 	for slot in equipment:
 		var gear: GearItem = equipment[slot]
 		if gear == null:
@@ -170,6 +199,93 @@ func total_stats() -> Dictionary:
 		for key in gear.stats:
 			result[key] = float(result.get(key, 0.0)) + float(gear.stats[key])
 	return result
+
+
+# ---------------------------------------------------------------- 属性加点（M8）
+
+## 初始化属性表：按 data/attributes.json 的顺序把每个属性置 0。
+## 顺序与注册表一致，加点界面直接按同一顺序渲染，无需再排一次。
+func _init_attributes() -> void:
+	attributes.clear()
+	for id in AttributeRegistry.ids():
+		attributes[id] = 0
+
+
+func attribute_points(id: String) -> int:
+	return int(attributes.get(id, 0))
+
+
+func attribute_points_spent() -> int:
+	var total := 0
+	for id in attributes:
+		total += int(attributes[id])
+	return total
+
+
+## 剩余可分配点数 = 等级累计点数 - 已投入点数。
+func free_attribute_points() -> int:
+	return maxi(0, _points_total - attribute_points_spent())
+
+
+## 属性 id 的定义（供 UI 取名字 / 颜色 / 上限）。找不到返回 null。
+func attribute_def(id: String) -> AttributeDef:
+	return AttributeRegistry.get_attribute(id)
+
+
+## 投入 points 点到属性 id。点数不足 / 已满级 / 未知属性时返回 false，且不改动任何状态。
+func allocate_attribute(id: String, points: int = 1) -> bool:
+	if points <= 0:
+		return false
+	var attr := AttributeRegistry.get_attribute(id)
+	if attr == null:
+		push_warning("Player: 未知属性 '%s'" % id)
+		return false
+	# 先判点数不足、再判满级，这样满级被拒时剩余点数仍 > 0，UI 能区分两种红字提示
+	if points > free_attribute_points():
+		Events.toast.emit("属性点不足（剩余 %d）" % free_attribute_points(),
+			Color(1.0, 0.72, 0.35))
+		return false
+	var current := attribute_points(id)
+	if attr.max_points > 0 and current + points > attr.max_points:
+		Events.toast.emit("%s 已满级" % attr.display_name, attr.color)
+		return false
+	attributes[id] = current + points
+	_on_attributes_changed()
+	return true
+
+
+## 分配后重算派生属性。上限提高时只做向下钳制、不自动补满，避免「加点」变成回血手段。
+func _on_attributes_changed() -> void:
+	hp = clampf(hp, 0.0, max_hp())
+	mana = clampf(mana, 0.0, max_mana())
+	_emit_attributes()
+	Events.player_stats_changed.emit(total_stats())
+	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
+	_emit_mana()
+
+
+func _emit_attributes() -> void:
+	Events.attributes_changed.emit(
+		attributes.duplicate(), free_attribute_points(), attribute_points_spent())
+
+
+## 加点界面发来的请求（UI 不认识 Player，只发信号）。
+func _on_allocate_requested(attribute_id: String, points: int) -> void:
+	allocate_attribute(attribute_id, points)
+
+
+## Game 广播等级变化时重算累计点数（等级是唯一来源，这里只做推导与广播）。
+func _on_level_changed(level: int, _xp: int, _xp_to_next: int) -> void:
+	var total := maxi(0, level - 1) * AttributeRegistry.free_points_per_level()
+	if total == _points_total:
+		return
+	_points_total = total
+	_emit_attributes()
+
+
+## 是否有模态 UI 打开（加点界面）。打开时冻结移动与攻击。
+func _ui_blocking() -> bool:
+	return not get_tree().get_nodes_in_group("modal_ui").is_empty()
 
 
 # ---------------------------------------------------------------- 职业

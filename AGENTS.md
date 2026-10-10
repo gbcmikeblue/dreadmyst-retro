@@ -10,6 +10,12 @@
 参考独立游戏 **Dreadmyst**（2.5D 复古风免费 MMO：WoW 式职业属性 + 传奇式刷怪 + 暗黑式掉宝）
 做成的 **Godot 4 单机可玩原型**。当前聚焦：能跑、能操作、能刷怪、能掉装备。
 
+系统设计可另参考国产复古 MMO **魔域**（网龙 / Eudemons Online）：**仅借鉴系统设计与养成思路，不复用其任何素材**
+（商业作品、无授权）。参考范围**仅限两项**：**副本**（对应 M10 地城与 Boss）、**属性面板 / 加点**（对应 M8）。
+
+魔域其余系统**明确不做**（勿再主动提议）：幻兽 / 宠物、转职与职业分支（暂不做）、装备强化 / 升星 / 宝石镶嵌 /
+附魔 / 套装、家族军团 PK / 攻城、交易行 / 摆摊 / 押镖 / 挖宝。
+
 | 项 | 值 |
 | --- | --- |
 | 引擎 | Godot 4（`project.godot` 声明 **4.7**；编辑器 4.3+ 可开，本机实测版本 **4.4.1**） |
@@ -96,12 +102,18 @@ godot --headless --path . --script res://tests/test_input_move.gd
 # 4) 技能自测：施放 / 冷却拦截 / 360° 判定 / 转职 / 蓝量门槛
 godot --headless --path . --script res://tests/test_skills.gd
 
-# 5) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落
+# 5) 属性加点自测：属性表 / 加点 / 上限 / 满级 / 转职不重置 / 界面开关
+godot --headless --path . --script res://tests/test_attributes.gd
+
+# 6) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
 全部脚本**自行 `quit(0/1)`**，所以看退出码即可判断成败。
-验收口径：5 条全过，且最后一条 **0 ERROR / 0 WARNING**。
+验收口径：6 条全过，且最后一条 **0 ERROR / 0 WARNING**。
+
+> ⚠️ 自测里**别故意触发 `push_warning` 分支**（例如拿未知 id 去调 `Player.allocate_attribute()`）：
+> 会让输出混进 WARNING，破坏上面「0 WARNING」的验收口径。这类分支改在数据层断言。
 
 > ⚠️ 写新的 `--script` 测试时**不要**引用 `Events` / `Game` 单例名 —— 入口脚本的编译早于
 > autoload 注册，会直接 `Identifier not found` 编译失败。需要坐标转换时手写
@@ -119,6 +131,7 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 | 改自动加载 / 输入映射 / 坐标转换 | [`docs/modules/core.md`](docs/modules/core.md) |
 | 改玩家 / 敌人 / 战斗公式 | [`docs/modules/combat.md`](docs/modules/combat.md) |
 | 改职业 / 技能 / 冷却与蓝条 | [`docs/modules/skills.md`](docs/modules/skills.md) |
+| 改属性加点 / 加点界面 | [`docs/modules/attributes.md`](docs/modules/attributes.md) |
 | 改掉落 / 装备 / 敌人数值 | [`docs/modules/loot.md`](docs/modules/loot.md) |
 | 改竞技场 / 掉落物 | [`docs/modules/world.md`](docs/modules/world.md) |
 | 改 HUD / 伤害数字 | [`docs/modules/ui.md`](docs/modules/ui.md) |
@@ -134,18 +147,19 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 
 ---
 
-## 6. 当前状态与下一步（2026-10-09）
+## 6. 当前状态与下一步（2026-10-10）
 
 已完成：M0 工程骨架 / M1 玩家 / M2 敌人 AI / M3 掉落系统 / M4 HUD / M5 数据驱动 /
 M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 + 技能栏）** /
+**M8 属性加点（5 属性 + 每级 5 点自由分配 + 加点界面 C 键）** /
 **M9 2.5D 渲染（2D → 真 3D 重构，数据层零改动）**。
 
-下一步：**M8 属性加点**（升级给自由属性点）。
-细节见 [`docs/tasks/M8-attributes.md`](docs/tasks/M8-attributes.md)。
+下一步：**M10 地城与 Boss**（房间流 + Boss 战）。
+细节见 [`docs/roadmap.md`](docs/roadmap.md) 与 [`docs/tasks/M10-dungeon.md`](docs/tasks/M10-dungeon.md)。
 
-> ⚠️ **数据校准欠账**：M7 的职业与技能数值**全部是自行设计的占位值**（原作官网 403 无法访问）。
-> 拿到原作资料后只需改 `data/professions.json` 与 `data/skills.json`，代码一行不用动。
-> 技能图标的出图任务见 [`docs/tasks/M7-skills.md`](docs/tasks/M7-skills.md)。
+> ⚠️ **数据校准欠账**：M7 的职业与技能、M8 的属性与加点曲线**全部是自行设计的占位值**（原作官网 403 无法访问）。
+> 拿到原作资料后只需改 `data/professions.json`、`data/skills.json`、`data/attributes.json`，代码一行不用动。
+> 出图任务见 [`docs/tasks/M7-skills.md`](docs/tasks/M7-skills.md) 与 [`docs/tasks/M8-attributes.md`](docs/tasks/M8-attributes.md)。
 
 ---
 
@@ -154,3 +168,5 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 | 日期 | 变更 |
 | --- | --- |
 | 2026-10-09 | 初版：把散落在 `docs/` 与历史对话里的硬性约定收敛成单一入口；补 Godot 版本差异、`icon.svg.import` 副作用、里程碑编号权威三条 |
+| 2026-10-10 | §1 登记参考游戏**魔域**（Eudemons Online）：仅借鉴系统设计、不复用素材；参考范围收窄为**副本（M10）+ 属性面板（M8）**，幻兽/转职分支/强化/军团/交易等**明确不做** |
+| 2026-10-10 | **M8 属性加点完成**：§4 增加第 5 条验证命令（`tests/test_attributes.gd`，验收口径 5 条 → 6 条）；§5 索引加 `docs/modules/attributes.md`；§6 下一步切到 M10 地城与 Boss |

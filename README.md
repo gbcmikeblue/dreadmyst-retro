@@ -40,7 +40,10 @@ godot --headless --path . --script res://tests/test_smoke_3d.gd
 # 4) 技能自测：施放 / 冷却拦截 / 360° 判定 / 转职 / 蓝量门槛
 godot --headless --path . --script res://tests/test_skills.gd
 
-# 5) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
+# 5) 属性加点自测：加点 / 上限 / 满级 / 转职不重置 / 界面开关
+godot --headless --path . --script res://tests/test_attributes.gd
+
+# 6) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
@@ -64,6 +67,7 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 | 强制施放普攻 | `1` / `Q` |
 | 冲刺 | `Shift` / `K` |
 | 切换职业（原型期） | `F1` 战士 / `F2` 法师 / `F3` 游侠 |
+| 属性加点面板 | `C`（开关；面板内 `+1` / `+5` 按钮加点） |
 
 ---
 
@@ -78,7 +82,10 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
   数据全在 `data/professions.json` 与 `data/skills.json` —— 加职业 / 改数值不改代码。
   **数值为自设占位（原作官网 403），待资料校准。**
 - **玩家属性体系**：攻击力 / 生命上限 / 护甲（递减减伤公式）/ 暴击率 / 移动速度 / 蓝量上限 / 回蓝，
-  基数来自职业，再叠加装备词条。
+  基数来自职业，再叠加属性点与装备词条。
+- **属性加点（M8）**：每升 1 级得 5 点自由属性点，投入 力量 / 敏捷 / 智力 / 体力 / 精神，
+  按 `data/attributes.json` 的 `per_point` 实时计入总属性；`C` 键开界面，支持 `+1` / `+5` 与满级上限，
+  加点**不会**自动补血。**数值为自设占位，待原作资料校准。**
 - **敌人 AI**：按等级缩放数值、索敌追击、近身攻击、敌人之间简单排斥避免堆叠。
 - **刷怪节奏**：随玩家等级提升场上敌人上限与刷怪数量。
 - **掉落系统**：`LootTable` 按等级随机生成装备，含 5 部位 × 5 品质（普通→传说）。
@@ -99,7 +106,8 @@ dreadmyst-retro/
 │   ├── loot.json                 #   掉落表：掉率 / 部位权重 / 品质权重 / 名字池 / 词条公式
 │   ├── enemies.json              #   敌人原型（3 种，含 sprite_path）
 │   ├── professions.json          #   职业：基础属性 + 技能 id 列表（M7）
-│   └── skills.json               #   技能：冷却 / 耗蓝 / 倍率 / 射程 / 扇角（M7）
+│   ├── skills.json               #   技能：冷却 / 耗蓝 / 倍率 / 射程 / 扇角（M7）
+│   └── attributes.json           #   属性：每点加成 / 上限 / 每级自由点数（M8）
 ├── scenes/
 │   └── main.tscn                 # 唯一场景：根 Node3D，仅挂载 scripts/main.gd
 ├── scripts/
@@ -116,7 +124,9 @@ dreadmyst-retro/
 │   │   ├── profession.gd         # class_name Profession：职业（基础属性 + 技能 id）（M7）
 │   │   ├── profession_registry.gd # class_name ProfessionRegistry：professions.json 加载（M7）
 │   │   ├── skill_def.gd          # class_name SkillDef：单技能定义（M7）
-│   │   └── skill_registry.gd     # class_name SkillRegistry：skills.json 加载 / 按 id 查询（M7）
+│   │   ├── skill_registry.gd     # class_name SkillRegistry：skills.json 加载 / 按 id 查询（M7）
+│   │   ├── attribute_def.gd      # class_name AttributeDef：单属性定义（每点加成 / 上限）（M8）
+│   │   └── attribute_registry.gd # class_name AttributeRegistry：attributes.json 加载 / 加成汇总（M8）
 │   ├── actors/
 │   │   ├── player.gd             # class_name Player：移动 / 冲刺 / 职业与技能 / 装备加成
 │   │   └── enemy.gd              # class_name Enemy：AI 追击攻击 / 受击 / 死亡
@@ -128,13 +138,15 @@ dreadmyst-retro/
 │   └── ui/
 │       ├── hud.gd                # class_name HUD：血条 / 蓝条 / 职业 / 经验 / 金币 / 装备栏 / 提示
 │       ├── skill_bar.gd          # class_name SkillBar：底部技能栏（冷却 + 耗蓝 + 快捷键）（M7）
+│       ├── attribute_panel.gd    # class_name AttributePanel：属性加点界面（C 键开关）（M8）
 │       ├── damage_number.gd      # class_name DamageNumber：Label3D 漂浮伤害数字
 │       └── dev_pause.gd          # class_name DevPause：开发用暂停面板（DEV_TOOLS 开关）
 ├── tests/                        # headless 自测（命令见 docs/architecture.md §6）
 │   ├── test_data_layer.gd        #   数据层：JSON 加载 / 装备生成 / 职业技能 / 加权分布
 │   ├── test_smoke_3d.gd          #   3D 冒烟：实例化主场景跑 300 帧
 │   ├── test_input_move.gd        #   输入链路诊断：按键 → 动作 → 移动
-│   └── test_skills.gd            #   技能：施放 / 冷却 / 360° 判定 / 转职 / 蓝量门槛（M7）
+│   ├── test_skills.gd            #   技能：施放 / 冷却 / 360° 判定 / 转职 / 蓝量门槛（M7）
+│   └── test_attributes.gd        #   属性：加点 / 上限 / 满级 / 转职不重置 / 界面开关（M8）
 ├── assets/                       # 美术素材；_LICENSES.md / _PROMPTS.md 为出图登记与模板
 └── docs/                         # 文档体系（索引见 docs/README.md）
 ```
@@ -156,9 +168,9 @@ dreadmyst-retro/
 
 - [x] **技能系统**：3 职业 × 2 技能，各自冷却 + 蓝条 + 技能栏（M7）。
 - [x] **职业**：战士 / 法师 / 游侠，不同初始属性与技能（M7）。
-- [ ] **属性加点**：升级给自由属性点，玩家自行分配（对应 Dreadmyst 的 stat points）← *下一步*。
+- [x] **属性加点**：升级给自由属性点，玩家自行分配（对应 Dreadmyst 的 stat points）（M8）。5 属性（力量/敏捷/智力/体力/精神），`C` 键加点界面，数值在 `data/attributes.json`。
 - [ ] **职业选择 UI**：当前是原型期 `F1`/`F2`/`F3` 硬切。
-- [ ] **地下城（Dungeon）**：独立场景 + 房间流程 + Boss。
+- [ ] **地下城（Dungeon）**：独立场景 + 房间流程 + Boss ← *下一步（M10）*。
 - [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店。
 - [ ] **PVP 区域**：玩家之间的对抗场景。
 - [x] **数据驱动**：掉落表抽到 `data/loot.json`（`LootConfig`），敌人原型抽到 `data/enemies.json`（`EnemyArchetype` + `EnemyRegistry`），含 3 种原型（粘液怪/重甲兽人/幽影）。新增敌人/词条/名字池 = 改 JSON，不改代码。
