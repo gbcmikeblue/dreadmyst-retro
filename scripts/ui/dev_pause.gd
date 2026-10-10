@@ -14,6 +14,8 @@ const BUTTON_SIZE := Vector2(96.0, 34.0)
 var _button: Button
 var _overlay: ColorRect
 var _readout: Label
+## 标题选档界面打开时由 main.gd 关掉：否则点「继续」会把标题界面后面的世界解冻
+var enabled: bool = true
 
 
 func _ready() -> void:
@@ -25,9 +27,35 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if not enabled:
+		return
+	# 有模态界面（加点 / 背包 / 标题选档）打开时不响应暂停：那些界面本身已经把玩家冻住了
+	if _ui_blocked():
+		return
 	if Input.is_action_just_pressed("pause"):
 		_toggle()
 	_update_readout()
+
+
+## 开关整个开发面板（标题界面期间关掉）。
+func set_enabled(on: bool) -> void:
+	enabled = on
+	if _button != null:
+		_button.visible = on
+	if _readout != null:
+		_readout.visible = on
+	if not on and _overlay != null:
+		_overlay.visible = false
+		var tree := get_tree()
+		if tree != null and tree.paused:
+			tree.paused = false
+
+
+func _ui_blocked() -> bool:
+	var tree := get_tree()
+	if tree == null:
+		return false
+	return not tree.get_nodes_in_group("modal_ui").is_empty()
 
 
 # ---------------------------------------------------------------- 构建
@@ -116,5 +144,24 @@ func _update_readout() -> void:
 	for a in ["move_up", "move_down", "move_left", "move_right"]:
 		if Input.is_action_pressed(a):
 			held.append(String(a).trim_prefix("move_"))
-	_readout.text = "输入 (%.2f, %.2f)   按住: %s" % [
-		v.x, v.y, "无" if held.is_empty() else ", ".join(held)]
+	var lines: Array[String] = [
+		"输入 (%.2f, %.2f)   按住: %s" % [
+			v.x, v.y, "无" if held.is_empty() else ", ".join(held)]
+	]
+	# M16：顺手显示相机读数（改完参数直接抄进 data/camera.json）
+	var lines_camera := _camera_readout()
+	if not lines_camera.is_empty():
+		lines.append(lines_camera)
+	_readout.text = "\n".join(lines)
+
+
+## 从当前 3D 相机取读数。**不引用具体节点**：谁能当相机就显示谁，
+## 这样也顺带覆盖「将来换成别的相机实现」的情况。
+func _camera_readout() -> String:
+	var vp := get_viewport()
+	if vp == null:
+		return ""
+	var cam := vp.get_camera_3d()
+	if cam == null or not cam.has_method("debug_text"):
+		return ""
+	return String(cam.call("debug_text"))

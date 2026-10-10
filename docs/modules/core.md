@@ -20,6 +20,10 @@
 | `level` | `int` | 玩家等级（初始 1） |
 | `xp` | `int` | 当前经验 |
 
+读档时**一次性**写入这几项：`Game.load_progress(level, xp, gold)`（内部发 `player_level_changed` +
+`gold_changed`；先发等级是为了让 `Player` 先算好可分配属性点），重置用 `reset_progress()`。
+详见 [save.md](save.md)。
+
 > ⚠️ 玩家 / 敌人 / 相机的边界钳制全部读 `arena`，所以「换场地」只要换这一个值；
 > 但**只建一次的节点**（如 `ArenaBackground`）必须读 `ARENA_HOME`，否则会被地城边界带跑。
 
@@ -49,6 +53,14 @@ func get_player() -> Node3D
 | `skill_1` | 1 / Q | 技能槽 0（普攻） |
 | `skill_2` | 2 / E | 技能槽 1（大招） |
 | `profession_1 / 2 / 3` | F1 / F2 / F3 | **原型期**切职业（战 / 法 / 游）——正式版应改为角色创建流程 |
+| `attributes` | C | 开关属性加点面板（M8） |
+| `interact` | F | 使用传送门（进 / 出地城）（M10） |
+| `inventory` | I / B | 开关背包 / 商店面板（M11） |
+| `save_game` / `load_game` | F5 / F9 | 手动存 / 读当前槽位（M13；原型期用来验收，正式版可以拿掉） |
+| `zoom_in` / `zoom_out` | 滚轮上/下、`=` / `-` | 相机缩放（M16） |
+| `rotate_left` / `rotate_right` | `,` / `.` | 相机水平旋转（M16） |
+| `tilt_up` / `tilt_down` | PageUp / PageDown | 相机俯角微调（M16） |
+| `camera_reset` | R | 相机回到 `data/camera.json` 的默认视角（M16） |
 | `pause` | Esc / P | 开发用暂停 |
 
 移动输入是 `Vector2`，直接就是玩法平面上的方向，无需变换。
@@ -93,6 +105,12 @@ InputMap.action_add_event(action_name, logical)
 | `player_profession_changed` | `(profession_id: String, display_name: String, color: Color)` | Player → HUD（M7 职业标签） |
 | `player_skills_changed` | `(skills: Array)` | Player → SkillBar（M7 技能栏槽位） |
 | `skill_cooldowns_changed` | `(cooldowns: Dictionary)` | Player → SkillBar（M7 冷却遮罩；**无冷却时不发**，避免每帧刷 UI） |
+| `attributes_changed` / `attribute_allocate_requested` | `(attributes, free, spent)` / `(id, points)` | Player ↔ AttributePanel（M8；UI 只发请求） |
+| `dungeon_*` / `boss_*` / `interact_prompt_changed` | 见 [dungeon.md](dungeon.md) § | Portal / Dungeon / main / HUD（M10） |
+| `backpack_changed` / `backpack_*_requested` / `shop_*` | 见 [inventory.md](inventory.md) § | Player / Shop / InventoryPanel（M11） |
+| `save_slots_requested` / `save_slots_changed` / `save_load_requested` / `save_new_game_requested` / `save_delete_requested` | 见 [save.md](save.md) § | TitleScreen ↔ main（M13） |
+
+> 完整清单以 `scripts/core/event_bus.gd` 为准（本表只列主干；M8 之后新增的信号按模块文档分组）。
 
 **转 3D 时的唯一改动**：位置类参数从 `Vector2` 改为 `Vector3`。
 

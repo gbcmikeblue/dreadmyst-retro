@@ -14,11 +14,20 @@
   参考游戏里 PVP 是「区域属性」，但本项目是**单机原型**，没有第二个玩家可打；
   等 M14 联机之后再做才有意义（届时按 `docs/reference/mmo-opensource/kaetram-open.md`
   的「区域作为地图数据属性层」实现）
-- [ ] **M13 存档**：`user://` 序列化等级 / 经验 / 属性点 / 背包 / 装备 / 金币 ← *当前最高优先级*
-- [ ] **M14 联机**：ENet 客户端-服务器
-- [ ] **M15 素材接入**：真实 sprite（`sprite_path`）/ 中文字体 / 音频  
-  ↳ 出图任务卡片见 [`docs/tasks/`](tasks/)；完整方案见 [`docs/reference/ai-asset-generation.md`](reference/ai-asset-generation.md)
-- [ ] **M16 相机微调**：`CAMERA_ORTHO_SIZE` 与俯角目视校准、滚轮缩放、视角旋转
+- [x] **M13 存档**：`user://` 3 槽位（等级 / 经验 / 属性点 / 背包 / 装备 / 金币）+ 标题选档界面
+      + 原子写 / 坏档备份 / 防抖自动存。**代码完成**。详见 [modules/save.md](modules/save.md)
+- [ ] **M14 联机** —— ⚠️ **暂不做**（2026-10-10 决定）。ENet 客户端-服务器要先做一件大工程：
+  **把权威模拟层从表现层里抽出来**（当前 `main.gd` 同时管世界搭建、刷怪与结算，`Player`/`Enemy`
+  直接读写 `global_position`），否则「客户端发意图、服务端裁决」无处落刀。
+  顺带：PVP（M12）也等着它
+- [ ] **M15 素材接入**：真实 sprite（`sprite_path`）/ 中文字体 / 音频 ← *当前最高优先级*  
+  ↳ 出图任务卡片见 [`docs/tasks/`](tasks/)；完整方案见 [`docs/reference/ai-asset-generation.md`](reference/ai-asset-generation.md)  
+  ⚠️ **这一半阻塞在「素材」上**：代码侧管线早就留好了（`data/*.json` 的 `sprite_path` / `icon`
+  + `SpriteFactory` 的加载分支），但没有出图 / 没有中文字体 `.ttf` 就无从接入。
+- [x] **M16 相机微调**：参数进 `data/camera.json`（`CameraConfig`），相机逻辑独立成 `CameraRig`；
+      滚轮/`=`·`-` 缩放、`,`·`.` 旋转、`PageUp/Down` 俯角、`R` 重置；含旋转的边界钳制（斜矩形的 AABB）。
+      **代码完成**；`size` / `tilt_deg` 的数值仍待目视校准（游戏内调完抄回 JSON 即可）。
+      详见 [modules/render3d.md](modules/render3d.md)
 
 ## 待用户提供的信息
 
@@ -29,6 +38,9 @@
 5. **地城/区域规划**：几个区域、连接方式、Boss 机制（M10 已用「一条直线 3 房间 + 1 Boss」占位实现，
    真实规划 —— 尤其 Boss 机制与多间地城的开放顺序 —— 仍待提供）
 6. **属性公式**：5 个属性的每点加成、每级自由点数、是否有职业系数（M8 开工后拿到资料即可只改 `data/attributes.json`）
+7. **相机目视校准值**：M16 已把相机参数搬进 `data/camera.json` 并加了游戏内调参与读数
+   （滚轮/`=`·`-` 缩放、`,`·`.` 旋转、`PageUp/Down` 俯角、`R` 重置；DevPause 面板与控制台都会显示当前值），
+   **当前值仍是照 2D 版推的**，需要你目视确认后抄回 JSON
 
 ## 已完成里程碑
 
@@ -44,6 +56,8 @@
 | **M7 职业与技能** | **2026-10-09** | **3 职业 + 6 技能 + 各自冷却/耗蓝 + 蓝条 + 技能栏；新增 `professions.json` / `skills.json`；数值为自设占位待校准** |
 | **M9 2.5D 渲染** | **2026-10-09** | **转真 3D + 固定正交相机 + billboard 精灵；数据层零改动** |
 | **M8 属性加点** | **2026-10-10** | **新增 `data/attributes.json` + `AttributeDef`/`AttributeRegistry`；5 属性 × 每点加成 × 满级上限；每级 5 点自由分配；`AttributePanel` 加点界面（C 键 / +1·+5 / 满级态 / `modal_ui` 冻结操作）；新增 `tests/test_attributes.gd`（8 用例全通过）。数值为自设占位** |
+| **M16 相机微调** | **2026-10-10** | **新增 `data/camera.json` + `CameraConfig`、`CameraRig`（`extends Camera3D`：跟随 / 缩放 / 旋转 / 俯角 / 边界钳制 / 瞬移自动对齐）；`main.gd` 里的 4 个相机常量与 3 个函数整体搬进 rig；新增 7 个相机输入动作（滚轮 `=` `-` `,` `.` `PageUp/Down` `R`）；DevPause 增加相机读数、调参时打控制台便于回写 JSON；**边界钳制支持旋转**（斜矩形的世界轴对齐包围盒）；新增 `tests/test_camera.gd`（10 用例）** |
+| **M13 存档** | **2026-10-10** | **新增 `SaveData`（结构 + 版本 + 兜底）、`SaveService`（3 槽位 / 原子写 / 读取回退链 / 坏档改名备份 / 2 秒防抖自动存）、`TitleScreen`（启动选档：继续 / 新游戏 / 删除，危险操作二次确认）；`Player` 增加 `export_state`/`import_state`/`reset_state`，`Game` 增加 `load_progress`/`reset_progress`；`GearItem` 增加 `to_dict`/`from_dict` 并把「枚举↔可读键」收敛成唯一一份（`LootConfig` 改为转发）；新增 `tests/test_save.gd`（9 用例）。存档损坏是预期情况，解析改用 `JSON` 实例以免刷引擎 ERROR** |
 | **M11 背包 / 商店 / 装备对比** | **2026-10-10** | **新增 `data/inventory.json`（容量 + 卖出价公式）与 `data/shop.json`（货架 + 刷新价）、`InventoryConfig`/`ShopConfig`；`Player` 增加背包（入包 / 装备 / 分解 / 一键换装，**掉落入包、换装回包**）；新增 `Shop` 服务（货架生成 / 购买 / 刷新，扣钱前校验背包空位）；新增 `InventoryPanel`（背包 / 商店两页签 + 装备对比 + `I` 键 + `modal_ui` 冻结）；HUD 增加背包占用；`LootTable.generate()` 支持指定部位；新增 `tests/test_inventory.gd`（8 用例）。数值为自设占位** |
 | **M10 地城与 Boss** | **2026-10-10** | **新增 `data/dungeon.json` + `DungeonDef`/`DungeonRegistry`；`Dungeon`/`DungeonRoom`/`DungeonDoor`/`Portal`；3 房间房间流 + 清房开门 + **项目首处真墙体碰撞（layer 1）** + Boss 房（`bone_lord`，`is_boss` 不入野外池、免疫击退、HUD 大血条）+ 通关奖励（金币/经验/保底品质装备）+ 传送门进出（F 交互）；新增 `tests/test_dungeon.gd`（6 用例）。数值为自设占位** |
 
@@ -80,8 +94,11 @@
 | 2026-10-09 | **统一里程碑编号**：以本文件为唯一权威，`docs/tasks/` 的 4 张卡片重命名对齐（M8→**M11** 背包、M9→**M10** 地城、M10→**M8** 属性、M11→**M14** 联机），并同步 `ai-asset-generation.md` §7 与全部交叉引用 |
 | 2026-10-09 | **M7 职业与技能（代码骨架完成）**：新增 `data/professions.json` + `data/skills.json`、`Profession`/`SkillDef` 数据层与两个注册表；`Player` 改为职业驱动并支持多技能施放（各自冷却 / 耗蓝 / 伤害倍率 / 射程 / 扇角 / 360° 判定 / F1-F3 转职）；新增 `SkillBar` 技能栏与 HUD 蓝条、职业标签；新增 `tests/test_skills.gd`（5 用例全通过），3 项既有自测 + 主场景 900 帧 0 ERROR / 0 WARNING。**数值为自设占位，待原作资料校准** |
 | 2026-10-10 | **M8 属性加点（代码完成）**：新增 `data/attributes.json` + `AttributeDef`/`AttributeRegistry`（5 属性、`per_point` 每点加成、`max_points` 上限、`free_points_per_level`）；点数经济 = `(等级-1) × 每级点数 - 已投入`，等级只由 `Game` 提供；`Player.allocate_attribute()` + `Events.attribute_allocate_requested/attributes_changed`（UI 不引用 Player）；新增 `AttributePanel` 加点界面（C 键 / +1·+5 / 满级态 / `modal_ui` 冻结操作）+ HUD 剩余点数；新增 `tests/test_attributes.gd`（8 用例），6 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。**数值为自设占位** |
+| 2026-10-10 | **修复地城 `bounds()` 口径**：Z 起点原为 `origin.y`，与 `room_rect()`（以 `origin.y` 为中线）不一致，自测报「房间不在 bounds 内」；改为 `origin.y - room_size.y * 0.5`（属 M10 期间的修复） |
 | 2026-10-10 | **M10 地城与 Boss（代码完成）**：新增 `data/dungeon.json` + `DungeonDef`/`DungeonRegistry`（房间流布局的平面几何派生）；`Dungeon`（按房刷怪 / 清房开门 / Boss 房 / 通关奖励）、`DungeonRoom`（3D 地面 + **layer 1 碰撞墙** + 门洞）、`DungeonDoor`（先放行再播动画）、`Portal`（平面距离判定 + F 交互）；`enemies.json` 新增 `bone_lord` 与 `is_boss`（不入野外池 / 免疫击退 / HUD 大血条）；`Game` 增加 `ARENA_HOME` / `in_dungeon` / `arena` 切换；HUD 增加 Boss 血条、房间进度、交互提示；新增 `tests/test_dungeon.gd`（6 用例），7 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。**美术与数值仍为占位** |
-| 2026-10-10 | **范围决定：M12 PVP 区域暂不做**。单机原型没有第二个玩家，PVP 要等 M14 联机之后才有意义；当前最高优先级改为 **M13 存档**（等级 / 属性点 / 背包 / 装备 / 金币已经是一整套真实状态，值得先落盘） |
 | 2026-10-10 | **M11 背包 / 商店（代码完成）**：新增 `data/inventory.json` + `data/shop.json` 与 `InventoryConfig`/`ShopConfig`；`Player` 增加 `backpack` 与 `add_to_backpack`/`equip_from_backpack`/`sell_from_backpack`/`optimize_equipment`（**M11 起掉落不再自动穿/自动分解，改为入包；背包满才当场分解；换下来的旧装备回到背包**）；新增 `Shop` 服务（货架由 `LootTable.generate(level, rarity, slot)` 现生成，购买前校验背包空位与金币）；新增 `InventoryPanel`（`I`/`B` 键、背包 / 商店页签、装备对比、一键换装）；`LootTable.generate()` 增加 `forced_slot_key`；新增 `tests/test_inventory.gd`（8 用例），8 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING |
-| 2026-10-10 | **修复地城 `bounds()` 口径**：Z 起点原为 `origin.y`，与 `room_rect()`（以 `origin.y` 为中线）不一致，
-导致自测报「房间不在 bounds 内」；改为 `origin.y - room_size.y * 0.5` |
+| 2026-10-10 | **范围决定：M12 PVP 区域暂不做**。单机原型没有第二个玩家，PVP 要等 M14 联机之后才有意义；当前最高优先级改为 **M13 存档**（等级 / 属性点 / 背包 / 装备 / 金币已经是一整套真实状态，值得先落盘） |
+| 2026-10-10 | **M13 存档（代码完成）**：`SaveData` / `SaveService` / `TitleScreen`；`Player` 的 `export_state`/`import_state`/`reset_state` 与 `Game` 的 `load_progress`/`reset_progress`；`GearItem` 序列化 + 枚举键映射收敛到唯一一份（`LootConfig` 转发）；**标题界面用 `get_tree().paused` 冻结世界**（已实测暂停时 `process_frame` 仍触发，帧驱动的自测不会被挂住）；新增 `F5` 存 / `F9` 读；新增 `tests/test_save.gd`（9 用例），9 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。附：`test_input_move.gd` 需在启动时替玩家选槽位（世界初始是暂停的） |
+| 2026-10-10 | **M16 相机微调（代码完成）**：`data/camera.json` + `CameraConfig` + `CameraRig`；缩放 / 旋转 / 俯角 / 重置 / 瞬移自动对齐；边界钳制改成「斜矩形 AABB」以支持旋转；新增 `tests/test_camera.gd`（10 用例），10 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。**size / tilt 的具体数值仍待目视校准**（游戏内调完抄回 JSON） |
+| 2026-10-10 | **范围决定：M14 联机暂不做**。ENet 联机的前置是「把权威模拟层从表现层抽出来」，是一整块重构；当前最高优先级改为 **M15 素材接入**（注意它阻塞在素材上，素材没到可以先做**纯代码的 M16 相机微调**） |
+

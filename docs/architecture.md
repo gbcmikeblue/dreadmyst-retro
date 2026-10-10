@@ -12,25 +12,29 @@ d:/github/dreadmyst-retro/
 │   ├── attributes.json      #   属性：每点加成/上限/每级自由点数（M8）
 │   ├── dungeon.json         #   地城：房间流布局/每房怪数/Boss/通关奖励（M10）
 │   ├── inventory.json       #   背包：容量 + 卖出价公式（M11）
-│   └── shop.json            #   商店：货架/刷新价（M11）
+│   ├── shop.json            #   商店：货架/刷新价（M11）
+│   ├── camera.json          #   相机：视野/俯角/缩放区间/旋转步进（M16）
+│   └── （存档不在这里）      #   user://save_<槽>.json 由 SaveService 运行时读写（M13）
 ├── scenes/
 │   └── main.tscn            # 唯一场景（根 Node3D + main.gd，其余节点代码构建）
 ├── scripts/
 │   ├── core/                # Autoload（见 modules/core.md）
 │   ├── actors/              # 玩家、敌人（见 modules/combat.md）
-│   ├── core/                # Game / Events 自动加载 + 商店服务（见 modules/core.md、inventory.md）
-│   ├── data/                # 数据层：模型 + 加载器（见 modules/loot.md、skills.md、attributes.md、dungeon.md、inventory.md）
-│   ├── world/               # 竞技场/地城/传送门/掉落物/程序化美术工厂（见 modules/world.md、dungeon.md、render3d.md）
-│   ├── ui/                  # HUD/技能栏/加点面板/背包面板/伤害数字/开发面板（见 modules/ui.md、attributes.md、inventory.md）
-│   └── main.gd              # 入口：世界搭建/相机/光照/刷怪/进出地城/事件接线
+│   ├── core/                # Game / Events 自动加载 + 商店 / 存档服务（见 core.md、inventory.md、save.md）
+│   ├── data/                # 数据层：模型 + 加载器（见 loot.md、skills.md、attributes.md、dungeon.md、inventory.md、save.md）
+│   ├── world/               # 竞技场/地城/传送门/掉落物/相机装配/程序化美术工厂（见 world.md、dungeon.md、render3d.md）
+│   ├── ui/                  # HUD/技能栏/加点/背包/标题选档/伤害数字/开发面板（见 ui.md、attributes.md、inventory.md、save.md）
+│   └── main.gd              # 入口：世界搭建/光照/刷怪/进出地城/存档装配/事件接线（相机已交给 CameraRig）
 ├── tests/
-│   ├── test_data_layer.gd   # 数据层自测（JSON / 装备 / 职业技能 / 属性 / 地城 / 背包商店 / 加权分布）
+│   ├── test_data_layer.gd   # 数据层自测（JSON / 装备 / 职业技能 / 属性 / 地城 / 背包商店 / 存档 / 相机配置）
 │   ├── test_smoke_3d.gd     # 3D 冒烟测试（实例化主场景跑帧）
 │   ├── test_input_move.gd   # 输入链路诊断（按键→动作 / 动作→移动）
 │   ├── test_skills.gd       # 技能自测（施放/冷却/360°/转职/蓝量）
 │   ├── test_attributes.gd   # 属性加点自测（加点/上限/满级/转职不重置/界面）
 │   ├── test_dungeon.gd      # 地城自测（进出/房间流/清房开门/Boss/奖励/边界还原）
-│   └── test_inventory.gd    # 背包自测（入包/装备换装/分解/容量/一键换装/买卖/界面）
+│   ├── test_inventory.gd    # 背包自测（入包/装备换装/分解/容量/一键换装/买卖/界面）
+│   ├── test_save.gd         # 存档自测（序列化往返/兜底/槽位 IO/坏档/标题界面/一条龙存读）
+│   └── test_camera.gd       # 相机自测（配置/缩放旋转俯角钳制/边界钳制/瞬移对齐/副本边界）
 ├── assets/                  # 美术素材 + _LICENSES.md / _PROMPTS.md（出图配套）
 ├── AGENTS.md                # AI 协作约定（硬性规范 + 文档索引，改代码前先读）
 └── docs/                    # 本文档体系
@@ -104,7 +108,15 @@ godot --headless --path . --script res://tests/test_dungeon.gd
 # 背包自测（入包 / 装备换装 / 分解 / 容量 / 一键换装 / 买卖 / 界面）
 godot --headless --path . --script res://tests/test_inventory.gd
 
-# 导入 + 短跑
+# 存档自测（序列化往返 / 兜底 / 槽位 IO / 坏档备份 / 标题选档 / 一条龙存读）
+godot --headless --path . --script res://tests/test_save.gd
+
+# 相机自测（配置 / 缩放旋转俯角钳制 / 含旋转的边界钳制 / 瞬移对齐 / 副本边界）
+godot --headless --path . --script res://tests/test_camera.gd
+
+# 导入 + 长跑
+#   ⚠️ M13 起启动会先停在标题选档界面（世界暂停），所以这条 900 帧只覆盖「待机 + 自动保存」
+#      路径；战斗 soak 由 test_smoke_3d.gd 负责（它第 1 帧就替玩家选槽位，让世界真的跑）
 godot --headless --import --quit --path .
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
@@ -113,6 +125,8 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 
 | 日期 | 引擎 | 结果 |
 | --- | --- | --- |
+| 2026-10-10（**M16 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `CameraConfig` / `CameraRig` 共 2 个全局类，0 ERROR）；**10 条**验证命令全部 exit 0（含新增 `test_camera.gd` 的 10 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。期间踩到并记进 skill 的坑：`var x := f()` 里 `f()` 返回 `Variant` 在 4.7 下是**编译错误**（`Warning treated as error.`），以及 `is_equal_approx()` 不接受 `Vector2`（要用实例方法）。 |
+| 2026-10-10（**M13 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `SaveData` / `SaveService` / `TitleScreen` 共 3 个全局类，0 ERROR）；**9 条**验证命令全部 exit 0（含新增 `test_save.gd` 的 9 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。另：**启动会先弹标题选档界面并把世界暂停**，因此 `test_smoke_3d.gd` 与 `test_input_move.gd` 都在第 1 帧替玩家选槽位（存档路径指到测试专用文件、收尾删掉），战斗 soak 与物理位移的覆盖不变。 |
 | 2026-10-10（**M11 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `InventoryConfig` / `ShopConfig` / `Shop` / `InventoryPanel` 共 4 个全局类，0 ERROR）；**8 条**验证命令全部 exit 0（含新增 `test_inventory.gd` 的 8 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。期间自测抓出一处真实缺陷：`InventoryPanel` 的两个页根忘了赋值，`_show_bag()` 会往 `Null` 上写 `visible`。 |
 | 2026-10-10（**M10 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `DungeonDef` / `DungeonRegistry` / `Dungeon` / `DungeonRoom` / `DungeonDoor` / `Portal` 共 6 个全局类，0 ERROR）；**7 条**验证命令全部 exit 0（含新增 `test_dungeon.gd` 的 6 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。期间自测抓出两处真实缺陷：`DungeonDef.bounds()` 的 Z 口径与 `room_rect()` 不一致、取消失败的野外敌人未立刻退出 `enemies` 组。 |
 | 2026-10-10（**M8 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `AttributeDef` / `AttributeRegistry` / `AttributePanel` 共 3 个全局类，0 ERROR）；**6 条**验证命令全部 exit 0（含新增 `test_attributes.gd` 的 8 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。本机引擎是 4.7.2，与 `project.godot` 声明的 4.7 一致，**不触发 `icon.svg.import` 降级问题**。 |
@@ -126,8 +140,10 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
    验证完请 `git checkout -- icon.svg.import` 还原，**不要提交这个降级改动**。
 2. **冒烟测试退出时报 `WARNING: ObjectDB instances leaked at exit`。** 原因是脚本 `quit()` 时未释放
    `main.tscn` 实例，属测试写法所致，与游戏代码无关；主场景自身 900 帧运行无此警告。
-3. **冒烟测试输出里 `player.hp = 0.0`。** 该测试把 `Engine.time_scale` 设为 30（300 帧 ≈ 150 秒游戏时间），
-   且不注入任何输入（玩家不攻击），所以玩家被敌人打至阵亡属**预期行为**，不是回归。
+3. **冒烟测试输出里的 `player.hp`。** 该测试把 `Engine.time_scale` 设为 30（300 帧 ≈ 150 秒游戏时间）、
+   不注入任何输入（玩家不攻击），且从 M13 起会在第 1 帧替玩家选槽位让**世界真的跑起来**。
+   于是玩家全程被围攻：掉血、甚至阵亡都属**预期**，数值随敌人出生位置随机波动（含脱战回血 0.6/s）。
+   该测试**不断言 hp**，看到非满血不要当成回归。
 4. **`--script` 测试脚本里不能写 `Events` / `Game`。** 入口脚本的编译早于 autoload 单例注册，
    写这两个名字会直接 `Identifier not found` 编译失败（`class_name` 类名不受影响）。
    需要坐标转换时手写等价代码，见 `tests/test_skills.gd`。

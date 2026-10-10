@@ -12,7 +12,8 @@ extends SceneTree
 const WARMUP := 3
 const HOLD := 40
 
-var _main: Node = null
+## 声明成 Variant：M13 之后要动态调 `_main.choose_slot()`（静态类型 Node 上没有这个方法）
+var _main: Variant = null
 var _player = null
 var _frame: int = 0
 var _failed: bool = false
@@ -33,6 +34,13 @@ func _initialize() -> void:
 func _on_frame() -> void:
 	_frame += 1
 
+	if _frame == 1:
+		# M13：启动会先弹标题选档界面（此时世界是暂停的）。自测直接替玩家选一个槽位开新档，
+		# 并把存档路径指到测试专用文件，免得覆盖真实存档。
+		_main.save_service.path_pattern = "user://test_input_save_%d.json"
+		_main.choose_slot(1, true)
+		return
+
 	if _frame == WARMUP:
 		_dump_input_map()
 		_player = _first("player")
@@ -52,6 +60,8 @@ func _on_frame() -> void:
 		print("[A] 按住 %d 帧后 X 位移 = %.2f  (%s -> %s)" % [HOLD, moved, _start, now])
 		_check(moved > 50.0, "动作按下后玩家没有移动 —— 问题在移动代码（move_and_slide / 边界钳制）")
 		_probe_matching()
+		# 收尾：删掉本测试写出来的存档，别把垃圾留在 user://
+		_main.save_service.delete_slot(1)
 		print("========== %s ==========" % ("输入诊断发现问题" if _failed else "输入链路正常"))
 		quit(1 if _failed else 0)
 

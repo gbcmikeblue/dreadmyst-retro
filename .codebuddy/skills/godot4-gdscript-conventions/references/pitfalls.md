@@ -39,6 +39,10 @@
 | 静态类型 + `get_nodes_in_group` | 返回值被推断为 `Array[Node]`，直接 `nodes[0].hp` 会报「找不到成员」。先赋给**无类型 `Array`** 再迭代，或用 `has_method()` 守卫。 |
 | 未使用的参数 | 用 `_` 前缀（如 `_rarity_key`）避免 warning。 |
 | `snappedf` | 小数词条（如 `crit`）用它取两位，避免 `0.030000001` 这种值。 |
+| **本条在 Godot 4.7 是错误而不是警告** | `var x := f()` 里 `f()` 返回 `Variant`（例如会返回 `null` 的辅助函数）会直接报 `Parse Error: The variable type is being inferred from a Variant value, so it will be typed as Variant. (Warning treated as error.)`，**整个脚本编译失败** | 显式标注：`var x: Variant = f()`（或给具体类型）。改完跑一次 `--import`，几十个 `Parse Error` 里很容易漏 |
+| 局部变量叫 `name` | 遮蔽 `Node.name`，触发 `SHADOWED_VARIABLE_BASE_CLASS` 警告；这类「编译期噪音」在本版本下随时可能升级成编译失败 | 换个名字，如 `file_name` |
+| `String + Variant`（如 `"a" + suffix`，`suffix` 来自无类型数组） | 结果被推断为 `Variant` → 触发上面那条推断警告 | `+ String(suffix)`，或显式 `var file_name: String = ...` |
+| `is_equal_approx(Vector2, Vector2)` | 解析失败：全局 `is_equal_approx()` 只接受 `float` | 用实例方法：`a.is_equal_approx(b)` |
 
 ---
 
@@ -47,7 +51,8 @@
 | 陷阱 | 症状 | 处置 |
 | --- | --- | --- |
 | 节点未入树就写 `global_position` | `Condition "!is_inside_tree()" is true` 报错，位置不生效 | **先 `add_child()` 再写位置**（`Camera3D` 尤其明显） |
-| `Camera3D` 没有 `limit_*` | 无法像 `Camera2D` 那样限制视野 | 手写焦点钳制，见 `scripts/main.gd::_clamp_focus()` |
+| `Camera3D` 没有 `limit_*` | 无法像 `Camera2D` 那样限制视野 | 手写焦点钳制，见 `scripts/world/camera_rig.gd::clamp_focus()`；**旋转后画面足迹是斜矩形**，要取它的世界轴对齐包围盒 |
+| 相机焦点被钳住时看起来「不跟随」 | 玩家贴边时焦点不动，像卡住 | 正常行为；但**瞬移判定要用未钳制的期望焦点**（`focus_target()`），否则每帧都会误判成瞬移 |
 | `CharacterBody3D` 默认受重力 | 顶视角角色会往下掉 / 贴地 | `motion_mode = MOTION_MODE_FLOATING` |
 | billboard 精灵投射阴影 | 阴影变成一条薄片，很丑 | 关闭精灵投影，脚下放平躺的深色圆盘当影斑 |
 | `TorusMesh` / `PlaneMesh` / `CylinderMesh` 朝向 | 以为要旋转，其实不用 | 它们**默认就躺在 XZ 平面** |

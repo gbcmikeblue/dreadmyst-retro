@@ -1,41 +1,75 @@
-# 模块：2.5D 渲染（真 3D + 固定相机）
+# 模块：2.5D 渲染（真 3D + 正交俯视相机）
 
-**文件**：`scripts/world/sprite_factory.gd`、`scripts/main.gd`（相机/光照部分）
+**文件**：`scripts/world/sprite_factory.gd`、`scripts/world/camera_rig.gd`、`scripts/data/camera_config.gd`、`scripts/main.gd`（环境/光照部分）
+**数据**：`data/camera.json`
 
 ## 方案
 
 真 3D 空间 + **固定俯角的正交相机** + **billboard 精灵**。这是 2.5D 的标准做法：
-角色是 2D 贴图，但站在真实 3D 空间里，所以能拿到真实光影、深度遮挡、任意视角。
+角色是 2D 贴图，但站在真实 3D 空间里，所以能拿到真实光影、深度遮挡、可旋转视角。
 
-## 相机（`main.gd`）
+## 相机（M16 起独立成 `CameraRig`）
 
-```gdscript
-camera.projection = Camera3D.PROJECTION_ORTHOGONAL   # 正交：无透视畸变
-camera.size = 620.0                                   # 竖直视野（世界单位）
-camera.rotation_degrees = Vector3(-45.0, 0.0, 0.0)    # 俯角
+参数全在 `data/camera.json`（`CameraConfig`），**改数值不用改代码**；
+相机逻辑（跟随 / 缩放 / 旋转 / 俯角 / 边界钳制）在 `CameraRig`（`extends Camera3D`）里，
+`main.gd` 只负责创建它并 `make_current()`。
+
+```json
+{ "size": 620.0, "tilt_deg": -45.0, "distance": 1600.0, "follow_speed": 6.0,
+  "zoom":   { "min": 340.0, "max": 980.0, "step": 40.0 },
+  "rotate": { "step_deg": 15.0 },
+  "tilt":   { "min_deg": -70.0, "max_deg": -22.0, "step_deg": 3.0 } }
 ```
 
-| 常量 | 值 | 作用 |
+| 字段 | 作用 |
+| --- | --- |
+| `size` | 正交视野高度（世界单位）：越小越近。等价于 2D 的 zoom |
+| `tilt_deg` | 俯角，**必须为负**（0 = 平视，-90 = 垂直俯视）。更「平」用 -55，更「俯」用 -35 |
+| `distance` | 沿视线后撤距离（正交下只影响裁剪范围） |
+| `follow_speed` | 焦点平滑跟随速度 |
+| `zoom.*` | 缩放区间与每次步进 |
+| `rotate.step_deg` | 每次水平旋转的角度 |
+| `tilt.*` | 俯角可调区间与步进。⚠️ `min_deg` 是**数值最小**的那个（最俯视），别搞反 |
+
+### 操作（M16 新增）
+
+| 动作 | 键 | 说明 |
 | --- | --- | --- |
-| `CAMERA_TILT_DEG` | -45.0 | 俯角。更"平"用 -55，更"俯"用 -35 |
-| `CAMERA_ORTHO_SIZE` | 620.0 | 竖直视野范围，等价于 2D 的 zoom |
-| `CAMERA_DIST` | 1600.0 | 沿视线后撤距离，正交下只影响裁剪 |
-| `CAMERA_FOLLOW_SPEED` | 6.0 | 平滑跟随速度 |
+| `zoom_in` / `zoom_out` | 滚轮上/下、`=` / `-` | 改 `size`（正交下这就是缩放，不用移动相机） |
+| `rotate_left` / `rotate_right` | `,` / `.` | 水平旋转（每次 `rotate.step_deg`） |
+| `tilt_up` / `tilt_down` | `PageUp` / `PageDown` | 调俯角（每次 `tilt.step_deg`） |
+| `camera_reset` | `R` | 回到 `data/camera.json` 里的默认视角 |
 
-相机位置 = 焦点 + `(0, D·sin(t), D·cos(t))`，保证焦点落在画面正中。
+- 游戏内改完的值会**打在控制台**（`[camera] 视野 500 ← 抄进 data/camera.json 即可固化`），
+  DevPause 面板（右上角）也会实时显示当前读数 —— 这就是「目视校准」的闭环：
+  调 → 看读数 → 抄回 JSON。
+- 有模态界面（加点 / 背包 / 标题选档）打开时**不响应**相机键，免得翻背包时把镜头转走。
+- 相机位置 = 焦点 − 视线方向 × `distance`，保证焦点落在画面正中（旋转后依然成立：
+  先写 `rotation`，再取 `-transform.basis.z` 作为视线方向）。
 
-### 鼠标滚轮式缩放
-改 `camera.size` 即可（正交投影下这就是缩放），无需移动相机。
+### 边界钳制（重要坑，M16 起支持旋转）
 
-### 边界钳制（重要坑）
-**`Camera3D` 没有 `Camera2D` 的 `limit_left/right/top/bottom`**，必须手动钳制焦点：
+**`Camera3D` 没有 `Camera2D` 的 `limit_left/right/top/bottom`**，必须手动钳制焦点。
+旋转后画面的地面足迹是一个**斜矩形**，所以取它的世界轴对齐包围盒（保守估计）：
 
 ```gdscript
-half_x = CAMERA_ORTHO_SIZE * aspect * 0.5
-half_z = CAMERA_ORTHO_SIZE * 0.5 / cos(tilt)   # 俯角把纵深压缩 cos(t) 倍
+half_w = size * aspect * 0.5                    # 屏幕横向半宽
+half_h = size * 0.5 / cos(|tilt|)               # 俯角把地面纵深压缩 cos(t) 倍（有个下限兜底）
+ext.x  = |right.x| * half_w + |up.x| * half_h    # right / up 是绕 Y 旋转 yaw 后的画面轴
+ext.y  = |right.y| * half_w + |up.y| * half_h
 ```
 
-视野比场地大时退化为居中，避免 `min > max`。见 `main.gd::_clamp_focus()`。
+`yaw = 0` 时退化成 `half_w / half_h`（与 M16 之前一致）；`yaw = 90°` 时 X/Z 互换。
+视野比场地还大时**退化为居中**，避免 `min > max`。见 `CameraRig.clamp_focus()`。
+
+> 💡 有两种焦点：`focus_plane()` 是**实际对准的点**（已钳制），`focus_target()` 是
+> **玩家位置**（未钳制）。瞬移判定用后者 —— 否则玩家走到场地边缘时，被钳住的焦点
+> 会被误判成「瞬移」，每帧都重新对齐。
+
+### 瞬移自动对齐
+
+焦点离目标超过「视野 × 3」时**直接对齐**，不做平滑：
+复活、进出地城都会瞬移玩家，让它一路平移过去会很难看（`SNAP_DISTANCE_FACTOR`）。
 
 ## 光照与环境（`main.gd::_build_environment()`）
 
@@ -98,9 +132,25 @@ node.position = Vector3(facing.x, 0, facing.y).normalized() * offset
 
 **渲染路径完全一致**（都是 `Sprite3D` billboard），所以换图不需要改任何渲染代码。
 
+## 自测
+
+```powershell
+godot --headless --path . --script res://tests/test_camera.gd
+```
+
+覆盖：配置合法性与非法值钳制 / 初始状态（正交、视野与俯角来自 JSON）/ 缩放钳制在区间内 /
+旋转步进与角度归一化 + `yaw = 90°` 时足迹 X/Z 互换 / 俯角两端钳制 + 越俯视足迹越深 /
+重置回默认 / 含旋转的边界钳制 / 小位移平滑与**大位移瞬移对齐** / 副本内边界切换 / 7 个输入动作都注册。
+
+> ⚠️ 自测里**不能写 `CameraRig` 这个类名**（它所在脚本引用了 `Game`，会让 `--script` 入口
+> 编译失败），相机一律通过 `_main.camera` 动态访问。
+
 ## 已知限制 / TODO
 
-- [ ] `CAMERA_ORTHO_SIZE` 与俯角需要目视微调（我无法看到渲染结果）
+- [ ] **数值仍需目视校准**：`size` / `tilt_deg` 的当前值是照 2D 版推的（我无法看到渲染结果）。
+      现在可以在游戏里调好再抄回 `data/camera.json`（见上「操作」）
 - [ ] 网格贴图未生成 mipmap，远处可能有轻微摩尔纹
 - [ ] 玩家朝向指示仍是几何体（金色长条），接入真美术后可换成精灵
-- [ ] 未做相机旋转/缩放切换（结构上已支持：只改 `camera.rotation` / `camera.size`）
+- [ ] 旋转后**阴影方向不变**（`DirectionalLight3D` 是固定朝向）：如果将来要「阳光跟着镜头转」，
+      让光的 yaw 跟随相机 yaw 即可
+- [ ] 没有中键拖拽平移 / 惯性；俯仰只有固定步进，没有平滑插值

@@ -49,7 +49,15 @@ godot --headless --path . --script res://tests/test_dungeon.gd
 # 7) 背包自测：入包 / 装备换装 / 分解 / 容量 / 一键换装 / 买卖 / 界面
 godot --headless --path . --script res://tests/test_inventory.gd
 
-# 8) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
+# 8) 存档自测：序列化往返 / 兜底 / 槽位 IO / 坏档备份 / 标题选档 / 一条龙存读
+godot --headless --path . --script res://tests/test_save.gd
+
+# 9) 相机自测：缩放旋转俯角钳制 / 含旋转的边界钳制 / 瞬移对齐 / 副本边界
+godot --headless --path . --script res://tests/test_camera.gd
+
+# 10) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
+#    ⚠️ M13 起启动停在标题选档界面（世界暂停）→ 这条主要覆盖「待机 + 自动保存」；
+#       战斗 soak 由 test_smoke_3d.gd 负责（它第 1 帧自己选槽位让世界跑起来）
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
@@ -76,6 +84,8 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 | 属性加点面板 | `C`（开关；面板内 `+1` / `+5` 按钮加点） |
 | 交互（传送门） | `F`（靠近竞技场中央下方的传送门进入地城；地城内可原路返回） |
 | 背包 / 商店 | `I` 或 `B`（背包页：装备对比 / 装备 / 分解 / 一键换装；商店页：购买 / 刷新货架） |
+| 存档 / 读档 | `F5` 手动存 · `F9` 手动读（平时会自动存；启动时先在标题界面选槽位） |
+| 相机 | 滚轮 / `=` `-` 缩放 · `,` `.` 旋转 · `PageUp`/`PageDown` 调俯角 · `R` 重置视角 |
 
 ---
 
@@ -103,6 +113,13 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
   掉落**先进背包**，在 `I` 界面里与身上装备逐词条对比（绿 = 提升 / 红 = 变差）后决定穿上或分解；
   换下来的旧装备会回到背包；背包满了掉落才会自动分解。商店（同一界面的「商店」页签）
   按 `data/shop.json` 现生成货架，可购买并花金币刷新。**数值为自设占位，图标仍为程序化占位。**
+- **存档（M13）**：启动先弹**标题选档界面**（3 个槽位：继续 / 新游戏 / 删除，危险操作要点两次确认），
+  选完才进入游戏。存档在 `user://save_<槽>.json`，**原子写**（先写 `.tmp` 再替换）+ 正式档坏了自动回退
+  `.bak` / `.tmp` + 坏档改名 `.corrupt-*` 保留；升级 / 换装 / 买卖 / 进出地城等关键事件后 2 秒防抖自动保存，
+  `F5` / `F9` 可手动存读。
+- **相机（M16）**：正交俯视，参数全在 `data/camera.json`（视野 / 俯角 / 后撤 / 跟随速度 / 缩放区间 /
+  旋转与俯角步进）；支持滚轮缩放、水平旋转、俯角微调、`R` 重置；**旋转后边界钳制照旧**（按斜矩形的
+  世界轴包围盒）；复活 / 进出地城的瞬移会直接对齐镜头而不是慢慢平移。
 - **敌人 AI**：按等级缩放数值、索敌追击、近身攻击、敌人之间简单排斥避免堆叠；Boss 免疫击退。
 - **刷怪节奏**：随玩家等级提升场上敌人上限与刷怪数量。
 - **掉落系统**：`LootTable` 按等级随机生成装备，含 5 部位 × 5 品质（普通→传说）。
@@ -127,15 +144,17 @@ dreadmyst-retro/
 │   ├── attributes.json           #   属性：每点加成 / 上限 / 每级自由点数（M8）
 │   ├── dungeon.json              #   地城：房间流布局 / 每房怪数 / Boss / 通关奖励（M10）
 │   ├── inventory.json            #   背包：容量 + 卖出价公式（M11）
-│   └── shop.json                 #   商店：货架 / 刷新价（M11）
+│   ├── shop.json                 #   商店：货架 / 刷新价（M11）
+│   └── camera.json               #   相机：视野 / 俯角 / 缩放区间 / 旋转与俯角步进（M16）
 ├── scenes/
 │   └── main.tscn                 # 唯一场景：根 Node3D，仅挂载 scripts/main.gd
 ├── scripts/
-│   ├── main.gd                   # 入口：搭 3D 环境 / 正交相机 / 刷怪 / 事件接线
+│   ├── main.gd                   # 入口：搭 3D 环境 / 正交相机 / 刷怪 / 进出地城 / 存档装配
 │   ├── core/
 │   │   ├── event_bus.gd          # Autoload「Events」：全局信号总线
 │   │   ├── game.gd               # Autoload「Game」：竞技场 / 等级 / 金币 / 输入映射 / 坐标转换
-│   │   └── shop.gd               # class_name Shop：商店服务（货架 / 购买 / 刷新）（M11）
+│   │   ├── shop.gd               # class_name Shop：商店服务（货架 / 购买 / 刷新）（M11）
+│   │   └── save_service.gd       # class_name SaveService：存档槽位读写 / 原子写 / 防抖自动存（M13）
 │   ├── data/
 │   │   ├── gear_item.gd          # class_name GearItem：装备数据模型（部位 / 品质 / 词条）
 │   │   ├── loot_config.gd        # class_name LootConfig：loot.json 加载器（含加权抽取）
@@ -150,6 +169,8 @@ dreadmyst-retro/
 │   │   ├── attribute_registry.gd # class_name AttributeRegistry：attributes.json 加载 / 加成汇总（M8）
 │   │   ├── dungeon_def.gd        # class_name DungeonDef：地城布局（房间/门/Boss/奖励）（M10）
 │   │   ├── dungeon_registry.gd   # class_name DungeonRegistry：dungeon.json 加载（M10）
+│   │   ├── save_data.gd          # class_name SaveData：存档结构 + 版本 + 兜底（M13）
+│   │   ├── camera_config.gd      # class_name CameraConfig：camera.json 加载 + 非法值钳制（M16）
 │   │   ├── inventory_config.gd   # class_name InventoryConfig：背包容量 + 卖出价公式（M11）
 │   │   └── shop_config.gd        # class_name ShopConfig：商店货架 / 刷新价加载（M11）
 │   ├── actors/
@@ -159,6 +180,7 @@ dreadmyst-retro/
 │   │   ├── arena_background.gd   # class_name ArenaBackground：3D 地面网格 + 边界 + 装饰
 │   │   ├── arena_prop.gd         # class_name ArenaProp：装饰石头
 │   │   ├── gear_pickup.gd        # class_name GearPickup：地面掉落物与拾取
+│   │   ├── camera_rig.gd         # class_name CameraRig：正交俯视相机（缩放/旋转/边界钳制）（M16）
 │   │   ├── portal.gd             # class_name Portal：传送门（靠近提示 + F 交互）（M10）
 │   │   ├── dungeon.gd            # class_name Dungeon：房间流 / 清房开门 / Boss 房 / 奖励（M10）
 │   │   ├── dungeon_room.gd       # class_name DungeonRoom：单间房（3D 地面 + 碰撞墙 + 门洞）（M10）
@@ -169,6 +191,7 @@ dreadmyst-retro/
 │       ├── skill_bar.gd          # class_name SkillBar：底部技能栏（冷却 + 耗蓝 + 快捷键）（M7）
 │       ├── attribute_panel.gd    # class_name AttributePanel：属性加点界面（C 键开关）（M8）
 │       ├── inventory_panel.gd    # class_name InventoryPanel：背包 / 商店界面（I 键开关）（M11）
+│       ├── title_screen.gd       # class_name TitleScreen：启动选档界面（3 槽位）（M13）
 │       ├── damage_number.gd      # class_name DamageNumber：Label3D 漂浮伤害数字
 │       └── dev_pause.gd          # class_name DevPause：开发用暂停面板（DEV_TOOLS 开关）
 ├── tests/                        # headless 自测（命令见 docs/architecture.md §6）
@@ -178,7 +201,9 @@ dreadmyst-retro/
 │   ├── test_skills.gd            #   技能：施放 / 冷却 / 360° 判定 / 转职 / 蓝量门槛（M7）
 │   ├── test_attributes.gd        #   属性：加点 / 上限 / 满级 / 转职不重置 / 界面开关（M8）
 │   ├── test_dungeon.gd           #   地城：进出 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原（M10）
-│   └── test_inventory.gd         #   背包：入包 / 换装 / 分解 / 容量 / 一键换装 / 买卖（M11）
+│   ├── test_inventory.gd         #   背包：入包 / 换装 / 分解 / 容量 / 一键换装 / 买卖（M11）
+│   ├── test_save.gd              #   存档：序列化往返 / 兜底 / 槽位 IO / 坏档 / 标题界面（M13）
+│   └── test_camera.gd            #   相机：缩放旋转俯角钳制 / 边界钳制 / 瞬移对齐（M16）
 ├── assets/                       # 美术素材；_LICENSES.md / _PROMPTS.md 为出图登记与模板
 └── docs/                         # 文档体系（索引见 docs/README.md）
 ```
@@ -205,12 +230,16 @@ dreadmyst-retro/
 - [x] **地下城（Dungeon）**：房间流程（清房开门）+ Boss 房 + 通关奖励 + 传送门进出（M10）。布局在 `data/dungeon.json`，Boss 数值在 `data/enemies.json`。
 - [x] **背包与交易**：24 格背包、逐词条装备对比、一键换装、金币商店（购买 / 刷新）（M11）。
   背包容量与价格在 `data/inventory.json` / `data/shop.json`。
-- [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店。
+- [x] **存档**：`user://` 3 槽位序列化等级 / 属性点 / 背包 / 装备 / 金币，含标题选档界面与自动保存（M13）。
 - [ ] **PVP 区域**：玩家之间的对抗场景。**暂不做**（单机原型没有第二个玩家，等联机之后再说）
+- [ ] **联机**：Godot 高层多人 API（ENet）实现客户端-服务器同步。**暂不做（M14，2026-10-10）** ——
+  前置是把权威模拟层从表现层抽出来，是一整块重构。
+- [ ] **素材接入**：把真 sprite / 中文字体 / 音频接进来 ← *下一步（M15）*。
+  代码侧只等 `assets/` 里的文件与 `data/*.json` 的 `sprite_path` / `icon` 字段。
+- [x] **相机微调**：参数进 `data/camera.json` + `CameraRig`；滚轮缩放、水平旋转、俯角微调、`R` 重置、
+  含旋转的边界钳制、瞬移自动对齐（M16）。**具体数值待你目视校准**（游戏内调完抄回 JSON）。
 - [x] **数据驱动**：掉落表抽到 `data/loot.json`（`LootConfig`），敌人原型抽到 `data/enemies.json`（`EnemyArchetype` + `EnemyRegistry`），含 3 种原型（粘液怪/重甲兽人/幽影）。新增敌人/词条/名字池 = 改 JSON，不改代码。
 - [x] **2.5D 渲染**：由 2D 重构为真 3D + 固定正交俯角相机 + billboard 精灵，数据层零改动（详见 `docs/modules/render3d.md` 与 `docs/roadmap.md` 的 M9 迁移记录）。
-- [ ] **存档**：`user://` 序列化角色等级、属性点、背包、装备与金币 ← *下一步（M13）*。
-- [ ] **联机**：Godot 高层多人 API（ENet）实现客户端-服务器同步。
 
 ---
 

@@ -617,6 +617,96 @@ func _emit_backpack() -> void:
 	Events.backpack_changed.emit(backpack.duplicate(), backpack_capacity())
 
 
+# ---------------------------------------------------------------- 存档（M13）
+
+## 导出角色状态给存档。等级 / 经验 / 金币归属 Game，由 main.gd 单独收集。
+func export_state() -> Dictionary:
+	return {
+		"profession": profession_id(),
+		"hp": hp,
+		"mana": mana,
+		"attributes": attributes.duplicate(),
+		"equipment": equipment.duplicate(),
+		"backpack": backpack.duplicate(),
+	}
+
+
+## 灌入存档状态并重新广播。语义层面的兜底都在这里：
+## 未知职业 id → 默认职业（set_profession 内部兜底）；未知属性 id → 忽略并 Warning；
+## 背包超过容量 / 非 GearItem → 丢弃；hp/mana 缺省（<0）→ 按满值。
+func import_state(state: Dictionary) -> void:
+	var prof_id := String(state.get("profession", ""))
+	set_profession(prof_id if not prof_id.is_empty() else _default_profession_id())
+
+	# 属性点：以注册表为准重建键集合，存档里的陌生 id 一律丢弃
+	attributes.clear()
+	for id in AttributeRegistry.ids():
+		attributes[id] = 0
+	var raw_attrs: Variant = state.get("attributes", {})
+	if typeof(raw_attrs) == TYPE_DICTIONARY:
+		var attrs: Dictionary = raw_attrs
+		for key in attrs:
+			var id := String(key)
+			if not attributes.has(id):
+				push_warning("Player: 存档里的属性 '%s' 不存在，已忽略" % id)
+				continue
+			attributes[id] = maxi(0, int(attrs[key]))
+
+	equipment.clear()
+	var raw_equip: Variant = state.get("equipment", {})
+	if typeof(raw_equip) == TYPE_DICTIONARY:
+		var equip_dict: Dictionary = raw_equip
+		for slot in equip_dict:
+			var gear: Variant = equip_dict[slot]
+			if gear is GearItem:
+				equipment[int(slot)] = gear
+
+	backpack.clear()
+	var raw_bag: Variant = state.get("backpack", [])
+	if raw_bag is Array:
+		var bag: Array = raw_bag
+		for gear in bag:
+			if gear is GearItem and backpack.size() < backpack_capacity():
+				backpack.append(gear)
+
+	# hp / mana 必须在属性与装备灌完之后算 —— max_hp() 依赖 total_stats()
+	var saved_hp := float(state.get("hp", -1.0))
+	var saved_mana := float(state.get("mana", -1.0))
+	hp = max_hp() if saved_hp < 0.0 else clampf(saved_hp, 0.0, max_hp())
+	mana = max_mana() if saved_mana < 0.0 else clampf(saved_mana, 0.0, max_mana())
+
+	_rebroadcast_state()
+
+
+## 回到「全新角色」：默认职业、0 属性点、空装备空背包、满血满蓝。
+func reset_state() -> void:
+	set_profession(_default_profession_id())
+	for id in attributes:
+		attributes[id] = 0
+	equipment.clear()
+	backpack.clear()
+	hp = max_hp()
+	mana = max_mana()
+	_rebroadcast_state()
+
+
+## 载入 / 重置之后把全部状态重新广播一遍（UI 若在其后才创建，main 还会补发一次）。
+func _rebroadcast_state() -> void:
+	_cooldowns.clear()
+	for skill in _skills:
+		_cooldowns[skill.id] = 0.0
+	_attack_anim = 0.0
+	_emit_profession()
+	_emit_skills()
+	_emit_backpack()
+	_emit_attributes()
+	Events.equipment_changed.emit(equipment)
+	Events.player_stats_changed.emit(total_stats())
+	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
+	_emit_mana()
+	Events.skill_cooldowns_changed.emit(_cooldowns.duplicate())
+
+
 # ---------------------------------------------------------------- 表现
 
 func _build_visuals() -> void:

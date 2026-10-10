@@ -57,6 +57,21 @@ func _setup_input() -> void:
 	# M11 背包 / 商店：I 或 B 开关（Inventory / Bag）
 	_action("inventory", [KEY_I, KEY_B])
 
+	# M13 存档：F5 手动存 / F9 手动读（原型期用来验收；正式版可以拿掉）
+	_action("save_game", [KEY_F5])
+	_action("load_game", [KEY_F9])
+
+	# M16 相机：滚轮 / = / - 缩放；, / . 水平旋转；PageUp / PageDown 调俯角；R 重置视角
+	_action("zoom_in", [KEY_EQUAL])
+	_action("zoom_out", [KEY_MINUS])
+	_action("rotate_left", [KEY_COMMA])
+	_action("rotate_right", [KEY_PERIOD])
+	_action("tilt_up", [KEY_PAGEUP])
+	_action("tilt_down", [KEY_PAGEDOWN])
+	_action("camera_reset", [KEY_R])
+	_add_mouse("zoom_in", MOUSE_BUTTON_WHEEL_UP)
+	_add_mouse("zoom_out", MOUSE_BUTTON_WHEEL_DOWN)
+
 func _action(action_name: StringName, keys: Array) -> void:
 	if InputMap.has_action(action_name):
 		InputMap.erase_action(action_name)
@@ -104,6 +119,23 @@ func add_xp(amount: int) -> void:
 func add_gold(amount: int) -> void:
 	gold += amount
 	Events.gold_changed.emit(gold)
+
+
+# ---------------------------------------------------------------- 存档（M13）
+
+## 一次性灌入进度（读档用）并广播给 UI。非法值一律钳制。
+func load_progress(new_level: int, new_xp: int, new_gold: int) -> void:
+	level = maxi(1, new_level)
+	xp = maxi(0, new_xp)
+	gold = maxi(0, new_gold)
+	# 先发等级：Player 据此重算可分配属性点，再发金币给 HUD
+	Events.player_level_changed.emit(level, xp, xp_to_next_level())
+	Events.gold_changed.emit(gold)
+
+
+## 回到「全新角色」的进度。
+func reset_progress() -> void:
+	load_progress(1, 0, 0)
 
 # ---------------------------------------------------------------- 工具
 

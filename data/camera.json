@@ -1,0 +1,12 @@
+{
+    "version": 1,
+    "_note": "正交俯视相机的全部可调参数。改这里即可，重启生效。size = 正交视野高度（世界单位，越小越近）；tilt_deg = 俯角（更「平」用 -55，更「俯」用 -35，必须为负）；distance = 沿视线后撤距离（正交下只影响裁剪范围）；follow_speed = 焦点平滑跟随速度。游戏内调完的值会打到控制台和 DevPause 面板上，抄回本文件即可固化。",
+    "size": 620.0,
+    "tilt_deg": -45.0,
+    "distance": 1600.0,
+    "follow_speed": 6.0,
+
+    "zoom": { "min": 340.0, "max": 980.0, "step": 40.0 },
+    "rotate": { "step_deg": 15.0 },
+    "tilt": { "min_deg": -70.0, "max_deg": -22.0, "step_deg": 3.0 }
+}

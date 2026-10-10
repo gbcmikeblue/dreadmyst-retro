@@ -250,7 +250,70 @@ roll_drop(enemy_level)
 
 ---
 
-## 7. 新增一张数据表的标准做法
+## 7. 存档 `user://save_<槽>.json`（M13，不在 `data/` 里）
+
+存档不属于 `data/*.json`（它是**运行时写出的玩家数据**，形状由 `SaveData` 定义）：
+
+```json
+{ "version": 1, "saved_at": "...", "kills": 12,
+  "game":   { "level": 5, "xp": 120, "gold": 800 },
+  "player": { "profession": "mage", "hp": 95.0, "mana": 140.0,
+              "attributes": { "strength": 12 },
+              "equipment":  { "weapon": { ...GearItem.to_dict()... } },
+              "backpack":   [ { ... } ] } }
+```
+
+| 类 | 文件 | 职责 |
+| --- | --- | --- |
+| `SaveData` | `scripts/data/save_data.gd` | 结构 + `CURRENT_VERSION` + 兜底解析（无 IO、无信号） |
+| `GearItem.to_dict()` / `static from_dict()` | `scripts/data/gear_item.gd` | 单件装备序列化；`SLOT_KEYS` / `RARITY_KEYS` 是**枚举↔可读键的唯一一份映射**（`LootConfig` 转发过来） |
+| `SaveService` | `scripts/core/save_service.gd` | 3 槽位 IO / 原子写 / 读取回退链 / 坏档改名备份 / 防抖自动保存 / 槽位摘要 |
+
+要点（写新的存档字段前必读）：
+
+1. **存档是外部输入**：`from_dict()` 全程兜底，不 `push_error`；未知枚举钳制、未知词条丢弃、
+   背包超容量只收前 N 件并计数。
+2. **解析用 `JSON` 实例，不要用 `JSON.parse_string()`**：后者失败会往 stderr 打引擎级
+   `ERROR: Parse JSON failed`，而坏档是预期情况。见 `SaveService._parse_json_dict()`。
+3. **原子写**：`<file>.tmp` → 旧档改名 `.bak` → tmp 改名正式档 → 删 `.bak`；
+   读取按 正式档 → `.bak` → `.tmp` 回退。
+4. **改结构就 `SaveData.CURRENT_VERSION` +1**，并在 `SaveService` 里加迁移分支
+   （目前版本不符只做「备份 + 新建」）。
+5. **谁来收集状态**：`main.gd`（唯一同时知道 `Game` 与 `Player` 的地方）通过
+   `save_service.state_provider = _collect_save` 注入；`SaveService` 不认识 Player / Game。
+6. **自动保存触发**：监听 `player_level_changed` / `gold_changed` / `equipment_changed` /
+   `backpack_changed` / `attributes_changed` / `dungeon_entered` / `dungeon_exited` → 2 秒防抖。
+   `current_slot < 0`（还没选槽）时不记账。
+
+> ⚠️ 启动会先弹标题选档界面并把世界暂停。需要世界跑起来的 `--script` 自测要自己选槽位：
+> `main.choose_slot(1, true)`（并把 `save_service.path_pattern` 指到测试专用文件）。
+
+---
+
+## 8. `data/camera.json`（M16 相机）
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `size` | float | 正交视野高度（世界单位），越小越近。等价于 2D 的 zoom |
+| `tilt_deg` | float | 俯角，**必须为负**（0 = 平视，-90 = 垂直俯视） |
+| `distance` | float | 沿视线后撤距离（正交下只影响裁剪范围） |
+| `follow_speed` | float | 焦点平滑跟随速度 |
+| `zoom.min` / `zoom.max` / `zoom.step` | float | 缩放区间与步进 |
+| `rotate.step_deg` | float | 每次水平旋转的角度 |
+| `tilt.min_deg` / `tilt.max_deg` / `tilt.step_deg` | float | 俯角可调区间与步进。⚠️ `min_deg` 是**数值最小**那个（最俯视） |
+
+| 类 | 文件 | 接口 |
+| --- | --- | --- |
+| `CameraConfig` | `scripts/data/camera_config.gd` | `load_default()` / `from_dict()` / `clear_cache()`；`from_dict()` 会把非法值钳成能用的（视野落进缩放区间、俯角为负、距离为正…） |
+| `CameraRig` | `scripts/world/camera_rig.gd`（`extends Camera3D`） | `apply_config()` / `zoom_by()` / `rotate_by()` / `tilt_by()` / `reset_view()` / `snap()` / `step()` / `focus_plane()` / `focus_target()` / `clamp_focus()` / `view_extents()` / `debug_text()` |
+
+- **不是 Autoload**：相机是场景里的节点，参数在 `main.gd::_spawn_player()` 里由 `CameraRig` 自己读。
+- 「目视校准」闭环：游戏内调 → `debug_report` 把当前值打到控制台 + DevPause 面板显示读数 → 抄回 JSON。
+- `CameraRig` 引用了 `Game`，所以**在 `--script` 自测里不能写它的类名**，只能 `_main.camera` 动态访问。
+
+---
+
+## 9. 新增一张数据表的标准做法
 
 1. `data/<name>.json`，顶层 `{"version": N, "<items>": [...]}`，颜色用 `[r,g,b]`。
 2. `scripts/data/<name>_archetype.gd`：

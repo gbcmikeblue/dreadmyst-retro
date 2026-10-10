@@ -58,51 +58,24 @@ static func _from_dict(d: Dictionary) -> LootConfig:
 
 
 # ---------- 枚举映射 ----------
-
-static var _SLOT_KEY_TO_ENUM := {
-	"weapon": GearItem.Slot.WEAPON,
-	"helmet": GearItem.Slot.HELMET,
-	"armor":  GearItem.Slot.ARMOR,
-	"boots":  GearItem.Slot.BOOTS,
-	"ring":   GearItem.Slot.RING,
-}
-static var _RARITY_KEY_TO_ENUM := {
-	"common":    GearItem.Rarity.COMMON,
-	"uncommon":  GearItem.Rarity.UNCOMMON,
-	"rare":      GearItem.Rarity.RARE,
-	"epic":      GearItem.Rarity.EPIC,
-	"legendary": GearItem.Rarity.LEGENDARY,
-}
-static var _SLOT_ENUM_TO_KEY := {
-	GearItem.Slot.WEAPON: "weapon",
-	GearItem.Slot.HELMET: "helmet",
-	GearItem.Slot.ARMOR:  "armor",
-	GearItem.Slot.BOOTS:  "boots",
-	GearItem.Slot.RING:   "ring",
-}
-static var _RARITY_ENUM_TO_KEY := {
-	GearItem.Rarity.COMMON:    "common",
-	GearItem.Rarity.UNCOMMON:  "uncommon",
-	GearItem.Rarity.RARE:      "rare",
-	GearItem.Rarity.EPIC:      "epic",
-	GearItem.Rarity.LEGENDARY: "legendary",
-}
-
+#
+# 映射本体在 GearItem（SLOT_KEYS / RARITY_KEYS），这里只做转发：
+# 存档（M13）也要用同一份键，两份映射各写一遍必然漂移。
 
 func slot_enum_for(key: String) -> int:
-	return int(_SLOT_KEY_TO_ENUM.get(key, GearItem.Slot.WEAPON))
+	return GearItem.slot_from_key(key)
 
 
 func rarity_enum_for(key: String) -> int:
-	return int(_RARITY_KEY_TO_ENUM.get(key, GearItem.Rarity.COMMON))
+	return GearItem.rarity_from_key(key)
 
 
 func slot_key_for(e: int) -> String:
-	return String(_SLOT_ENUM_TO_KEY.get(e, "weapon"))
+	return GearItem.slot_key(e)
 
 
 func rarity_key_for(e: int) -> String:
-	return String(_RARITY_ENUM_TO_KEY.get(e, "common"))
+	return GearItem.rarity_key(e)
 
 
 # ---------- 加权抽取 ----------

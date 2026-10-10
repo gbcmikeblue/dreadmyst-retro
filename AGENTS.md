@@ -64,6 +64,11 @@
 - `randi_range(a, b)` **包含两端**。
 - `move_and_slide()` 之后再改 `velocity` 不生效。
 - `Dictionary.values()` 返回 `Array`，不是 keyed dict。
+- **`var x := f()` 而 `f()` 返回 `Variant` 会直接编译失败**（Godot 4.7 报
+  `The variable type is being inferred from a Variant value ... (Warning treated as error.)`）。
+  凡是「可能返回 `null` 的辅助函数」都要写成 `var x: Variant = f()`。
+- 局部变量别叫 `name`（遮蔽 `Node.name`）；`String + Variant` 的结果也是 `Variant`，要显式转换。
+- `is_equal_approx()` 只吃 `float`；两个 `Vector2` 要用 `a.is_equal_approx(b)`。
 
 **Godot 3D**
 
@@ -72,6 +77,18 @@
 - 顶视角用 `CharacterBody3D` 时要设 `motion_mode = MOTION_MODE_FLOATING`（关掉重力 / 贴地）。
 - billboard 精灵**不要投射阴影**（会变成薄片），改用脚下的平躺圆盘做影斑。
 - 朝向型网格的本地前方统一为 **+X**，所以 `node.rotation.y = -facing.angle()`。
+
+**存档（M13）**
+
+- **存档是外部输入**（可能被手改、可能是旧版本）：解析后一律兜底，别 `push_error`、别假设字段存在。
+- **解析存档 JSON 用 `JSON` 实例（`json.parse(text)`），不要用 `JSON.parse_string()`**：
+  后者失败时会往 stderr 打引擎级 `ERROR: Parse JSON failed`，而「存档损坏」是**预期内**的情况，
+  会破坏「0 ERROR / 0 WARNING」的验收口径。见 `SaveService._parse_json_dict()`。
+- **启动会先弹标题选档界面（`get_tree().paused = true`，世界是暂停的）**：
+  - 需要世界跑起来的自测必须自己选槽位（`main.choose_slot(1, true)`）—— 见 `test_input_move.gd`；
+    只断言状态的测试不受影响。
+  - 暂停时 `SceneTree.process_frame` **仍会触发**（已实测），所以基于帧的 `--script` 自测不会被挂住。
+  - 用 `Engine.time_scale = 0` 之类「假装暂停」的写法不要引入：那是另一套语义，会和 DevPause / 自测打架。
 
 **运行 / 验证**
 
@@ -111,12 +128,20 @@ godot --headless --path . --script res://tests/test_dungeon.gd
 # 7) 背包自测：入包 / 装备换装 / 分解 / 容量 / 一键换装 / 买卖 / 界面
 godot --headless --path . --script res://tests/test_inventory.gd
 
-# 8) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落
+# 8) 存档自测：序列化往返 / 兜底 / 槽位 IO / 坏档备份 / 标题选档 / 一条龙存读
+godot --headless --path . --script res://tests/test_save.gd
+
+# 9) 相机自测：配置 / 缩放旋转俯角钳制 / 含旋转的边界钳制 / 瞬移对齐 / 副本边界
+godot --headless --path . --script res://tests/test_camera.gd
+
+# 10) 长时运行：主场景跑 900 帧（M13 起启动停在标题选档界面、世界是暂停的）
+#    → 这条只保证「待机 + 自动保存防抖」路径无报错；
+#      真正的战斗 soak（刷怪/追击/攻击/受伤/掉落）在 test_smoke_3d.gd（它自己选槽位让世界跑）
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
 全部脚本**自行 `quit(0/1)`**，所以看退出码即可判断成败。
-验收口径：8 条全过，且最后一条 **0 ERROR / 0 WARNING**。
+验收口径：10 条全过，且最后一条 **0 ERROR / 0 WARNING**。
 
 > ⚠️ 自测里**别故意触发 `push_warning` 分支**（例如拿未知 id 去调 `Player.allocate_attribute()`）：
 > 会让输出混进 WARNING，破坏上面「0 WARNING」的验收口径。这类分支改在数据层断言。
@@ -140,6 +165,7 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 | 改属性加点 / 加点界面 | [`docs/modules/attributes.md`](docs/modules/attributes.md) |
 | 改地城 / 房间流 / Boss / 传送门 | [`docs/modules/dungeon.md`](docs/modules/dungeon.md) |
 | 改背包 / 商店 / 装备对比 | [`docs/modules/inventory.md`](docs/modules/inventory.md) |
+| 改存档 / 槽位 / 标题选档 | [`docs/modules/save.md`](docs/modules/save.md) |
 | 改掉落 / 装备 / 敌人数值 | [`docs/modules/loot.md`](docs/modules/loot.md) |
 | 改竞技场 / 掉落物 | [`docs/modules/world.md`](docs/modules/world.md) |
 | 改 HUD / 伤害数字 | [`docs/modules/ui.md`](docs/modules/ui.md) |
@@ -162,13 +188,22 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 **M8 属性加点（5 属性 + 每级 5 点自由分配 + 加点界面 C 键）** /
 **M9 2.5D 渲染（2D → 真 3D 重构，数据层零改动）** /
 **M10 地城与 Boss（3 房间房间流 + 清房开门 + 真墙体碰撞 + Boss 房 + 传送门进出）** /
-**M11 背包与交易（24 格背包 + 装备对比 + 一键换装 + 商店购买 / 刷新）**。
+**M11 背包与交易（24 格背包 + 装备对比 + 一键换装 + 商店购买 / 刷新）** /
+**M13 存档（3 槽位 + 标题选档界面 + 原子写 / 坏档备份 / 防抖自动存 + F5 存 · F9 读）** /
+**M16 相机微调（参数进 `data/camera.json` + `CameraRig`：滚轮缩放 / 旋转 / 俯角 / 含旋转的边界钳制）**。
 
-下一步：**M13 存档**（`user://` 序列化等级 / 属性点 / 背包 / 装备 / 金币）。
-细节见 [`docs/roadmap.md`](docs/roadmap.md)。
+下一步：**M15 素材接入**（真实 sprite / 中文字体 / 音频）。
+⚠️ **它阻塞在素材上**：代码侧管线早就留好了（`data/*.json` 的 `sprite_path` / `icon` +
+`SpriteFactory` 的加载分支），但没有出图、没有中文字体 `.ttf` 就无从接入；
+**素材没到的话可以先做纯代码的 M16 相机微调**（`CAMERA_ORTHO_SIZE` / 俯角 / 滚轮缩放 / 视角旋转）。
+细节见 [`docs/roadmap.md`](docs/roadmap.md) 与 [`docs/tasks/`](docs/tasks/)。
 
-> ⚠️ **范围决定**：**M12 PVP 区域暂不做** —— 单机原型没有第二个玩家可打，
-> 等 M14 联机之后再做才有意义。**别再主动提议 PVP**。
+> ⚠️ **范围决定（别再主动提议）**
+> - **M12 PVP 区域暂不做**：单机原型没有第二个玩家可打，要等联机之后才有意义。
+> - **M14 联机暂不做**（2026-10-10 决定）：前置是把权威模拟层从表现层里抽出来
+>   —— 现在 `main.gd` 同时管世界搭建 / 刷怪 / 结算，`Player`、`Enemy` 直接读写 `global_position`，
+>   不先重构就没法落「客户端发意图、服务端裁决」这一刀。参考
+>   [`docs/reference/mmo-opensource/README.md`](docs/reference/mmo-opensource/README.md) 的「权威服务器」原则。
 
 > ⚠️ **数据校准欠账**：M7 的职业与技能、M8 的属性与加点曲线、M10 的地城与 Boss、
 > M11 的背包容量与价格**全部是自行设计的占位值**（原作官网 403 无法访问）。拿到原作资料后只需改
@@ -198,3 +233,6 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 | 2026-10-10 | **M10 地城与 Boss 完成**：§4 增加第 6 条验证命令（`tests/test_dungeon.gd`，验收口径 6 条 → 7 条）；§5 索引加 `docs/modules/dungeon.md`；§6 下一步切到 M11 背包与交易，并补一条「美术欠账」说明 |
 | 2026-10-10 | **M11 背包 / 商店完成**：§4 增加第 7 条验证命令（`tests/test_inventory.gd`，验收口径 7 条 → 8 条）；§5 索引加 `docs/modules/inventory.md`；§6 补一条**掉落行为变化**提醒（不再自动穿，改为入包） |
 | 2026-10-10 | **M12 PVP 区域暂不做**：§6 下一步改为 **M13 存档**，并记下「单机原型没有第二个玩家，PVP 等 M14 联机后再做，别再主动提议」 |
+| 2026-10-10 | **M13 存档完成**：§3 新增「存档」陷阱组（存档是外部输入要兜底、解析用 `JSON` 实例别用 `JSON.parse_string()`、**启动会先弹标题选档界面并把世界暂停**因此需要世界跑的自测要自己选槽位）；§4 增加第 8 条验证命令（`tests/test_save.gd`，验收口径 8 条 → 9 条）；§5 索引加 `docs/modules/save.md` |
+| 2026-10-10 | **M14 联机暂不做**：§6 下一步改为 **M15 素材接入**，并注明「M15 阻塞在素材上，素材没到可先做纯代码的 M16 相机微调」；把 M12 / M14 两条范围决定合并成「别再主动提议」清单 |
+| 2026-10-10 | **M16 相机微调完成**：§3 新增 3 条 GDScript 编译期坑（`:=` 推断到 `Variant` 直接编译失败、局部变量叫 `name`、`is_equal_approx` 不吃 `Vector2`）；§4 增加第 9 条验证命令（`tests/test_camera.gd`，验收口径 9 条 → 10 条）；§5 索引不变（相机文档仍在 `docs/modules/render3d.md`）；§6 状态补上 M16，下一步仍是 M15 素材接入 |

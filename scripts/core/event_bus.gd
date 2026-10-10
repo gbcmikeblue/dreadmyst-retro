@@ -82,3 +82,16 @@ signal shop_stock_requested
 signal shop_restock_requested
 ## UI 请求购买第 index 件货架商品
 signal shop_buy_requested(offer_index: int)
+
+# ---------------------------------------------------------------- M13 存档
+
+## 请求槽位摘要（标题选档界面打开时发）
+signal save_slots_requested
+## 槽位摘要变化(Array[Dictionary]，元素见 SaveData.summary_from_dict + slot)
+signal save_slots_changed(slots: Array)
+## 请求：读取槽位 slot 开始游戏
+signal save_load_requested(slot: int)
+## 请求：在槽位 slot 开新档（已有档则覆盖）
+signal save_new_game_requested(slot: int)
+## 请求：删除槽位 slot
+signal save_delete_requested(slot: int)

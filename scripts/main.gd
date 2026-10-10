@@ -20,17 +20,10 @@ const ARENA_PORTAL_OFFSET := Vector2(0.0, -180.0)
 ## 离开地城回到营地时补刷的野怪数量
 const ARENA_RESPAWN_ON_RETURN := 6
 
-## 相机俯角：-45 是标准斜俯视；更"平"用 -55，更"俯"用 -35
-const CAMERA_TILT_DEG := -45.0
-## 正交视野的竖直范围（世界单位）。2D 版是 720 / zoom1.15 ≈ 626，取接近值。
-const CAMERA_ORTHO_SIZE := 620.0
-## 相机沿视线方向后撤的距离（正交投影下不影响缩放，只影响裁剪范围）
-const CAMERA_DIST := 1600.0
-const CAMERA_FOLLOW_SPEED := 6.0
-
 var player: Player
 var hud: HUD
-var camera: Camera3D
+## M16 起相机逻辑整体在 CameraRig 里（参数在 data/camera.json）
+var camera: CameraRig = null
 
 ## 当前地城实例（不在副本里时为 null）
 var dungeon: Dungeon = null
@@ -42,9 +35,14 @@ var shop: Shop = null
 ## 背包 / 商店界面（M11）
 var inventory_panel: InventoryPanel = null
 
+## 存档服务（M13）：文件 IO 在它那儿，状态收集在本节点（唯一同时知道 Game 与 Player 的地方）
+var save_service: SaveService = null
+## 启动选档界面（M13）
+var title_screen: TitleScreen = null
+## 开发工具面板（DEV_TOOLS 为 false 时为 null）
+var dev_pause: DevPause = null
+
 var _spawn_timer: float = 2.0
-## 相机的焦点（玩法平面坐标），平滑跟随玩家
-var _focus: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -64,19 +62,36 @@ func _ready() -> void:
 	add_child(shop)
 	inventory_panel = InventoryPanel.new()
 	add_child(inventory_panel)
+
+	# M13 存档服务（先建，后面的标题界面会立刻来要槽位摘要）
+	save_service = SaveService.new()
+	add_child(save_service)
+	save_service.state_provider = _collect_save
+	title_screen = TitleScreen.new()
+	add_child(title_screen)
+
 	if DEV_TOOLS:
-		add_child(DevPause.new())
+		dev_pause = DevPause.new()
+		add_child(dev_pause)
 	_connect_events()
 	_push_initial_state()
 
 	for i in range(6):
 		_spawn_enemy(randf_range(380.0, 620.0))
 
-	Events.toast.emit("欢迎来到 恐惧秘境 Dreadmyst 复刻原型", Color(0.80, 0.72, 1.0))
+	# 最后才开标题界面：此时事件已全部接好（要摘要时有人应答），且欢迎 Toast 留到选完槽位再弹
+	_open_title_screen()
 
 
 func _process(delta: float) -> void:
-	_update_camera(delta)
+	# 手动存读要在「副本里直接 return」之前处理，否则在副本里按 F5 会没反应
+	# （标题界面期间本函数根本不跑 —— 那时世界是暂停的）
+	if Input.is_action_just_pressed("save_game"):
+		_manual_save()
+	if Input.is_action_just_pressed("load_game"):
+		_manual_load()
+
+	# 相机（跟随 / 缩放 / 旋转 / 边界钳制）由 CameraRig 自己每帧处理，这里不用管
 
 	# 副本里不刷野怪（地城的怪由 Dungeon 自己按房间刷）
 	if Game.in_dungeon:
@@ -127,64 +142,12 @@ func _spawn_player() -> void:
 	add_child(player)
 	player.global_position = Game.world(Game.arena.get_center())
 
-	_focus = Game.plane(player.global_position)
-
-	camera = Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = CAMERA_ORTHO_SIZE
-	camera.near = 1.0
-	camera.far = 9000.0
-	camera.rotation_degrees = Vector3(CAMERA_TILT_DEG, 0.0, 0.0)
-
+	camera = CameraRig.new()
 	# 必须先入树，才能写 global_position（否则 global_transform 无效）
 	add_child(camera)
-	camera.global_position = _focus_to_world(_clamp_focus(_focus))
+	camera.debug_report = DEV_TOOLS
+	camera.snap()               # 立刻对准玩家（rig 自己读 Game.get_player()）
 	camera.make_current()
-
-
-func _update_camera(delta: float) -> void:
-	if camera == null or player == null or not is_instance_valid(player):
-		return
-	var target := Game.plane(player.global_position)
-	_focus = _focus.lerp(target, clampf(CAMERA_FOLLOW_SPEED * delta, 0.0, 1.0))
-	camera.global_position = _focus_to_world(_clamp_focus(_focus))
-
-
-## 焦点（玩法平面坐标）-> 相机世界位置。
-## 相机沿视线方向后撤 CAMERA_DIST，保证焦点落在画面正中。
-func _focus_to_world(focus: Vector2) -> Vector3:
-	var t := deg_to_rad(absf(CAMERA_TILT_DEG))
-	return Vector3(focus.x, CAMERA_DIST * sin(t), focus.y + CAMERA_DIST * cos(t))
-
-
-## Camera3D 没有 limit_left/right/top/bottom，需要手动把焦点钳制在场地内。
-func _clamp_focus(focus: Vector2) -> Vector2:
-	var r: Rect2 = Game.arena
-	var aspect := 1.0
-	var vp := get_viewport()
-	if vp != null:
-		var vp_size := vp.get_visible_rect().size
-		if vp_size.y > 0.0:
-			aspect = vp_size.x / vp_size.y
-
-	# 正交视野在地面上的半宽 / 半深（俯角会把纵深压缩 cos(t) 倍）
-	var half_x := CAMERA_ORTHO_SIZE * aspect * 0.5
-	var half_z := CAMERA_ORTHO_SIZE * 0.5 / cos(deg_to_rad(absf(CAMERA_TILT_DEG)))
-
-	var min_x := r.position.x + half_x
-	var max_x := r.end.x - half_x
-	var min_z := r.position.y + half_z
-	var max_z := r.end.y - half_z
-
-	# 视野比场地还大时退化为居中，避免 min > max
-	if min_x > max_x:
-		min_x = (r.position.x + r.end.x) * 0.5
-		max_x = min_x
-	if min_z > max_z:
-		min_z = (r.position.y + r.end.y) * 0.5
-		max_z = min_z
-
-	return Vector2(clampf(focus.x, min_x, max_x), clampf(focus.y, min_z, max_z))
 
 
 # ---------------------------------------------------------------- 地城（M10）
@@ -234,8 +197,7 @@ func _on_dungeon_enter_requested(dungeon_id: String) -> void:
 	# 玩家与相机一起瞬移：否则相机会从竞技场一路平移过去，画面很怪
 	var entrance := def.entrance_point(DUNGEON_ORIGIN)
 	player.global_position = Game.world(entrance)
-	_focus = entrance
-	camera.global_position = _focus_to_world(_clamp_focus(_focus))
+	camera.snap()
 
 	Events.dungeon_entered.emit(def.display_name, def.room_count)
 	Events.toast.emit("进入 %s（%d 个房间）" % [def.display_name, def.room_count],
@@ -257,8 +219,7 @@ func _on_dungeon_exit_requested() -> void:
 
 	if player != null and is_instance_valid(player):
 		player.global_position = Game.world(Game.ARENA_HOME.get_center())
-	_focus = Game.ARENA_HOME.get_center()
-	camera.global_position = _focus_to_world(_clamp_focus(_focus))
+	camera.snap()
 
 	Events.dungeon_exited.emit()
 	Events.toast.emit("回到营地", Color(0.6, 1.0, 0.6))
@@ -281,6 +242,132 @@ func _clear_arena_enemies() -> void:
 		enemy.queue_free()
 
 
+# ---------------------------------------------------------------- 存档（M13）
+
+## 打开标题选档界面：先关掉开发面板（它会解冻世界），再让标题界面暂停世界。
+func _open_title_screen() -> void:
+	if dev_pause != null:
+		dev_pause.set_enabled(false)
+	if title_screen != null:
+		title_screen.open()
+
+
+## 在槽位 slot 开始游戏。as_new = true 开新档（覆盖），false 读档。
+## 由标题界面的信号调用；自测也直接调它（跳过鼠标点击）。
+func choose_slot(slot: int, as_new: bool) -> void:
+	# 先确保「在营地、不在副本」：读档时地城状态不该跨档残留
+	if Game.in_dungeon:
+		_on_dungeon_exit_requested()
+
+	save_service.current_slot = slot
+
+	if as_new:
+		Game.reset_progress()
+		player.reset_state()
+		if hud != null:
+			hud.kills = 0
+			hud.refresh_kills()
+		# 新档立刻落盘：否则刚开局就退出的话，槽位还是「空」
+		save_service.flush_current()
+		Events.toast.emit("在存档 %d 开始新游戏" % slot, Color(0.80, 0.95, 0.80))
+	else:
+		var data := save_service.load_slot(slot)
+		if data == null:
+			# 没有档 / 坏档（SaveService 已把坏档改名备份）→ 退化成开新档
+			choose_slot(slot, true)
+			return
+		_apply_save(data)
+		Events.toast.emit("已读取存档 %d（%d 级 · %d 金币）" % [slot, Game.level, Game.gold],
+			Color(0.80, 0.95, 0.80))
+
+	if title_screen != null:
+		title_screen.close()
+	if dev_pause != null:
+		dev_pause.set_enabled(DEV_TOOLS)
+	# 载入时 Player 已经广播过一轮，但 UI 可能是在那之后才同步的，这里再补发一次全量状态
+	_push_initial_state()
+	Events.toast.emit("欢迎来到 恐惧秘境 Dreadmyst 复刻原型", Color(0.80, 0.72, 1.0))
+
+
+## 收集当前状态（StateProvider：SaveService 到点写盘时回调它）。
+func _collect_save() -> SaveData:
+	var data := SaveData.new()
+	data.saved_at = Time.get_datetime_string_from_system()
+	if hud != null:
+		data.kills = hud.kills
+	data.level = Game.level
+	data.xp = Game.xp
+	data.gold = Game.gold
+	if player != null and is_instance_valid(player):
+		data.profession_id = player.profession_id()
+		data.hp = player.hp
+		data.mana = player.mana
+		data.attributes = player.attributes.duplicate()
+		data.equipment = player.equipment.duplicate()
+		data.backpack = player.backpack.duplicate()
+	return data
+
+
+## 把存档灌回 Game 与 Player。
+func _apply_save(data: SaveData) -> void:
+	Game.load_progress(data.level, data.xp, data.gold)
+	player.import_state({
+		"profession": data.profession_id,
+		"hp": data.hp,
+		"mana": data.mana,
+		"attributes": data.attributes,
+		"equipment": data.equipment,
+		"backpack": data.backpack,
+	})
+	if hud != null:
+		hud.kills = data.kills
+		hud.refresh_kills()
+	if data.dropped_backpack_items > 0:
+		Events.toast.emit("背包超过容量，丢弃了 %d 件装备" % data.dropped_backpack_items,
+			Color(1.0, 0.72, 0.35))
+
+
+func _manual_save() -> void:
+	if save_service.current_slot < 0:
+		return
+	if save_service.flush_current():
+		Events.toast.emit("已保存到存档 %d（F5）" % save_service.current_slot,
+			Color(0.80, 0.95, 0.80))
+
+
+func _manual_load() -> void:
+	if save_service.current_slot < 0:
+		return
+	choose_slot(save_service.current_slot, false)
+
+
+func _on_save_slots_requested() -> void:
+	Events.save_slots_changed.emit(save_service.slot_summaries())
+
+
+func _on_save_load_requested(slot: int) -> void:
+	choose_slot(slot, false)
+
+
+func _on_save_new_game_requested(slot: int) -> void:
+	choose_slot(slot, true)
+
+
+func _on_save_delete_requested(slot: int) -> void:
+	var existed := save_service.delete_slot(slot)
+	if existed:
+		Events.toast.emit("已删除存档 %d" % slot, Color(0.85, 0.85, 0.90))
+	else:
+		Events.toast.emit("存档 %d 本来就是空的" % slot, Color(0.85, 0.85, 0.90))
+	_on_save_slots_requested()
+
+
+## 关窗时把待写存档刷出去（防抖可能还没到点）。
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and save_service != null:
+		save_service.flush_current()
+
+
 # ---------------------------------------------------------------- 构建世界
 
 func _spawn_enemy(distance: float) -> void:
@@ -292,7 +379,8 @@ func _spawn_enemy(distance: float) -> void:
 	enemy.setup(maxi(1, Game.level + randi_range(-1, 1)), archetype)
 	add_child(enemy)
 
-	var center := _focus
+	# 以玩家为中心刷怪（M16 起相机焦点不再由 main 持有，这里直接用玩家位置）
+	var center := Game.arena.get_center()
 	if player != null and is_instance_valid(player):
 		center = Game.plane(player.global_position)
 	var angle := randf() * TAU
@@ -315,6 +403,11 @@ func _connect_events() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 	Events.dungeon_enter_requested.connect(_on_dungeon_enter_requested)
 	Events.dungeon_exit_requested.connect(_on_dungeon_exit_requested)
+	# M13 存档：标题选档界面的请求
+	Events.save_slots_requested.connect(_on_save_slots_requested)
+	Events.save_load_requested.connect(_on_save_load_requested)
+	Events.save_new_game_requested.connect(_on_save_new_game_requested)
+	Events.save_delete_requested.connect(_on_save_delete_requested)
 
 
 ## HUD 创建之前 player 已经发出过初始信号，这里补发一次让 UI 同步。

@@ -180,6 +180,66 @@ func _initialize() -> void:
 				o["slot_key"], " / ", o["rarity_key"])
 			failed = true
 
+	# ---------- 存档数据结构（M13）----------
+	var gear := LootTable.generate(3, "epic", "helmet")
+	var gear_back := GearItem.from_dict(gear.to_dict())
+	print("[OK] GearItem 序列化往返：", gear_back.item_name, " / slot=", gear_back.slot,
+		" rarity=", gear_back.rarity, " lv=", gear_back.item_level, " stats=", gear_back.stats)
+	if gear_back.slot != gear.slot or gear_back.rarity != gear.rarity \
+			or gear_back.item_level != gear.item_level:
+		print("FAIL: GearItem 序列化往返的枚举 / 等级不一致")
+		failed = true
+	# 词条逐项按数值比较：JSON 往返会把 int 变成 float，整字典直接比会误判
+	for stat_key in gear.stats:
+		if not is_equal_approx(float(gear_back.stats.get(stat_key, -1.0)), float(gear.stats[stat_key])):
+			print("FAIL: 词条 ", stat_key, " 往返不一致：", gear.stats[stat_key],
+				" -> ", gear_back.stats.get(stat_key))
+			failed = true
+
+	# 枚举键映射必须只在 GearItem 里存一份，LootConfig 转发过去（否则两处会漂移）
+	for slot_enum in GearItem.SLOT_ORDER:
+		var slot_key := GearItem.slot_key(slot_enum)
+		if GearItem.slot_from_key(slot_key) != slot_enum:
+			print("FAIL: slot 键往返失败：", slot_key)
+			failed = true
+		if LootConfig.load_default().slot_enum_for(slot_key) != slot_enum:
+			print("FAIL: LootConfig 没有转发到 GearItem 的 slot 映射：", slot_key)
+			failed = true
+	for rarity_enum in GearItem.RARITY_NAMES.keys():
+		var rarity_key := GearItem.rarity_key(rarity_enum)
+		if GearItem.rarity_from_key(rarity_key) != rarity_enum:
+			print("FAIL: rarity 键往返失败：", rarity_key)
+			failed = true
+	print("[OK] 部位 / 品质 枚举键往返一致（GearItem 为唯一映射，LootConfig 转发）")
+
+	var save_probe := SaveData.new()
+	save_probe.level = 3
+	save_probe.gold = 42
+	save_probe.profession_id = "warrior"
+	var save_back := SaveData.from_dict(save_probe.to_dict())
+	print("[OK] SaveData 往返：lv=", save_back.level, " gold=", save_back.gold,
+		" prof=", save_back.profession_id, " version=", save_back.version,
+		" 受支持=", save_back.is_supported_version())
+	if save_back.level != 3 or save_back.gold != 42 or not save_back.is_supported_version():
+		print("FAIL: SaveData 往返不一致")
+		failed = true
+
+	# ---------- 相机配置（M16）----------
+	var cam: CameraConfig = CameraConfig.load_default()
+	print("[OK] CameraConfig：视野 ", cam.size, "（", cam.zoom_min, "~", cam.zoom_max,
+		" 步进 ", cam.zoom_step, "）俯角 ", cam.tilt_deg, "°（",
+		cam.tilt_min_deg, "~", cam.tilt_max_deg, " 步进 ", cam.tilt_step_deg,
+		"）旋转步进 ", cam.rotate_step_deg, "° 后撤 ", cam.distance)
+	if cam.zoom_min <= 0.0 or cam.zoom_max <= cam.zoom_min:
+		print("FAIL: 相机缩放区间非法（min 应为正、max 应大于 min）")
+		failed = true
+	if cam.size < cam.zoom_min or cam.size > cam.zoom_max:
+		print("FAIL: 相机初始视野不在缩放区间内")
+		failed = true
+	if cam.tilt_deg >= 0.0:
+		print("FAIL: 相机俯角应为负（负数才是朝下看）")
+		failed = true
+
 	if failed:
 		print("========== 测试失败 ==========")
 		quit(1)

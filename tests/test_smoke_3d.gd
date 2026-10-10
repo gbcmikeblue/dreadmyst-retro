@@ -6,7 +6,8 @@ extends SceneTree
 ## 注意：这里用无类型变量接收节点，避免静态类型分析把元素推断为基类而误报。
 
 var _frames: int = 0
-var _main: Node = null
+## 声明成 Variant：M13 起要动态调 `_main.choose_slot()`（静态类型 Node 上没有这个方法）
+var _main: Variant = null
 var _failed: bool = false
 
 
@@ -24,8 +25,16 @@ func _initialize() -> void:
 
 func _on_frame() -> void:
 	_frames += 1
+	if _frames == 1:
+		# M13：启动会先弹标题选档界面并把世界暂停。本测试要的是「活世界」（刷怪 / 追击 /
+		# 攻击 / 受伤 / 掉落 / 自动保存），所以替玩家选一个槽位开新档；存档路径指到测试专用文件，
+		# 免得覆盖真实存档（收尾会删掉）。
+		_main.save_service.path_pattern = "user://test_smoke_save_%d.json"
+		_main.choose_slot(1, true)
+		return
 	if _frames < 300:
 		return
+	_main.save_service.delete_slot(1)
 	_report()
 	quit(1 if _failed else 0)
 
@@ -63,6 +72,10 @@ func _report() -> void:
 		print("     背包 = ", p.backpack.size(), "/", p.backpack_capacity())
 		_check(p.has_method("add_to_backpack"), "玩家应有 add_to_backpack 方法（M11 背包）")
 		_check(p.backpack_capacity() > 0, "背包容量应 > 0")
+		# M13：存档导入导出
+		_check(p.has_method("export_state"), "玩家应有 export_state 方法（M13 存档）")
+		_check(p.has_method("import_state"), "玩家应有 import_state 方法（M13 存档）")
+		_check(p.has_method("reset_state"), "玩家应有 reset_state 方法（M13 存档）")
 
 	# M7：技能栏应存在于 HUD 之下
 	var skill_bar = _main.find_child("SkillBar", true, false)
@@ -77,6 +90,12 @@ func _report() -> void:
 	_check(shop != null, "应存在 Shop 商店服务节点（M11）")
 	var bag_panel = _main.find_child("InventoryPanel", true, false)
 	_check(bag_panel != null, "应存在 InventoryPanel 背包界面节点（M11）")
+
+	# M13：标题选档界面 + 存档服务
+	var title = _main.find_child("TitleScreen", true, false)
+	_check(title != null, "应存在 TitleScreen 标题选档界面（M13）")
+	var save_service = _main.find_child("SaveService", true, false)
+	_check(save_service != null, "应存在 SaveService 存档服务节点（M13）")
 
 	# M10：竞技场入口传送门 + Boss 原型
 	var portal = _main.find_child("Portal", true, false)

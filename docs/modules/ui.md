@@ -75,10 +75,12 @@
 | 暴击 | 金 (1.0, 0.85, 0.2) |
 | 普通 | 白 |
 
-## 加点面板 / 背包面板（独立 CanvasLayer）
+## 加点面板 / 背包面板 / 标题选档界面（独立 CanvasLayer）
 
 `AttributePanel`（M8，`C` 键）与 `InventoryPanel`（M11，`I`/`B` 键）都不塞进 HUD，
-而是**各自一个 `CanvasLayer`（layer 20）**，由 `main.gd` 挂载。三者共用的约定：
+而是**各自一个 `CanvasLayer`（layer 20）**，由 `main.gd` 挂载；
+`TitleScreen`（M13，启动时自动打开）是 `layer = 30`，盖在这两个面板之上。
+它们共用的约定：
 
 | 点 | 做法 |
 | --- | --- |
@@ -89,7 +91,15 @@
 | 按钮 | `focus_mode = FOCUS_NONE`，否则点过之后空格 / 回车会重复触发按钮 |
 | 遮罩 | 全屏 `ColorRect`（`PRESET_FULL_RECT` + `MOUSE_FILTER_STOP`）吃掉点击 |
 
-详见 [attributes.md](attributes.md) 与 [inventory.md](inventory.md)。
+详见 [attributes.md](attributes.md)、[inventory.md](inventory.md) 与 [save.md](save.md)。
+
+`TitleScreen` 额外两点：
+
+- 打开时 `get_tree().paused = true` **冻结整个世界**（选档时不会被怪打死），关闭时解冻。
+  已实测暂停期间 `SceneTree.process_frame` 仍会触发，所以帧驱动的 `--script` 自测不会被挂住。
+- 它一打开就会把 `DevPause` 整体关掉（`main → dev_pause.set_enabled(false)`）：
+  否则点「继续」会顺手把标题界面后面的世界解冻。反过来说，**有 `modal_ui` 在时 DevPause
+  也不响应暂停热键**（那几种界面本身已经把玩家冻住了）。
 
 ## 开发用暂停控件（DevPause, CanvasLayer）
 
