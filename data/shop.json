@@ -1,0 +1,12 @@
+{
+    "version": 1,
+    "_note": "商店货架。每一条 offer 会在「生成货架」时用 LootTable 按 slot/rarity/item_level 现生成一件装备（名字与词条随机），price 是买入价；无库存限制，卖的是「同款不同货」。restock_cost 是刷新货架的金币。slot 取值 weapon/helmet/armor/boots/ring，rarity 取值 common/uncommon/rare/epic/legendary。改这里即可，代码不用动。",
+    "restock_cost": 25,
+    "offers": [
+        { "slot": "weapon", "rarity": "common",   "item_level": 2, "price": 35 },
+        { "slot": "armor",  "rarity": "uncommon", "item_level": 3, "price": 70 },
+        { "slot": "helmet", "rarity": "uncommon", "item_level": 3, "price": 65 },
+        { "slot": "boots",  "rarity": "common",   "item_level": 3, "price": 40 },
+        { "slot": "ring",   "rarity": "rare",     "item_level": 4, "price": 140 }
+    ]
+}

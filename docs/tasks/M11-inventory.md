@@ -4,8 +4,10 @@
 > **优先级**：P1（等 M7 跑通后）  
 > **预计出图量**：~170 张（50 装备图标 + 100 废稿 + 20 商店 UI 元素）  
 > **预计人工后期**：~23h（主要是图标对齐和品质边框）  
-> **状态**：待开始  
-> **完成前置**：M7 完成（建立职业色 + 视觉基线）
+> **状态**：**代码已完成**（2026-10-10，背包 / 对比 / 商店骨架，图标仍为程序化占位）；**出图待开始**  
+> **完成前置**：M7 完成（建立职业色 + 视觉基线）—— ✅ 已满足  
+> **代码侧已就位**：背包 / 装备对比 / 一键换装 / 商店买卖都能跑，缺的只是图标与商店 UI 素材。
+> 详见 [`docs/modules/inventory.md`](../modules/inventory.md)。
 
 ---
 
@@ -108,25 +110,29 @@ front view, RPG game UI asset
 
 | 文件 | 状态 | 改动 |
 | --- | --- | --- |
-| `data/loot.json` | 改 | 全部 225 条目加 `icon` 字段 |
-| `data/loot.json` | 改 | 加 `quality_color` 字段（直接存 16 进制色码） |
-| `scripts/ui/inventory.gd` | **新建** | 背包界面，引用 32×32 icon |
-| `scripts/ui/shop.gd` | **新建** | 商店界面，引用商店 UI 元素 |
-| `scripts/ui/equip_compare.gd` | **新建** | 装备对比浮窗 |
-| `scripts/data/loot_table.gd` | 改 | `LootTable` 类加 `icon` 字段 |
+| `data/inventory.json` | ✅ 已建 | 背包容量 + 卖出价公式 |
+| `data/shop.json` | ✅ 已建 | 货架（部位 / 品质 / 等级 / 价格）+ 刷新价 |
+| `scripts/data/inventory_config.gd`、`shop_config.gd` | ✅ 已建 | 两个配置的数据层（卖出价是唯一实现） |
+| `scripts/ui/inventory_panel.gd` | ✅ 已建 | **背包 + 商店 + 对比合成一个界面**（两个页签，`I`/`B` 键） |
+| `scripts/core/shop.gd` | ✅ 已建 | 商店服务：货架生成 / 购买 / 刷新（扣钱前校验背包空位） |
+| `scripts/actors/player.gd` | ✅ 已改 | `backpack` + 入包 / 装备 / 分解 / 一键换装；掉落入包、换装回包 |
+| `scripts/data/loot_table.gd` | ✅ 已改 | `generate()` 增加 `forced_slot_key`（商店要卖指定部位） |
+| `data/loot.json` | ⬜ 待做 | 225 条目加 `icon`（等图标出图后再加；`quality_color` 已被 `GearItem.RARITY_COLORS` 取代，不需要） |
+| `scripts/ui/equip_compare.gd` | ❌ 废弃 | 对比直接画在背包界面的详情区，不单开浮窗 |
+| `tests/test_inventory.gd` | ✅ 已建 | 8 用例：配置 / 入包 / 换装 / 分解 / 容量 / 一键换装 / 商店 / 界面 |
 
 ---
 
 ## 7. 验收清单
 
+- [x] **游戏中能打开背包**（`I` / `B`）+ 品质色边框正确（程序化占位版）
+- [x] **装备对比**：逐词条显示增减，绿 = 提升 / 红 = 变差，空位有专门提示
+- [x] **商店买卖**：购买扣钱入包、刷新货架扣钱；背包满 / 金币不足时按钮禁用并给出原因
 - [ ] 15 张底图标出图
 - [ ] 5 套着色变体生成（15 × 5 = 75 实际使用图标）
 - [ ] 5 张品质边框
 - [ ] 1 套商店 UI（~10 个元素）
-- [ ] `data/loot.json` 全部 `icon` 字段非空
-- [ ] 游戏中能打开背包看到图标 + 品质边框颜色正确
-- [ ] 商店能正常买卖（图标显示在物品上）
-- [ ] 装备对比能正常切换
+- [ ] `data/loot.json` 全部 `icon` 字段非空，并把格子换成 `TextureRect`
 - [ ] `_LICENSES.md` 已登记所有用到的 LoRA
 - [ ] git 提交 + push
 
@@ -138,3 +144,4 @@ front view, RPG game UI asset
 | --- | --- |
 | 2026-10-09 | 初版 |
 | 2026-10-09 | **编号由 M8 改为 M11**，与 `docs/roadmap.md` 的权威编号统一（原 M8 与「属性加点」撞号） |
+| 2026-10-10 | **代码部分完成**（背包 / 对比 / 一键换装 / 商店 + 自测 + 文档）：三个界面脚本合并为 `inventory_panel.gd`（双页签），`equip_compare.gd` 废弃（对比画在详情区）；`quality_color` 由 `GearItem.RARITY_COLORS` 取代；图标出图**仍未开始** |

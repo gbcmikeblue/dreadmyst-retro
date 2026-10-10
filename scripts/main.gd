@@ -37,6 +37,11 @@ var dungeon: Dungeon = null
 ## 竞技场里的入口传送门
 var arena_portal: Portal = null
 
+## 商店服务（M11）：货架由它持有，背包界面通过 Events 拉取
+var shop: Shop = null
+## 背包 / 商店界面（M11）
+var inventory_panel: InventoryPanel = null
+
 var _spawn_timer: float = 2.0
 ## 相机的焦点（玩法平面坐标），平滑跟随玩家
 var _focus: Vector2 = Vector2.ZERO
@@ -54,6 +59,11 @@ func _ready() -> void:
 	add_child(hud)
 	# M8 加点界面：独立 CanvasLayer（layer 20），C 键开关，不塞进 HUD 以保持 HUD 只读
 	add_child(AttributePanel.new())
+	# M11 商店服务 + 背包界面（I/B 键开关）
+	shop = Shop.new()
+	add_child(shop)
+	inventory_panel = InventoryPanel.new()
+	add_child(inventory_panel)
 	if DEV_TOOLS:
 		add_child(DevPause.new())
 	_connect_events()
@@ -218,6 +228,9 @@ func _on_dungeon_enter_requested(dungeon_id: String) -> void:
 	Game.dungeon_id = def.id
 	Game.arena = def.bounds(DUNGEON_ORIGIN)
 
+	# 复活点跟着进副本变（否则死在副本里会复活到地城包围盒中心，可能卡在走廊/墙里）
+	Game.respawn_point = def.entrance_point(DUNGEON_ORIGIN)
+
 	# 玩家与相机一起瞬移：否则相机会从竞技场一路平移过去，画面很怪
 	var entrance := def.entrance_point(DUNGEON_ORIGIN)
 	player.global_position = Game.world(entrance)
@@ -235,6 +248,7 @@ func _on_dungeon_exit_requested() -> void:
 	Game.in_dungeon = false
 	Game.dungeon_id = ""
 	Game.arena = Game.ARENA_HOME
+	Game.respawn_point = Game.ARENA_HOME.get_center()
 
 	if dungeon != null and is_instance_valid(dungeon):
 		# 地城节点被释放时，它的 Portal._exit_tree 会顺手清掉屏幕上的交互提示
@@ -317,6 +331,8 @@ func _push_initial_state() -> void:
 		player.attributes.duplicate(),
 		player.free_attribute_points(),
 		player.attribute_points_spent())
+	Events.equipment_changed.emit(player.equipment)
+	Events.backpack_changed.emit(player.backpack.duplicate(), player.backpack_capacity())
 	if player.profession != null:
 		Events.player_profession_changed.emit(
 			player.profession_id(), player.profession.display_name, player.profession.color)

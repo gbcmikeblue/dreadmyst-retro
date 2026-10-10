@@ -10,23 +10,27 @@ d:/github/dreadmyst-retro/
 │   ├── professions.json     #   职业：基础属性 + 技能 id（M7）
 │   ├── skills.json          #   技能：冷却/耗蓝/倍率/射程/扇角（M7）
 │   ├── attributes.json      #   属性：每点加成/上限/每级自由点数（M8）
-│   └── dungeon.json         #   地城：房间流布局/每房怪数/Boss/通关奖励（M10）
+│   ├── dungeon.json         #   地城：房间流布局/每房怪数/Boss/通关奖励（M10）
+│   ├── inventory.json       #   背包：容量 + 卖出价公式（M11）
+│   └── shop.json            #   商店：货架/刷新价（M11）
 ├── scenes/
 │   └── main.tscn            # 唯一场景（根 Node3D + main.gd，其余节点代码构建）
 ├── scripts/
 │   ├── core/                # Autoload（见 modules/core.md）
 │   ├── actors/              # 玩家、敌人（见 modules/combat.md）
-│   ├── data/                # 数据层：模型 + 加载器（见 modules/loot.md、skills.md、attributes.md、dungeon.md）
+│   ├── core/                # Game / Events 自动加载 + 商店服务（见 modules/core.md、inventory.md）
+│   ├── data/                # 数据层：模型 + 加载器（见 modules/loot.md、skills.md、attributes.md、dungeon.md、inventory.md）
 │   ├── world/               # 竞技场/地城/传送门/掉落物/程序化美术工厂（见 modules/world.md、dungeon.md、render3d.md）
-│   ├── ui/                  # HUD/技能栏/加点面板/伤害数字/开发面板（见 modules/ui.md、attributes.md）
+│   ├── ui/                  # HUD/技能栏/加点面板/背包面板/伤害数字/开发面板（见 modules/ui.md、attributes.md、inventory.md）
 │   └── main.gd              # 入口：世界搭建/相机/光照/刷怪/进出地城/事件接线
 ├── tests/
-│   ├── test_data_layer.gd   # 数据层自测（JSON / 装备 / 职业技能 / 属性 / 地城 / 加权分布）
+│   ├── test_data_layer.gd   # 数据层自测（JSON / 装备 / 职业技能 / 属性 / 地城 / 背包商店 / 加权分布）
 │   ├── test_smoke_3d.gd     # 3D 冒烟测试（实例化主场景跑帧）
 │   ├── test_input_move.gd   # 输入链路诊断（按键→动作 / 动作→移动）
 │   ├── test_skills.gd       # 技能自测（施放/冷却/360°/转职/蓝量）
 │   ├── test_attributes.gd   # 属性加点自测（加点/上限/满级/转职不重置/界面）
-│   └── test_dungeon.gd      # 地城自测（进出/房间流/清房开门/Boss/奖励/边界还原）
+│   ├── test_dungeon.gd      # 地城自测（进出/房间流/清房开门/Boss/奖励/边界还原）
+│   └── test_inventory.gd    # 背包自测（入包/装备换装/分解/容量/一键换装/买卖/界面）
 ├── assets/                  # 美术素材 + _LICENSES.md / _PROMPTS.md（出图配套）
 ├── AGENTS.md                # AI 协作约定（硬性规范 + 文档索引，改代码前先读）
 └── docs/                    # 本文档体系
@@ -97,6 +101,9 @@ godot --headless --path . --script res://tests/test_attributes.gd
 # 地城自测（进出地城 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原）
 godot --headless --path . --script res://tests/test_dungeon.gd
 
+# 背包自测（入包 / 装备换装 / 分解 / 容量 / 一键换装 / 买卖 / 界面）
+godot --headless --path . --script res://tests/test_inventory.gd
+
 # 导入 + 短跑
 godot --headless --import --quit --path .
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
@@ -106,6 +113,7 @@ godot --headless --quit-after 900 --path . res://scenes/main.tscn
 
 | 日期 | 引擎 | 结果 |
 | --- | --- | --- |
+| 2026-10-10（**M11 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `InventoryConfig` / `ShopConfig` / `Shop` / `InventoryPanel` 共 4 个全局类，0 ERROR）；**8 条**验证命令全部 exit 0（含新增 `test_inventory.gd` 的 8 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。期间自测抓出一处真实缺陷：`InventoryPanel` 的两个页根忘了赋值，`_show_bag()` 会往 `Null` 上写 `visible`。 |
 | 2026-10-10（**M10 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `DungeonDef` / `DungeonRegistry` / `Dungeon` / `DungeonRoom` / `DungeonDoor` / `Portal` 共 6 个全局类，0 ERROR）；**7 条**验证命令全部 exit 0（含新增 `test_dungeon.gd` 的 6 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。期间自测抓出两处真实缺陷：`DungeonDef.bounds()` 的 Z 口径与 `room_rect()` 不一致、取消失败的野外敌人未立刻退出 `enemies` 组。 |
 | 2026-10-10（**M8 后**） | Godot **4.7.2** stable | `--import` 成功（新增 `AttributeDef` / `AttributeRegistry` / `AttributePanel` 共 3 个全局类，0 ERROR）；**6 条**验证命令全部 exit 0（含新增 `test_attributes.gd` 的 8 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。本机引擎是 4.7.2，与 `project.godot` 声明的 4.7 一致，**不触发 `icon.svg.import` 降级问题**。 |
 | 2026-10-09（**M7 后**） | Godot **4.4.1** stable | `--import` 成功（新增 `Profession` / `ProfessionRegistry` / `SkillDef` / `SkillRegistry` / `SkillBar` 共 5 个全局类，0 ERROR）；**4 项**自测全部通过（含新增 `test_skills.gd` 的 5 个用例）；`main.tscn` 900 帧 **0 ERROR / 0 WARNING**。 |

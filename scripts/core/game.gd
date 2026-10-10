@@ -14,6 +14,8 @@ var arena: Rect2 = ARENA_HOME
 ## 当前是否在地城内 + 地城 id（由 main.gd 维护）
 var in_dungeon: bool = false
 var dungeon_id: String = ""
+## 复活点（玩法平面坐标）。竞技场 = 营地中心；进地城后 main.gd 改成地城入口。
+var respawn_point: Vector2 = ARENA_HOME.get_center()
 
 var gold: int = 0
 var level: int = 1
@@ -51,6 +53,9 @@ func _setup_input() -> void:
 
 	# M10 交互：F 使用传送门（进/出地城）
 	_action("interact", [KEY_F])
+
+	# M11 背包 / 商店：I 或 B 开关（Inventory / Bag）
+	_action("inventory", [KEY_I, KEY_B])
 
 func _action(action_name: StringName, keys: Array) -> void:
 	if InputMap.has_action(action_name):

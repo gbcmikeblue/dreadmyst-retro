@@ -43,6 +43,10 @@ var profession: Profession = null
 ## GearItem.Slot -> GearItem
 var equipment: Dictionary = {}
 
+## M11 背包：Array[GearItem]，容量由 data/inventory.json 的 backpack_capacity 决定。
+## 掉落不再自动穿/自动分解，而是先进背包，由玩家在背包界面里对比后决定穿上或分解。
+var backpack: Array = []
+
 ## M8 属性加点：属性 id -> 已投入点数（键集合与 data/attributes.json 一致）
 var attributes: Dictionary = {}
 
@@ -103,6 +107,11 @@ func _ready() -> void:
 	Events.player_level_changed.connect(_on_level_changed)
 	# 加点界面 -> 属性点投入：UI 只发请求，实际动作在 Player 里做
 	Events.attribute_allocate_requested.connect(_on_allocate_requested)
+	# M11 背包 / 商店 -> 入包 / 装备 / 分解（同样只收请求，不反向引用任何 UI）
+	Events.backpack_add_requested.connect(_on_backpack_add_requested)
+	Events.backpack_equip_requested.connect(_on_backpack_equip_requested)
+	Events.backpack_sell_requested.connect(_on_backpack_sell_requested)
+	Events.backpack_optimize_requested.connect(_on_backpack_optimize_requested)
 
 	hp = max_hp()
 	mana = max_mana()
@@ -111,6 +120,7 @@ func _ready() -> void:
 	Events.player_stats_changed.emit(total_stats())
 	Events.skill_cooldowns_changed.emit({})
 	_emit_attributes()
+	_emit_backpack()
 
 
 func _physics_process(delta: float) -> void:
@@ -469,31 +479,142 @@ func _respawn() -> void:
 	dead = false
 	hp = max_hp()
 	mana = max_mana()
-	global_position = Game.world(Game.arena.get_center())
+	# 复活点由 Game 维护（竞技场 = 营地中心；地城内 = 入口）：
+	# 直接用 Game.arena.get_center() 在副本里可能落在走廊/墙里。
+	global_position = Game.world(Game.respawn_point)
 	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
 	_emit_mana()
 	Events.toast.emit("你已复活", Color(0.6, 1.0, 0.6))
 
 
-# ---------------------------------------------------------------- 装备 / 拾取
+# ---------------------------------------------------------------- 装备 / 背包（M11）
 
-## 由 GearPickup 调用：装备更好的，自动分解更差的换金币。
+## 由 GearPickup 调用：掉落的装备先进背包；背包满了才当场自动分解（避免掉落凭空消失）。
 func receive_loot(gear: GearItem) -> void:
-	var current: GearItem = equipment.get(gear.slot)
-	if current == null or gear.power_score() > current.power_score():
-		equipment[gear.slot] = gear
-		hp = minf(hp, max_hp())
-		mana = minf(mana, max_mana())
-		Events.equipment_changed.emit(equipment)
-		Events.player_stats_changed.emit(total_stats())
-		Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
-		_emit_mana()
-		Events.toast.emit("已装备 %s（%s）" % [gear.item_name, gear.slot_name()], gear.rarity_color())
+	if gear == null:
+		return
+	if add_to_backpack(gear):
+		Events.toast.emit("拾取 %s（%s）→ 背包" % [gear.item_name, gear.slot_name()],
+			gear.rarity_color())
 	else:
-		var value := int(round(gear.power_score() / 4.0)) + gear.item_level * 2
+		var value := sell_price(gear)
 		Game.add_gold(value)
-		Events.toast.emit("分解 %s，获得 %d 金币" % [gear.item_name, value], gear.rarity_color())
+		Events.toast.emit("背包已满，自动分解 %s（+%d 金币）" % [gear.item_name, value],
+			gear.rarity_color())
 	Events.loot_picked_up.emit(gear)
+
+
+func backpack_capacity() -> int:
+	return InventoryConfig.load_default().backpack_capacity
+
+
+func backpack_full() -> bool:
+	return backpack.size() >= backpack_capacity()
+
+
+func backpack_item(index: int) -> GearItem:
+	if index < 0 or index >= backpack.size():
+		return null
+	return backpack[index]
+
+
+## 一件装备分解能换多少金币（与背包界面显示同一口径，公式在数据层）。
+func sell_price(gear: GearItem) -> int:
+	return InventoryConfig.load_default().sell_price_for(gear)
+
+
+## 入包。背包已满返回 false（调用方决定是丢弃、自动分解还是拒绝购买）。
+func add_to_backpack(gear: GearItem) -> bool:
+	if gear == null or backpack_full():
+		return false
+	backpack.append(gear)
+	_emit_backpack()
+	return true
+
+
+## 把背包第 index 件穿上：换下来的旧装备**回到背包**，不会凭空消失。
+func equip_from_backpack(index: int) -> bool:
+	var gear := backpack_item(index)
+	if gear == null:
+		return false
+	var previous: GearItem = equipment.get(gear.slot)
+	backpack.remove_at(index)
+	equipment[gear.slot] = gear
+	if previous != null:
+		backpack.append(previous)
+
+	# 上限变化时只做向下钳制，不自动补满（与加点一致）
+	hp = clampf(hp, 0.0, max_hp())
+	mana = clampf(mana, 0.0, max_mana())
+	Events.equipment_changed.emit(equipment)
+	Events.player_stats_changed.emit(total_stats())
+	Events.player_health_changed.emit(int(round(hp)), int(round(max_hp())))
+	_emit_mana()
+	_emit_backpack()
+	Events.toast.emit("已装备 %s（%s）" % [gear.item_name, gear.slot_name()], gear.rarity_color())
+	return true
+
+
+## 分解背包第 index 件换金币。
+func sell_from_backpack(index: int) -> bool:
+	var gear := backpack_item(index)
+	if gear == null:
+		return false
+	backpack.remove_at(index)
+	var value := sell_price(gear)
+	Game.add_gold(value)
+	_emit_backpack()
+	Events.toast.emit("分解 %s，获得 %d 金币" % [gear.item_name, value], gear.rarity_color())
+	return true
+
+
+## 一键换装：每个部位挑背包里评分最高的那件，只要比身上的好就换上。返回换了几件。
+func optimize_equipment() -> int:
+	var changed := 0
+	for slot in GearItem.SLOT_ORDER:
+		var best_index := -1
+		var best_score := 0.0
+		for i in range(backpack.size()):
+			var item: GearItem = backpack[i]
+			if item == null or item.slot != slot:
+				continue
+			var score := item.power_score()
+			if score > best_score:
+				best_score = score
+				best_index = i
+		if best_index < 0:
+			continue
+		var current: GearItem = equipment.get(slot)
+		if current != null and best_score <= current.power_score():
+			continue
+		if equip_from_backpack(best_index):
+			changed += 1
+	if changed > 0:
+		Events.toast.emit("一键换装：换上了 %d 件" % changed, Color(0.80, 0.90, 1.0))
+	return changed
+
+
+## UI -> 事件总线 -> Player：UI 不引用 Player，只发请求。
+func _on_backpack_add_requested(gear) -> void:
+	if gear is GearItem and add_to_backpack(gear):
+		return
+	Events.toast.emit("背包已满，无法放入", Color(1.0, 0.72, 0.35))
+
+
+func _on_backpack_equip_requested(index: int) -> void:
+	equip_from_backpack(index)
+
+
+func _on_backpack_sell_requested(index: int) -> void:
+	sell_from_backpack(index)
+
+
+func _on_backpack_optimize_requested() -> void:
+	optimize_equipment()
+
+
+func _emit_backpack() -> void:
+	Events.backpack_changed.emit(backpack.duplicate(), backpack_capacity())
 
 
 # ---------------------------------------------------------------- 表现

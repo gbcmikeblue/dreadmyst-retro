@@ -46,7 +46,10 @@ godot --headless --path . --script res://tests/test_attributes.gd
 # 6) 地城自测：进出地城 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原
 godot --headless --path . --script res://tests/test_dungeon.gd
 
-# 7) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
+# 7) 背包自测：入包 / 装备换装 / 分解 / 容量 / 一键换装 / 买卖 / 界面
+godot --headless --path . --script res://tests/test_inventory.gd
+
+# 8) 长时运行：覆盖刷怪 / 追击 / 攻击 / 受伤 / 掉落等路径
 godot --headless --quit-after 900 --path . res://scenes/main.tscn
 ```
 
@@ -72,6 +75,7 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
 | 切换职业（原型期） | `F1` 战士 / `F2` 法师 / `F3` 游侠 |
 | 属性加点面板 | `C`（开关；面板内 `+1` / `+5` 按钮加点） |
 | 交互（传送门） | `F`（靠近竞技场中央下方的传送门进入地城；地城内可原路返回） |
+| 背包 / 商店 | `I` 或 `B`（背包页：装备对比 / 装备 / 分解 / 一键换装；商店页：购买 / 刷新货架） |
 
 ---
 
@@ -95,6 +99,10 @@ Windows 上请用 `*_console.exe`，带控制台的版本才会往终端输出�
   最后一间是 Boss 房（骸骨领主：免疫击退、专属大血条、HUD 顶部显示血条），
   击败后发通关奖励（金币 / 经验 / 保底稀有装备）并开启出口传送门。
   布局与数值全在 `data/dungeon.json` + `data/enemies.json`。**数值为自设占位，美术仍为程序化占位。**
+- **背包 / 商店 / 装备对比（M11）**：24 格背包（容量在 `data/inventory.json`）。
+  掉落**先进背包**，在 `I` 界面里与身上装备逐词条对比（绿 = 提升 / 红 = 变差）后决定穿上或分解；
+  换下来的旧装备会回到背包；背包满了掉落才会自动分解。商店（同一界面的「商店」页签）
+  按 `data/shop.json` 现生成货架，可购买并花金币刷新。**数值为自设占位，图标仍为程序化占位。**
 - **敌人 AI**：按等级缩放数值、索敌追击、近身攻击、敌人之间简单排斥避免堆叠；Boss 免疫击退。
 - **刷怪节奏**：随玩家等级提升场上敌人上限与刷怪数量。
 - **掉落系统**：`LootTable` 按等级随机生成装备，含 5 部位 × 5 品质（普通→传说）。
@@ -117,14 +125,17 @@ dreadmyst-retro/
 │   ├── professions.json          #   职业：基础属性 + 技能 id 列表（M7）
 │   ├── skills.json               #   技能：冷却 / 耗蓝 / 倍率 / 射程 / 扇角（M7）
 │   ├── attributes.json           #   属性：每点加成 / 上限 / 每级自由点数（M8）
-│   └── dungeon.json              #   地城：房间流布局 / 每房怪数 / Boss / 通关奖励（M10）
+│   ├── dungeon.json              #   地城：房间流布局 / 每房怪数 / Boss / 通关奖励（M10）
+│   ├── inventory.json            #   背包：容量 + 卖出价公式（M11）
+│   └── shop.json                 #   商店：货架 / 刷新价（M11）
 ├── scenes/
 │   └── main.tscn                 # 唯一场景：根 Node3D，仅挂载 scripts/main.gd
 ├── scripts/
 │   ├── main.gd                   # 入口：搭 3D 环境 / 正交相机 / 刷怪 / 事件接线
 │   ├── core/
 │   │   ├── event_bus.gd          # Autoload「Events」：全局信号总线
-│   │   └── game.gd               # Autoload「Game」：竞技场 / 等级 / 金币 / 输入映射 / 坐标转换
+│   │   ├── game.gd               # Autoload「Game」：竞技场 / 等级 / 金币 / 输入映射 / 坐标转换
+│   │   └── shop.gd               # class_name Shop：商店服务（货架 / 购买 / 刷新）（M11）
 │   ├── data/
 │   │   ├── gear_item.gd          # class_name GearItem：装备数据模型（部位 / 品质 / 词条）
 │   │   ├── loot_config.gd        # class_name LootConfig：loot.json 加载器（含加权抽取）
@@ -136,9 +147,13 @@ dreadmyst-retro/
 │   │   ├── skill_def.gd          # class_name SkillDef：单技能定义（M7）
 │   │   ├── skill_registry.gd     # class_name SkillRegistry：skills.json 加载 / 按 id 查询（M7）
 │   │   ├── attribute_def.gd      # class_name AttributeDef：单属性定义（每点加成 / 上限）（M8）
-│   │   └── attribute_registry.gd # class_name AttributeRegistry：attributes.json 加载 / 加成汇总（M8）
+│   │   ├── attribute_registry.gd # class_name AttributeRegistry：attributes.json 加载 / 加成汇总（M8）
+│   │   ├── dungeon_def.gd        # class_name DungeonDef：地城布局（房间/门/Boss/奖励）（M10）
+│   │   ├── dungeon_registry.gd   # class_name DungeonRegistry：dungeon.json 加载（M10）
+│   │   ├── inventory_config.gd   # class_name InventoryConfig：背包容量 + 卖出价公式（M11）
+│   │   └── shop_config.gd        # class_name ShopConfig：商店货架 / 刷新价加载（M11）
 │   ├── actors/
-│   │   ├── player.gd             # class_name Player：移动 / 冲刺 / 职业与技能 / 装备加成
+│   │   ├── player.gd             # class_name Player：移动 / 冲刺 / 职业与技能 / 属性点 / 背包与装备
 │   │   └── enemy.gd              # class_name Enemy：AI 追击攻击 / 受击 / 死亡
 │   ├── world/
 │   │   ├── arena_background.gd   # class_name ArenaBackground：3D 地面网格 + 边界 + 装饰
@@ -153,6 +168,7 @@ dreadmyst-retro/
 │       ├── hud.gd                # class_name HUD：血条 / 蓝条 / 职业 / 经验 / 金币 / 装备栏 / 提示
 │       ├── skill_bar.gd          # class_name SkillBar：底部技能栏（冷却 + 耗蓝 + 快捷键）（M7）
 │       ├── attribute_panel.gd    # class_name AttributePanel：属性加点界面（C 键开关）（M8）
+│       ├── inventory_panel.gd    # class_name InventoryPanel：背包 / 商店界面（I 键开关）（M11）
 │       ├── damage_number.gd      # class_name DamageNumber：Label3D 漂浮伤害数字
 │       └── dev_pause.gd          # class_name DevPause：开发用暂停面板（DEV_TOOLS 开关）
 ├── tests/                        # headless 自测（命令见 docs/architecture.md §6）
@@ -161,7 +177,8 @@ dreadmyst-retro/
 │   ├── test_input_move.gd        #   输入链路诊断：按键 → 动作 → 移动
 │   ├── test_skills.gd            #   技能：施放 / 冷却 / 360° 判定 / 转职 / 蓝量门槛（M7）
 │   ├── test_attributes.gd        #   属性：加点 / 上限 / 满级 / 转职不重置 / 界面开关（M8）
-│   └── test_dungeon.gd           #   地城：进出 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原（M10）
+│   ├── test_dungeon.gd           #   地城：进出 / 房间流 / 清房开门 / Boss / 奖励 / 边界还原（M10）
+│   └── test_inventory.gd         #   背包：入包 / 换装 / 分解 / 容量 / 一键换装 / 买卖（M11）
 ├── assets/                       # 美术素材；_LICENSES.md / _PROMPTS.md 为出图登记与模板
 └── docs/                         # 文档体系（索引见 docs/README.md）
 ```
@@ -186,12 +203,13 @@ dreadmyst-retro/
 - [x] **属性加点**：升级给自由属性点，玩家自行分配（对应 Dreadmyst 的 stat points）（M8）。5 属性（力量/敏捷/智力/体力/精神），`C` 键加点界面，数值在 `data/attributes.json`。
 - [ ] **职业选择 UI**：当前是原型期 `F1`/`F2`/`F3` 硬切。
 - [x] **地下城（Dungeon）**：房间流程（清房开门）+ Boss 房 + 通关奖励 + 传送门进出（M10）。布局在 `data/dungeon.json`，Boss 数值在 `data/enemies.json`。
-- [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店 ← *下一步（M11）*。
+- [x] **背包与交易**：24 格背包、逐词条装备对比、一键换装、金币商店（购买 / 刷新）（M11）。
+  背包容量与价格在 `data/inventory.json` / `data/shop.json`。
 - [ ] **背包与交易**：多格背包、装备对比 tooltip、金币商店。
-- [ ] **PVP 区域**：玩家之间的对抗场景。
+- [ ] **PVP 区域**：玩家之间的对抗场景。**暂不做**（单机原型没有第二个玩家，等联机之后再说）
 - [x] **数据驱动**：掉落表抽到 `data/loot.json`（`LootConfig`），敌人原型抽到 `data/enemies.json`（`EnemyArchetype` + `EnemyRegistry`），含 3 种原型（粘液怪/重甲兽人/幽影）。新增敌人/词条/名字池 = 改 JSON，不改代码。
 - [x] **2.5D 渲染**：由 2D 重构为真 3D + 固定正交俯角相机 + billboard 精灵，数据层零改动（详见 `docs/modules/render3d.md` 与 `docs/roadmap.md` 的 M9 迁移记录）。
-- [ ] **存档**：`user://` 序列化角色等级、装备与金币。
+- [ ] **存档**：`user://` 序列化角色等级、属性点、背包、装备与金币 ← *下一步（M13）*。
 - [ ] **联机**：Godot 高层多人 API（ENet）实现客户端-服务器同步。
 
 ---

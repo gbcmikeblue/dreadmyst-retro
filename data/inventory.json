@@ -1,0 +1,8 @@
+{
+    "version": 1,
+    "_note": "背包容量与「分解卖出价」公式。卖出价 = round(装备评分 × sell_price_per_power) + 物品等级 × sell_price_per_level，并不低于 min_sell_price。改这里即可，代码不用动。",
+    "backpack_capacity": 24,
+    "sell_price_per_power": 0.25,
+    "sell_price_per_level": 2,
+    "min_sell_price": 1
+}

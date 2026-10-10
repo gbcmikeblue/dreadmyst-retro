@@ -23,6 +23,11 @@
 | 属性面板 | (24, 110) | `player_stats_changed` 驱动 |
 | 金币 | (940, 24) | `gold_changed` 驱动 |
 | 击杀数 | (940, 52) | `enemy_died` 驱动 |
+| 背包占用 | (940, 74) | `backpack_changed` 驱动，满时变橙（M11） |
+| 属性点 | (240, 72) | `attributes_changed` 驱动，有点数时金色（M8） |
+| Boss 血条 | 顶部居中 | `boss_spawned` / `boss_health_changed` / `boss_defeated`，只在 Boss 出现时显示（M10） |
+| 地城进度 | (24, 132) | `dungeon_entered` / `dungeon_room_cleared` / `dungeon_exited`（M10） |
+| 交互提示 | 技能栏正上方 | `interact_prompt_changed`，`""` 表示隐藏（M10） |
 | 装备栏 | (24, 430) | 300×240，5 格（`SLOT_ORDER`），品质色，空位显示"空" |
 | 技能栏 | 底部居中 | `SkillBar` 子节点，锚点跟随窗口（详见下节） |
 | Toast | (420, 120) | `toast` 信号驱动，定时淡出 |
@@ -69,6 +74,22 @@
 | 玩家受伤 | 红 (1.0, 0.35, 0.35) |
 | 暴击 | 金 (1.0, 0.85, 0.2) |
 | 普通 | 白 |
+
+## 加点面板 / 背包面板（独立 CanvasLayer）
+
+`AttributePanel`（M8，`C` 键）与 `InventoryPanel`（M11，`I`/`B` 键）都不塞进 HUD，
+而是**各自一个 `CanvasLayer`（layer 20）**，由 `main.gd` 挂载。三者共用的约定：
+
+| 点 | 做法 |
+| --- | --- |
+| 刷新 | 只监听 `Events`，不引用 `Player`（对比、卖出价、加成文本都在本地按数据层公式算） |
+| 操作 | 只发「请求」信号（如 `backpack_equip_requested`），由 `Player` 执行后广播状态回来 |
+| 打开时 | 加入 `modal_ui` 组，`Player._ui_blocking()` 据此冻结移动与攻击（按钮拦不住轮询式读输入） |
+| 暂停时 | `process_mode = PROCESS_MODE_ALWAYS`，DevPause 暂停后仍能开关与点按钮 |
+| 按钮 | `focus_mode = FOCUS_NONE`，否则点过之后空格 / 回车会重复触发按钮 |
+| 遮罩 | 全屏 `ColorRect`（`PRESET_FULL_RECT` + `MOUSE_FILTER_STOP`）吃掉点击 |
+
+详见 [attributes.md](attributes.md) 与 [inventory.md](inventory.md)。
 
 ## 开发用暂停控件（DevPause, CanvasLayer）
 

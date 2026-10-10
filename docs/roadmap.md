@@ -8,9 +8,13 @@
   **代码完成；数值为自设占位，待原作资料校准**。详见 [modules/attributes.md](modules/attributes.md)
 - [x] **M10 地城与 Boss**：3 房间房间流 + 清房开门 + 真墙体碰撞 + Boss 房 + 通关奖励 + 传送门进出。
   **代码完成；美术仍为程序化占位，数值为自设占位**。详见 [modules/dungeon.md](modules/dungeon.md)
-- [ ] **M11 背包与交易**：多格背包、装备对比、商店 ← *当前最高优先级*
-- [ ] **M12 PVP 区域**
-- [ ] **M13 存档**：`user://` 序列化等级/装备/金币
+- [x] **M11 背包与交易**：24 格背包、装备对比、一键换装、商店（购买 / 刷新）。
+  **代码完成；美术仍为程序化占位，数值为自设占位**。详见 [modules/inventory.md](modules/inventory.md)
+- [ ] **M12 PVP 区域** —— ⚠️ **暂不做**（2026-10-10 决定）。
+  参考游戏里 PVP 是「区域属性」，但本项目是**单机原型**，没有第二个玩家可打；
+  等 M14 联机之后再做才有意义（届时按 `docs/reference/mmo-opensource/kaetram-open.md`
+  的「区域作为地图数据属性层」实现）
+- [ ] **M13 存档**：`user://` 序列化等级 / 经验 / 属性点 / 背包 / 装备 / 金币 ← *当前最高优先级*
 - [ ] **M14 联机**：ENet 客户端-服务器
 - [ ] **M15 素材接入**：真实 sprite（`sprite_path`）/ 中文字体 / 音频  
   ↳ 出图任务卡片见 [`docs/tasks/`](tasks/)；完整方案见 [`docs/reference/ai-asset-generation.md`](reference/ai-asset-generation.md)
@@ -40,6 +44,7 @@
 | **M7 职业与技能** | **2026-10-09** | **3 职业 + 6 技能 + 各自冷却/耗蓝 + 蓝条 + 技能栏；新增 `professions.json` / `skills.json`；数值为自设占位待校准** |
 | **M9 2.5D 渲染** | **2026-10-09** | **转真 3D + 固定正交相机 + billboard 精灵；数据层零改动** |
 | **M8 属性加点** | **2026-10-10** | **新增 `data/attributes.json` + `AttributeDef`/`AttributeRegistry`；5 属性 × 每点加成 × 满级上限；每级 5 点自由分配；`AttributePanel` 加点界面（C 键 / +1·+5 / 满级态 / `modal_ui` 冻结操作）；新增 `tests/test_attributes.gd`（8 用例全通过）。数值为自设占位** |
+| **M11 背包 / 商店 / 装备对比** | **2026-10-10** | **新增 `data/inventory.json`（容量 + 卖出价公式）与 `data/shop.json`（货架 + 刷新价）、`InventoryConfig`/`ShopConfig`；`Player` 增加背包（入包 / 装备 / 分解 / 一键换装，**掉落入包、换装回包**）；新增 `Shop` 服务（货架生成 / 购买 / 刷新，扣钱前校验背包空位）；新增 `InventoryPanel`（背包 / 商店两页签 + 装备对比 + `I` 键 + `modal_ui` 冻结）；HUD 增加背包占用；`LootTable.generate()` 支持指定部位；新增 `tests/test_inventory.gd`（8 用例）。数值为自设占位** |
 | **M10 地城与 Boss** | **2026-10-10** | **新增 `data/dungeon.json` + `DungeonDef`/`DungeonRegistry`；`Dungeon`/`DungeonRoom`/`DungeonDoor`/`Portal`；3 房间房间流 + 清房开门 + **项目首处真墙体碰撞（layer 1）** + Boss 房（`bone_lord`，`is_boss` 不入野外池、免疫击退、HUD 大血条）+ 通关奖励（金币/经验/保底品质装备）+ 传送门进出（F 交互）；新增 `tests/test_dungeon.gd`（6 用例）。数值为自设占位** |
 
 ## M9 迁移记录（2D → 3D，供参考）
@@ -76,5 +81,7 @@
 | 2026-10-09 | **M7 职业与技能（代码骨架完成）**：新增 `data/professions.json` + `data/skills.json`、`Profession`/`SkillDef` 数据层与两个注册表；`Player` 改为职业驱动并支持多技能施放（各自冷却 / 耗蓝 / 伤害倍率 / 射程 / 扇角 / 360° 判定 / F1-F3 转职）；新增 `SkillBar` 技能栏与 HUD 蓝条、职业标签；新增 `tests/test_skills.gd`（5 用例全通过），3 项既有自测 + 主场景 900 帧 0 ERROR / 0 WARNING。**数值为自设占位，待原作资料校准** |
 | 2026-10-10 | **M8 属性加点（代码完成）**：新增 `data/attributes.json` + `AttributeDef`/`AttributeRegistry`（5 属性、`per_point` 每点加成、`max_points` 上限、`free_points_per_level`）；点数经济 = `(等级-1) × 每级点数 - 已投入`，等级只由 `Game` 提供；`Player.allocate_attribute()` + `Events.attribute_allocate_requested/attributes_changed`（UI 不引用 Player）；新增 `AttributePanel` 加点界面（C 键 / +1·+5 / 满级态 / `modal_ui` 冻结操作）+ HUD 剩余点数；新增 `tests/test_attributes.gd`（8 用例），6 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。**数值为自设占位** |
 | 2026-10-10 | **M10 地城与 Boss（代码完成）**：新增 `data/dungeon.json` + `DungeonDef`/`DungeonRegistry`（房间流布局的平面几何派生）；`Dungeon`（按房刷怪 / 清房开门 / Boss 房 / 通关奖励）、`DungeonRoom`（3D 地面 + **layer 1 碰撞墙** + 门洞）、`DungeonDoor`（先放行再播动画）、`Portal`（平面距离判定 + F 交互）；`enemies.json` 新增 `bone_lord` 与 `is_boss`（不入野外池 / 免疫击退 / HUD 大血条）；`Game` 增加 `ARENA_HOME` / `in_dungeon` / `arena` 切换；HUD 增加 Boss 血条、房间进度、交互提示；新增 `tests/test_dungeon.gd`（6 用例），7 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。**美术与数值仍为占位** |
+| 2026-10-10 | **范围决定：M12 PVP 区域暂不做**。单机原型没有第二个玩家，PVP 要等 M14 联机之后才有意义；当前最高优先级改为 **M13 存档**（等级 / 属性点 / 背包 / 装备 / 金币已经是一整套真实状态，值得先落盘） |
+| 2026-10-10 | **M11 背包 / 商店（代码完成）**：新增 `data/inventory.json` + `data/shop.json` 与 `InventoryConfig`/`ShopConfig`；`Player` 增加 `backpack` 与 `add_to_backpack`/`equip_from_backpack`/`sell_from_backpack`/`optimize_equipment`（**M11 起掉落不再自动穿/自动分解，改为入包；背包满才当场分解；换下来的旧装备回到背包**）；新增 `Shop` 服务（货架由 `LootTable.generate(level, rarity, slot)` 现生成，购买前校验背包空位与金币）；新增 `InventoryPanel`（`I`/`B` 键、背包 / 商店页签、装备对比、一键换装）；`LootTable.generate()` 增加 `forced_slot_key`；新增 `tests/test_inventory.gd`（8 用例），8 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING |
 | 2026-10-10 | **修复地城 `bounds()` 口径**：Z 起点原为 `origin.y`，与 `room_rect()`（以 `origin.y` 为中线）不一致，
 导致自测报「房间不在 bounds 内」；改为 `origin.y - room_size.y * 0.5` |

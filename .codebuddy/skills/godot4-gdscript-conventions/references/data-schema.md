@@ -209,7 +209,48 @@ roll_drop(enemy_level)
 
 ---
 
-## 6. 新增一张数据表的标准做法
+## 6. `data/inventory.json` / `data/shop.json`（M11 背包与商店）
+
+### `inventory.json`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `backpack_capacity` | int | 背包格数（界面按它生成格子） |
+| `sell_price_per_power` | float | 卖出价 = 评分 × 该值 + … |
+| `sell_price_per_level` | int | 卖出价再加 `等级 × 该值` |
+| `min_sell_price` | int | 卖出价下限（不低于此值） |
+
+| 类 | 文件 | 接口 |
+| --- | --- | --- |
+| `InventoryConfig` | `scripts/data/inventory_config.gd` | `load_default()` / `from_dict()` / **`sell_price_for(gear)`** / `clear_cache()` |
+
+> ⚠️ **卖出价公式只在这里实现**：`Player`（真正加金币）与背包界面（显示「分解 +N」）
+> 都调 `sell_price_for()`，否则会出现「界面显示 12、实际给 10」。
+
+### `shop.json`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `restock_cost` | int | 刷新货架的金币 |
+| `offers[].slot` | String | `weapon` / `helmet` / `armor` / `boots` / `ring` |
+| `offers[].rarity` | String | `common` … `legendary` |
+| `offers[].item_level` | int | 商品等级（决定词条数值） |
+| `offers[].price` | int | 买入价 |
+
+| 类 | 文件 | 接口 |
+| --- | --- | --- |
+| `ShopConfig` | `scripts/data/shop_config.gd` | `load_default()` / `from_dict()` / `clear_cache()`；`offers` 元素已解析成 `{slot, rarity, item_level, price, slot_key, rarity_key}` |
+| `Shop` | `scripts/core/shop.gd` | `roll_stock()` / `buy(i)` / `restock()`；与外界只走 Events |
+
+- 货架**不写死装备**：每条 offer 由 `LootTable.generate(item_level, rarity_key, slot_key)` 现生成，
+  所以 `LootTable.generate()` 有三个参数，**部位必须在生成时指定**（名字池与词条按部位取
+  `loot.json` 的 `stat_specs`，事后改 `gear.slot` 会得到「名字是战靴、词条是武器」的怪东西）。
+- `Shop` 用 `backpack_changed` **缓存**背包占用（`_bag_size` / `_bag_capacity`），
+  这样不用引用 Player 也能在扣钱之前知道东西放不放得下。
+
+---
+
+## 7. 新增一张数据表的标准做法
 
 1. `data/<name>.json`，顶层 `{"version": N, "<items>": [...]}`，颜色用 `[r,g,b]`。
 2. `scripts/data/<name>_archetype.gd`：

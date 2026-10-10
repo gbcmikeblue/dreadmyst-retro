@@ -17,6 +17,7 @@ var _xp_bar: ProgressBar
 var _stats_label: Label
 var _gold_label: Label
 var _kill_label: Label
+var _bag_label: Label
 var _equip_label: RichTextLabel
 var _toast_label: Label
 var _hint_label: Label
@@ -69,6 +70,8 @@ func _build() -> void:
 
 	_gold_label = _make_label(Vector2(940, 24), "金币 0", 18, Color(1.0, 0.84, 0.25))
 	_kill_label = _make_label(Vector2(940, 52), "击杀 0", 14, Color(0.8, 0.8, 0.85))
+	# M11：背包占用（满时高亮，提示去分解）
+	_bag_label = _make_label(Vector2(940, 74), "背包 0/24", 14, Color(0.72, 0.74, 0.80))
 
 	_equip_label = RichTextLabel.new()
 	_equip_label.bbcode_enabled = true
@@ -107,7 +110,7 @@ func _build() -> void:
 
 	_toast_label = _make_label(Vector2(420, 120), "", 20, Color.WHITE)
 	_hint_label = _make_label(Vector2(24, 690),
-		"WASD 移动   空格/左键 攻击   1/2 技能   Shift 冲刺   F 交互   C 属性加点   F1/F2/F3 切职业",
+		"WASD 移动  空格/左键 攻击  1/2 技能  Shift 冲刺  F 交互  C 属性  I 背包  F1/F2/F3 切职业",
 		13, Color(0.6, 0.6, 0.7))
 
 
@@ -166,6 +169,8 @@ func _connect_events() -> void:
 	Events.boss_health_changed.connect(_on_boss_health_changed)
 	Events.boss_defeated.connect(_on_boss_defeated)
 	Events.interact_prompt_changed.connect(_on_interact_prompt_changed)
+	# M11 背包
+	Events.backpack_changed.connect(_on_backpack_changed)
 
 
 func _on_health_changed(current: int, maximum: int) -> void:
@@ -275,6 +280,14 @@ func _on_boss_defeated(_display_name: String) -> void:
 func _on_interact_prompt_changed(text: String) -> void:
 	_prompt_label.text = text
 	_prompt_label.visible = not text.is_empty()
+
+
+# ---------------------------------------------------------------- M11 背包
+
+func _on_backpack_changed(items: Array, capacity: int) -> void:
+	_bag_label.text = "背包 %d/%d" % [items.size(), capacity]
+	_bag_label.add_theme_color_override("font_color",
+		Color(1.0, 0.62, 0.35) if items.size() >= capacity else Color(0.72, 0.74, 0.80))
 
 
 func refresh_kills() -> void:

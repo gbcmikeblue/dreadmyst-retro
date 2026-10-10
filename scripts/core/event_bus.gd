@@ -61,3 +61,24 @@ signal boss_health_changed(current: int, maximum: int)
 signal boss_defeated(display_name: String)
 ## 交互提示文本变化("" 表示隐藏)。由 Portal 发出（靠近/离开时各发一次），HUD 显示
 signal interact_prompt_changed(text: String)
+
+# ---------------------------------------------------------------- M11 背包 / 商店
+
+## 背包内容变化(物品数组 Array[GearItem], 容量)
+signal backpack_changed(items: Array, capacity: int)
+## 请求把一件装备放进背包（商店购买等外部来源）。背包满时 Player 会提示并不入包
+signal backpack_add_requested(gear)
+## UI 请求把背包第 index 件装备穿上（换下来的旧装备回到背包）
+signal backpack_equip_requested(index: int)
+## UI 请求分解（卖出）背包第 index 件装备
+signal backpack_sell_requested(index: int)
+## UI 请求一键换装（每个部位挑背包里评分最高且优于当前的那件）
+signal backpack_optimize_requested
+## 商店货架变化(Array[Dictionary]，元素 {gear: GearItem, price: int, slot_key: String})
+signal shop_stock_changed(offers: Array)
+## UI 请求拉一次货架（打开商店页时发）
+signal shop_stock_requested
+## UI 请求刷新货架（花金币重roll）
+signal shop_restock_requested
+## UI 请求购买第 index 件货架商品
+signal shop_buy_requested(offer_index: int)

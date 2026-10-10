@@ -15,13 +15,17 @@ static func roll_drop(enemy_level: int) -> GearItem:
 	return generate(enemy_level)
 
 
-## 无条件生成一件装备。forced_rarity_key 非空时跳过品质随机（Boss 保底掉落用）。
-static func generate(enemy_level: int, forced_rarity_key: String = "") -> GearItem:
+## 无条件生成一件装备。
+##   forced_rarity_key 非空 → 跳过品质随机（Boss 保底掉落 / 商店货架用）
+##   forced_slot_key   非空 → 跳过部位随机（商店要卖指定部位；名字池与词条会跟着该部位走，
+##                          所以必须在这里指定，而不能生成完再改 `gear.slot`）
+static func generate(enemy_level: int, forced_rarity_key: String = "",
+		forced_slot_key: String = "") -> GearItem:
 	var cfg := LootConfig.load_default()
 	if cfg == null:
 		return null
 	var gear := GearItem.new()
-	var slot_key := cfg.pick_slot_key()
+	var slot_key := forced_slot_key if not forced_slot_key.is_empty() else cfg.pick_slot_key()
 	var rarity_key := forced_rarity_key if not forced_rarity_key.is_empty() \
 		else cfg.pick_rarity_key()
 	gear.slot = cfg.slot_enum_for(slot_key)

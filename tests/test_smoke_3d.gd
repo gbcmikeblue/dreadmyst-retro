@@ -59,6 +59,10 @@ func _report() -> void:
 		_check(p.has_method("allocate_attribute"), "玩家应有 allocate_attribute 方法（M8 属性加点）")
 		_check(p.attributes.size() == AttributeRegistry.ids().size(),
 			"玩家的属性表应与 data/attributes.json 一致")
+		# M11：背包
+		print("     背包 = ", p.backpack.size(), "/", p.backpack_capacity())
+		_check(p.has_method("add_to_backpack"), "玩家应有 add_to_backpack 方法（M11 背包）")
+		_check(p.backpack_capacity() > 0, "背包容量应 > 0")
 
 	# M7：技能栏应存在于 HUD 之下
 	var skill_bar = _main.find_child("SkillBar", true, false)
@@ -67,6 +71,12 @@ func _report() -> void:
 	# M8：加点界面应存在
 	var attribute_panel = _main.find_child("AttributePanel", true, false)
 	_check(attribute_panel != null, "应存在名为 AttributePanel 的加点界面节点")
+
+	# M11：商店服务 + 背包界面
+	var shop = _main.find_child("Shop", true, false)
+	_check(shop != null, "应存在 Shop 商店服务节点（M11）")
+	var bag_panel = _main.find_child("InventoryPanel", true, false)
+	_check(bag_panel != null, "应存在 InventoryPanel 背包界面节点（M11）")
 
 	# M10：竞技场入口传送门 + Boss 原型
 	var portal = _main.find_child("Portal", true, false)

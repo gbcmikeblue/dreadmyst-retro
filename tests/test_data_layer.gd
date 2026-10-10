@@ -152,6 +152,34 @@ func _initialize() -> void:
 		print("FAIL: Boss 混进了野外刷怪池")
 		failed = true
 
+	# ---------- 背包 / 商店（M11）----------
+	var inv := InventoryConfig.load_default()
+	print("[OK] InventoryConfig：容量 ", inv.backpack_capacity,
+		"  卖出价 = 评分 × ", inv.sell_price_per_power,
+		" + 等级 × ", inv.sell_price_per_level)
+	if inv.backpack_capacity <= 0:
+		print("FAIL: 背包容量应 > 0")
+		failed = true
+
+	var shop_cfg: ShopConfig = ShopConfig.load_default()
+	if shop_cfg.offers.is_empty():
+		print("FAIL: ShopConfig.offers 为空")
+		failed = true
+	print("[OK] ShopConfig：刷新价 ", shop_cfg.restock_cost, "，货架 ", shop_cfg.offers.size(), " 条：")
+	for o in shop_cfg.offers:
+		print("     - ", o["slot_key"], " / ", o["rarity_key"], "  lv", o["item_level"],
+			"  price=", o["price"])
+		if int(o["price"]) <= 0:
+			print("FAIL: 货架商品价格应 > 0")
+			failed = true
+		# 指定部位 / 品质必须真的生效：商店不能卖「名字是战靴、词条是武器」的货
+		var probe := LootTable.generate(
+			int(o["item_level"]), String(o["rarity_key"]), String(o["slot_key"]))
+		if probe == null or probe.slot != int(o["slot"]) or probe.rarity != int(o["rarity"]):
+			print("FAIL: generate(指定 slot/rarity) 结果不符：",
+				o["slot_key"], " / ", o["rarity_key"])
+			failed = true
+
 	if failed:
 		print("========== 测试失败 ==========")
 		quit(1)

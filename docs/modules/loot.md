@@ -29,8 +29,13 @@
 `attack` 攻击力 / `max_hp` 生命上限 / `armor` 护甲 / `crit` 暴击率(0~1) / `speed` 移动速度
 
 ### 方法
-- `power_score()`：装备评分 = attack×2 + max_hp×0.15 + armor×1.5 + crit×200 + speed×0.5（用于自动穿/分解比较）
+- `power_score()`：装备评分 = attack×2 + max_hp×0.15 + armor×1.5 + crit×200 + speed×0.5
+  （用于**一键换装**比较，以及 M11 之前的「自动穿/自动分解」；背包界面显示对比结论也用它）
 - `tooltip()`：多行描述文本
+
+> 🔁 **M11 起掉落不再自动穿 / 自动分解**：`Player.receive_loot()` 改成把装备放进背包，
+> 只有当背包满了才当场分解换金币。换装时旧装备回背包。详见
+> [inventory.md](inventory.md)。
 
 ## 2. LootConfig（loot.json 加载器）
 
