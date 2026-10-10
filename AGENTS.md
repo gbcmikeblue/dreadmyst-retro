@@ -16,6 +16,14 @@
 魔域其余系统**明确不做**（勿再主动提议）：幻兽 / 宠物、转职与职业分支（暂不做）、装备强化 / 升星 / 宝石镶嵌 /
 附魔 / 套装、家族军团 PK / 攻城、交易行 / 摆摊 / 押镖 / 挖宝。
 
+开源项目检索可参考清单 **`bobeff/open-source-games`**（约 145 个开源游戏汇总）：与本项目**同构的只有约 8 个** ——
+`Abyss Engine`（暗黑 2 净室重实现，**MIT**，对应 M3 掉落 / M11 背包的数据与 UI 结构）、
+`DCSS` / `Shattered Pixel Dungeon`（地牢生成算法；**代码是 GPL，只看不抄**）、
+`Unknown Horizons godot-port` / `Liblast`（全清单里仅有的两个 Godot 4 项目）、
+`Veloren` / `OpenKO` / `OpenKore`（留给 M14 联机）；**其余（反编译类、赛车 / 城建 / RTS / 回合制等）与本项目无关**。
+沿用既有铁律：**不复制 GPL 项目的代码与素材**（见 [`docs/tasks/README.md`](docs/tasks/README.md) 的全局规则）。
+注意**代码许可 ≠ 素材许可**：例如 DCSS 代码是 GPLv2+，但其 32×32 tiles 是 **CC0**（可自由商用）。
+
 | 项 | 值 |
 | --- | --- |
 | 引擎 | Godot 4（`project.godot` 声明 **4.7**；编辑器 4.3+ 可开，本机实测版本 **4.4.1**） |
@@ -23,7 +31,7 @@
 | 语言 | GDScript，**静态类型必须完整** |
 | 空间 | **真 3D**（XZ 为地面、Y 为高度）+ 固定正交俯角相机（-45°）+ billboard 精灵 |
 | 主场景 | `res://scenes/main.tscn`，根 `Node3D`，**其余节点全部由代码构建** |
-| 美术 | 零外部素材，贴图由 `SpriteFactory` 逐像素生成 |
+| 美术 | 零外部素材，贴图由 `SpriteFactory` 用代码生成（**占位用，无固定风格**；出图基线见 [`assets/_PROMPTS.md`](assets/_PROMPTS.md)） |
 
 ---
 
@@ -236,3 +244,5 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 | 2026-10-10 | **M13 存档完成**：§3 新增「存档」陷阱组（存档是外部输入要兜底、解析用 `JSON` 实例别用 `JSON.parse_string()`、**启动会先弹标题选档界面并把世界暂停**因此需要世界跑的自测要自己选槽位）；§4 增加第 8 条验证命令（`tests/test_save.gd`，验收口径 8 条 → 9 条）；§5 索引加 `docs/modules/save.md` |
 | 2026-10-10 | **M14 联机暂不做**：§6 下一步改为 **M15 素材接入**，并注明「M15 阻塞在素材上，素材没到可先做纯代码的 M16 相机微调」；把 M12 / M14 两条范围决定合并成「别再主动提议」清单 |
 | 2026-10-10 | **M16 相机微调完成**：§3 新增 3 条 GDScript 编译期坑（`:=` 推断到 `Variant` 直接编译失败、局部变量叫 `name`、`is_equal_approx` 不吃 `Vector2`）；§4 增加第 9 条验证命令（`tests/test_camera.gd`，验收口径 9 条 → 10 条）；§5 索引不变（相机文档仍在 `docs/modules/render3d.md`）；§6 状态补上 M16，下一步仍是 M15 素材接入 |
+| 2026-10-10 | §1 登记开源项目清单 **`bobeff/open-source-games`**：记下约 8 个同构候选（Abyss Engine / DCSS / 像素地牢 / Unknown Horizons godot-port / Liblast / Veloren / OpenKO / OpenKore）与「其余无关」的结论；补一条**代码许可 ≠ 素材许可**（DCSS 代码 GPLv2+ 但 tiles 是 CC0），重申**不复制 GPL 代码与素材** |
+| 2026-10-10 | **美术风格基线改为"不做像素风"**（保留低分辨率 + 复古观感）：§1 的「美术」行由"**逐像素生成**"改为"代码生成（占位用、**无固定风格**）"，指向新基线；素材规格整体上调一档（角色 128² / 地砖 64² / 图标 64²），导入滤波由 Nearest 改 **Linear + Mipmaps**；`assets/_PROMPTS.md` 的 A–F 模板去像素化并加负向 `pixel art`，新增「后期统一规范」；**LoRA 改为可选**（先不加跑通一轮）。同步：`docs/reference/ai-asset-generation.md`、`docs/tasks/{README,_template,M7,M10,M11}`、`docs/modules/render3d.md`、`docs/reference/mmo-opensource/{intersect-engine,kaetram-open}.md` |

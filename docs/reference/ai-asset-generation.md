@@ -59,16 +59,19 @@
 
 | 类别 | 形态 | 数量级 | 首选模型 | 推荐 LoRA 关键词（Civitai 搜） | 出图尺寸 | 用途 |
 | --- | --- | --- | --- | --- | --- | --- |
-| **角色 sprite** | 俯视角 4/8 方向角色 | ~20 个敌人 + 主角 | SD 1.5 | `top-down character sprite`, `pixel character sheet` | 512×512（单图） | `actors/character_*.gd` 替换 `_draw()` |
-| **怪物 sprite** | 俯视角怪物 | ~20 种 | SD 1.5 | `monster top-down`, `dungeon creature pixel` | 512×512 | `actors/enemy.gd` |
-| **场景 tileset** | 32×32 像素地砖 | ~15 套 | SD 1.5 + ControlNet tile | `isometric tileset`, `dungeon tileset seamless`, `2.5D rpg` | 1024×1024（再切） | `world/` 场景背景 |
-| **装备图标** | 32×32 / 64×64 物品 | 50–100 个 | SD 1.5 / SDXL | `rpg item icon`, `pixel item icon` | 512² → 降采样 | `data/loot.json` 的 `icon` 字段 |
-| **UI 元素** | 图标、按钮、边框 | ~30 个 | SD 1.5 | `rpg ui pixel`, `fantasy icon` | 256×256 | `ui/` 资源 |
+| **角色 sprite** | 俯视角角色，**收口 128×128** | ~20 个敌人 + 主角 | SD 1.5（LoRA 可选） | `top-down character art`, `painted 2d game sprite` | 512×512（单图） | `data/enemies.json` 的 `sprite_path` |
+| **怪物 sprite** | 俯视角怪物，**收口 128×128** | ~20 种 | SD 1.5（LoRA 可选） | `monster top-down art`, `painted creature` | 512×512 | `data/enemies.json` 的 `sprite_path` |
+| **场景 tileset** | **64×64 地砖（非像素）** | ~15 套 | SD 1.5 + ControlNet tile | `painterly tileset`, `dungeon tileset seamless`, `2.5D rpg` | 1024×1024（再切 64²） | `world/` 场景背景 |
+| **装备图标** | **64×64 物品（非像素）** | 50–100 个 | SD 1.5 / SDXL | `rpg item icon`, `painted game icon` | 512² → 平滑降采样 | `data/loot.json` 的 `icon` 字段 |
+| **UI 元素** | 图标、按钮、边框（按显示尺寸 1:1） | ~30 个 | SD 1.5（LoRA 可选） | `fantasy game ui`, `painted button` | 256×256 | `ui/` 资源 |
 | **技能特效** | 粒子/光效概念图 | ~10 个 | SDXL | `magic effect`, `fantasy spell` | 1024×1024 | 后期切帧 |
 | **Boss 概念图** | 全身立绘 | ~5 个 | SDXL | `fantasy boss concept`, `dungeon boss` | 1024×1536 | 战斗场景背景 |
 | **场景氛围图** | 整图氛围参考 | 几张即可 | SDXL | `isometric dungeon scene`, `fantasy environment` | 1024×1024 | 氛围参考（不进游戏） |
 
-> **起步阶段先建 3–5 个 LoRA**（不要贪多），覆盖：角色 sprite ×1 + tileset ×1 + 物品图标 ×1 + UI ×1。后期按需追加。
+> **LoRA 不是必需**（2026-10-10 决定）：先**不加 LoRA** 跑通一轮，看 base 模型的实际效果再决定。
+> 如果确实需要（固定主角长相 / UI 花纹 / tileset 要求成体系），起步 **1–2 个**即可，不要贪多。
+> 不加 LoRA 时一致性改靠：固定 checkpoint + 固定 seed 家族 + **一图多格** + **调色板收敛**
+> （见 `assets/_PROMPTS.md` 的「后期统一规范」）。
 
 ---
 
@@ -113,35 +116,41 @@
 
 ### 4.2 Prompt 模板（针对本项目）
 
+> ⚠️ **风格基线：不做像素风**（2026-10-10 决定，走「低分辨率 + 复古观感」的平滑手绘路线）。
+> 下面是**模板的副本**，权威版在 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md) —— 那里还有
+> E（技能图标）、F（UI 元素）两个本文件没有的模板，以及「后期统一规范」。**改一边就要同步另一边。**
+
 #### A. 俯视角角色 sprite（SD 1.5 + 角色 LoRA）
 
 **Prompt：**
 ```
-<lora:角色LoRA名:0.7>, top-down view, full body character, single character,
-pixel art, 2.5D retro game style, simple background, RPG sprite, game asset,
-centered composition, white background, sharp edges
+top-down view, full body character, single character, painted 2D game sprite,
+2.5D retro RPG style, soft shading, clean silhouette, simple background,
+game asset, centered composition, white background
 ```
 
 **Negative：**
 ```
-3d, realistic, photo, blurry, multiple characters, full scene, watermark,
-text, signature, cropped, deformed, extra limbs, ugly
+3d render, realistic, photo, blurry, multiple characters, full scene, watermark,
+text, signature, cropped, deformed, extra limbs, ugly,
+pixel art, 8-bit, hard pixel edges
 ```
 
-**后处理**（Aseprite/Pixelitor）：居中对齐 → 透明背景 → 切成多帧 → 拼成 spritesheet
+**后处理**（Aseprite/Pixelitor）：居中对齐 → 透明背景 → 切成多帧 → **平滑降到 128×128** → 拼成 spritesheet
 
 #### B. 场景 tileset（SD 1.5 + tileset LoRA + ControlNet tile）
 
 **Prompt：**
 ```
-<lora:场景LoRA名:0.7>, seamless tileset, top-down RPG, 32x32 grid,
-grass stone dirt path tiles, pixel art, fantasy medieval, orthographic view,
+seamless tileset, top-down RPG, 64x64 grid, grass stone dirt path tiles,
+painterly fantasy medieval, orthographic view, soft shading, limited palette,
 game asset, no characters, no UI
 ```
 
 **Negative：**
 ```
-3d, perspective, isometric, characters, watermark, text, signature, blurry
+3d, perspective, isometric, characters, watermark, text, signature, blurry,
+pixel art, 8-bit, hard pixel edges
 ```
 
 **启用 ControlNet tile**（关键）：上传任意一张地砖参考图，让模型学会"无缝拼接"。
@@ -152,17 +161,18 @@ game asset, no characters, no UI
 
 **Prompt：**
 ```
-<lora:物品LoRA名:0.7>, single game item icon, centered, transparent background,
-pixel art style, simple shading, sharp outline, fantasy [sword/axe/potion/helmet],
+single game item icon, centered, transparent background, painted 2D game icon,
+soft shading, clean outline, fantasy [sword/axe/potion/helmet],
 front view, RPG inventory icon
 ```
 
 **Negative：**
 ```
-3d, realistic, photo, multiple items, character, scene, watermark, text
+3d render, realistic, photo, multiple items, character, scene, watermark, text,
+pixel art, 8-bit, hard pixel edges
 ```
 
-**后处理**：出 512² → 降采样到 32×32 或 64×64 → 转 PNG（透明背景）。
+**后处理**：出 512² → **平滑降采样**到 64×64（Lanczos3/Area，**不要** Nearest）→ 转 PNG（透明背景）。
 
 #### D. Boss 概念图（SDXL + boss LoRA）
 
@@ -180,6 +190,8 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 
 **后处理**：直接用，不切。
 
+> 本模板本来就符合新基线（`painterly` + 负向已排除 `pixel art`），风格基线变更后**无需调整**。
+
 ### 4.3 出图后立即归档
 
 每次出图，Forge 会自动存到 `D:\AI\outputs\<日期>\*.png`。
@@ -193,14 +205,19 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 
 ```
 Forge 出图 (.png, 1024²)
-  → Aseprite：调色、对齐、像素化、拼 spritesheet
+  → Aseprite：抠图、**平滑降采样**（Area/Lanczos3）、对齐、**调色板收敛**、拼 spritesheet
   → Real-ESRGAN（可选）：2x 放大低清图
   → Tiled：把 tileset 拼成关卡地图，导出 JSON
   → Godot：导入 .png / TileSet / .tscn
-  → GDScript：替换 _draw() 中的程序化绘制
+  → GDScript：填 `sprite_path` / `icon` 字段（**不改渲染路径**）
 ```
 
 ### 5.2 与现有代码的衔接
+
+> ⚠️ **本节写于 2D 时代（M9 之前），已过期**：现在不是 `_draw()` + `Sprite2D` + `TileMap`，而是
+> **真 3D + billboard**（见 [`../modules/render3d.md`](../modules/render3d.md)）。真实接入点只有两处：
+> `data/enemies.json` 的 `sprite_path`（`SpriteFactory` 会优先加载它，填了即生效）与 `data/loot.json` 的 `icon`；
+> 地砖则替换 `DungeonRoom` 的程序化地面网格。**下表仅作历史参考**，不要照着做。
 
 当前 `scripts/` 全部是 `_draw()` 程序化绘制。引入素材后**逐步替换**，不一次性大改：
 
@@ -220,7 +237,9 @@ Forge 出图 (.png, 1024²)
 ### 5.3 素材导入 Godot 规范
 
 1. **路径**：`res://assets/` 下分 `sprites/`、`tilesets/`、`icons/`、`ui/`、`concepts/`
-2. **导入设置**（.import 文件）：像素图选 **Nearest 滤波**（不要线性，否则模糊）
+2. **导入设置**（.import 文件）：**`Filter = Linear`、`Mipmaps = on`**
+   （非像素风**不要**选 Nearest，否则边缘硬锯齿）。
+   ⚠️ 代码当前是 `TEXTURE_FILTER_NEAREST`（`scripts/world/sprite_factory.gd`），出图跑通后按实际观感二选一
 3. **文件命名**：`{类别}_{id}_{姿态}.png`，例：`enemy_slime_idle.png`、`item_sword_iron_icon.png`
 4. **版本控制**：素材走 **Git LFS**（每个素材 > 100KB 都要 LFS），否则仓库会爆
 
@@ -260,6 +279,11 @@ Forge 出图 (.png, 1024²)
 
 > 300 张图如果 SD 1.5 每张 10s ≈ 50 分钟；人工是瓶颈。
 
+> ⚠️ **非像素风下上表的人工后期是"下限"**（2026-10-10）：~60h 原本是按"512² 出图 → 最近邻降到 32/64、后期很快"
+> 估的。改成平滑手绘路线后，目标分辨率上调（角色 128² / 地砖 64² / 图标 64²），每张都要抠图 +
+> 平滑降采样 + 调色板收敛，**实际后期时间会明显增加**；且 8GB 显存下 SDXL 的 1024² 就是上限。
+> 先按"不加 LoRA 出 4~6 张、跑通一条完整链路"实测一轮，再回来修正这张表。
+
 ---
 
 ## 8. 变更记录
@@ -268,6 +292,7 @@ Forge 出图 (.png, 1024²)
 | --- | --- |
 | 2026-10-09 | 初稿：基于 RTX 5070 + Forge + SD 1.5/SDXL + 清华 pip 镜像 |
 | 2026-10-09 | §7 工作量估算表的里程碑编号改为与 `docs/roadmap.md` 一致（M7 / M8 / M10 / M11 / M14） |
+| 2026-10-10 | **风格基线改为"不做像素风"**（保留低分辨率 + 复古观感）：§2 表去掉"32×32 像素地砖 / pixel item icon"与 `pixel` 系列关键词，规格上调为角色 128²、地砖 64²、图标 64²，接口字段改回真 3D 时代的 `sprite_path`；§4.2 A/B/C 模板去像素化并补负向 `pixel art, 8-bit, hard pixel edges`（D 无需改）；§5.1 后期流程改"平滑降采样 + 调色板收敛"；§5.3 导入改 `Filter = Linear` + `Mipmaps = on`；给已过期的 §5.2（2D 时代）加警告；§7 标注人工后期为下限；**LoRA 由"起步必建 3–5 个"改为"非必需"**。同步改了 `assets/_PROMPTS.md` |
 
 ---
 

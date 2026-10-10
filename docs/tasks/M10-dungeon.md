@@ -32,7 +32,7 @@
 
 | # | 资源 | 数量 | 尺寸 | 用途 |
 | --- | --- | --- | --- | --- |
-| 1 | 地牢 tileset | 1 套（~25 切片） | 1024² 出图 → 切 32×32 | `world/dungeon_*.tscn` |
+| 1 | 地牢 tileset | 1 套（~25 切片） | 1024² 出图 → 切 **64×64** | `world/dungeon_*.tscn` |
 | 2 | 森林 tileset | 1 套 | 同上 | `world/forest_*.tscn` |
 | 3 | 沙漠 tileset | 1 套 | 同上 | `world/desert_*.tscn` |
 | 4 | Boss 概念图 | 1 | 1024×1536 | `assets/concepts/boss_dungeon.png` |
@@ -96,7 +96,7 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 
 ### 5.1 tileset 切片
 
-1. **Tiled**（免费）：打开 1024² 大图 → New Tileset → Tile size 32×32 → 切片
+1. **Tiled**（免费）：打开 1024² 大图 → New Tileset → Tile size **64×64** → 切片
 2. **导出 JSON**：`tileset_dungeon.json`
 3. **Godot 导入**：`res://assets/tilesets/dungeon/` → 创建 TileSet 资源 → 指向切片
 4. **铺地城**：用 Tiled 编辑房间布局（每个房间 20×20 tile）→ 导出 `.tmx` → 转换或重新铺
@@ -116,7 +116,7 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 
 - 坐标：`Game.world(v2)` / `Game.plane(v3)`（XZ 为地面，Y 为高度）
 - 相机：固定正交 + 俯角 `CAMERA_TILT_DEG`，详见 `docs/modules/render3d.md`
-- 像素贴图导入设 **Nearest** 滤波（`Sprite3D.texture_filter = TEXTURE_FILTER_NEAREST`）
+- 贴图导入设 **Linear + Mipmaps**（非像素风；代码当前是 `Sprite3D.texture_filter = TEXTURE_FILTER_NEAREST`，待实测后改）
 
 ---
 
@@ -146,7 +146,7 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 - [x] **Boss 战可打**（骸骨领主：免疫击退 + HUD 大血条 + 通关奖励）
 - [x] **地城进出口**（竞技场传送门 `F` 进入，地城内原路返回 / 清空后开出口）
 - [ ] 3 套 tileset 出图
-- [ ] 3 套 tileset 在 Tiled 中切片为 32×32
+- [ ] 3 套 tileset 在 Tiled 中切片为 **64×64**
 - [ ] 3 套 TileSet 资源导入 Godot，替换 `DungeonRoom` 的程序化网格地面
 - [ ] 玩家/敌人 sprite 已切 2.5D 视角（`data/enemies.json` 的 `sprite_path`）
 - [ ] Boss 概念图出图
@@ -164,3 +164,4 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 | 2026-10-09 | **编号由 M9 改为 M10**（原 M9 已被已完成的「2.5D 渲染」占用），与 `docs/roadmap.md` 统一 |
 | 2026-10-09 | 修正过期内容：删除 2D 时代的 `scale.y` + `y_sort` 方案，改为真 3D billboard / 3D 地面网格 |
 | 2026-10-10 | **代码部分完成**（房间流 / 真墙体碰撞 / Boss 房 / 奖励 / 传送门 + 自测 + 文档）：地城改为纯代码构建，废弃卡片里的 `dungeon_01.tscn`；tileset 与 Boss 概念图**仍未开始** |
+| 2026-10-10 | **风格基线改为"不做像素风"**：tileset 切片由 32×32 上调为 **64×64**（资源清单表 / Tiled 步骤 / 验收项三处）；导入滤波改 `Filter = Linear` + `Mipmaps = on` |

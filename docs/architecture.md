@@ -70,7 +70,7 @@ Game.plane(v3) -> Vector2                  # (x, y, z) -> (x, z)
 - `Camera3D` 正交投影 + 俯角 -45°，固定视角
 - 角色用 `Sprite3D` + `BILLBOARD_ENABLED`（billboard 精灵）
 - 地面/矮墙/岩石是**真 3D 网格**，享受真实阴影与深度遮挡
-- **零外部素材**：`SpriteFactory` 逐像素生成占位贴图；`sprite_path` 填了就自动换真图，不改代码
+- **零外部素材**：`SpriteFactory` 代码生成占位贴图（无固定风格）；`sprite_path` 填了就自动换真图，不改代码
 
 ## 5. 数据驱动模式
 

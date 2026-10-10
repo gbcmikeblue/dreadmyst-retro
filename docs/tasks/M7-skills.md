@@ -112,14 +112,14 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 ### 5.1 技能图标
 
 1. **Aseprite**：
-   - 打开 512² 出图 → Image → Mode → Indexed (32 色) → 像素化
-   - Image → Resize → 64×64 (Nearest Neighbor)
+   - 打开 512² 出图 → Image → Mode → Indexed (32 色)（**保留**：调色板收敛是风格一致性的主要来源）
+   - Image → Resize → 64×64（**Lanczos3 / Area 平滑降采样**，不是 Nearest Neighbor）
    - 删除背景（Select by Color → 白色 → Delete）
    - 居中对齐（中心放视觉中心，不是几何中心）
    - 导出 PNG：`assets/icons/skills/skill_<职业>_<技能>.png`
 2. **导入 Godot**：
    - 拖入 `res://assets/icons/skills/`
-   - 导入设置：Filter = **Nearest**，Mipmaps = off
+   - 导入设置：Filter = **Linear**，Mipmaps = **on**（非像素风；代码当前仍是 NEAREST，待实测）
 
 ### 5.2 技能特效
 
@@ -182,3 +182,4 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 | 2026-10-09 | 初版：M7 任务卡片，从 `ai-asset-generation.md` §7 拆分 |
 | 2026-10-09 | **代码骨架落地**：`data/skills.json` + `data/professions.json` + 4 个数据层类 + `SkillBar` + `Player` 职业/技能改造 + `tests/test_skills.gd`；§6 表格改为实际路径；状态改为「出图待开始」 |
 | 2026-10-09 | §2 技能列表的**名字已确定**（裂颅斩 / 旋风斩 / 火球术 / 陨石术 / 穿刺箭 / 箭雨），不再用占位关键词 |
+| 2026-10-10 | **风格基线改为"不做像素风"**：后期步骤去掉"像素化"，`Nearest Neighbor` 换成 **Lanczos3/Area 平滑降采样**（**保留** Indexed 调色板收敛，它是风格一致性的主要来源）；导入设置改 `Filter = Linear` + `Mipmaps = on`；图标仍为 64×64 |

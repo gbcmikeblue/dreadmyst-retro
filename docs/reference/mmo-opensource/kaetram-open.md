@@ -98,8 +98,9 @@ client/assets/
 2. **manifest 驱动**：帧动画（idle/walk/attack/death）、朝向都写在数据文件里，渲染器只认数据；
 3. 素材风格统一（社区 LPC 生态，兼容大量免费扩展素材）。
 
-**→ 对本项目的落地**：当前项目用 `_draw()` 程序化绘制，引入正式美术后应沿用该规范：
-- 统一基准 tile（建议 32×32 或 16×16 的整数倍）；
+**→ 对本项目的落地**：~~当前项目用 `_draw()` 程序化绘制~~（**已过期**：M9 起是真 3D + billboard，
+见 [`../../modules/render3d.md`](../../modules/render3d.md)）；引入正式美术后应沿用该规范：
+- 统一基准 tile（**2026-10-10 起定为 64×64**，非像素风；原"32×32 或 16×16 的整数倍"作废）；
 - `assets/` 按 `tilesets / sprites / ui / audio / manifest` 分层；
 - 动画帧序列数据化（Godot 中即 `SpriteFrames` 资源或 JSON → 生成）。
 

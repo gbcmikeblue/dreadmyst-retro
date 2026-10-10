@@ -13,7 +13,7 @@
 | 名称 | 类型 | 来源 URL | 用途 | License | 商用 | 作者署名 | 状态 | 下载日期 | 文件大小 | 放置路径 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SDXL base 1.0 | checkpoint | https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0 | SDXL 出图（角色立绘/Boss/概念图） | Open RAIL-M | ✓ | 否 | 已部署 | 2026-10-09 | 6.46 GiB | `D:\AI\models\checkpoints\sd_xl_base_1.0.safetensors` |
-| SD 1.5 pruned-emaonly | checkpoint | https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5 | SD 1.5 出图（sprite/tileset/icon 主力） | Open RAIL-M | ✓ | 否 | 下载中 | 2026-10-09 | 4.27 GB（目标） | `D:\AI\models\checkpoints\v1-5-pruned-emaonly.safetensors` |
+| SD 1.5 pruned-emaonly | checkpoint | https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5 | SD 1.5 出图（sprite/tileset/icon 主力） | Open RAIL-M | ✓ | 否 | 已部署 | 2026-10-10 | 3.97 GB（实际） | `D:\AI\models\checkpoints\v1-5-pruned-emaonly.safetensors` |
 | _待填_ | LoRA | _Civitai URL_ | _角色/场景/物品/UI_ | _Open RAIL-M / CC-BY-SA / 等_ | _是/否_ | _是/否_ | _待部署_ | _YYYY-MM-DD_ | _X MB_ | `D:\AI\models\lora\子目录\xxx.safetensors` |
 
 > **如何快速填这一行**：
@@ -78,3 +78,4 @@
 | 日期 | 变更 |
 | --- | --- |
 | 2026-10-09 | 初版：登记 SDXL base 1.0（已部署）+ SD 1.5（下载中），加 SOP + License 速查 |
+| 2026-10-10 | SD 1.5 pruned-emaonly 状态改为**已部署**（实际 3.97 GB，路径 `D:\AI\models\checkpoints\`）；`D:\AI\models\{lora,controlnet,vae,embeddings}` 目前均为空 |

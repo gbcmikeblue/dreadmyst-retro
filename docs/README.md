@@ -32,7 +32,7 @@
 | 语言 | GDScript（静态类型） |
 | 空间 | **真 3D**（XZ 为地面、Y 为高度），玩法逻辑仍在 Vector2 平面计算 |
 | 视角 | **固定正交相机 + 俯角 -45°**（伪 2.5D） |
-| 美术 | 零外部素材：`SpriteFactory` 逐像素生成占位贴图 |
+| 美术 | 零外部素材：`SpriteFactory` 代码生成占位贴图（**无固定风格**，出图基线见 [`../assets/_PROMPTS.md`](../assets/_PROMPTS.md)） |
 | 主场景 | `res://scenes/main.tscn`（根 `Node3D`，节点代码构建） |
 | 运行 | 编辑器 F5 / `godot --path .`；验证命令见 architecture.md §6 |
 

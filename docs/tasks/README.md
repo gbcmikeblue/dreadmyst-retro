@@ -50,7 +50,9 @@
 - **不复制 Stendhal 等 GPL 项目代码/素材**（仅借鉴结构与思想）。
 - **所有 LoRA 下载即登记** `assets/_LICENSES.md`（不登记不能出图）。
 - **8GB 显存纪律**：单批 1 张 + SD 1.5 ≤ 512² + SDXL ≤ 1024² + 最多 1 ControlNet。
-- **像素图导入 Godot 必须选 Nearest 滤波**（不能选 Linear，否则模糊）。
+- ~~**像素图导入 Godot 必须选 Nearest 滤波**~~ —— **2026-10-10 起风格基线改为"不做像素风"**（见
+  [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)），导入规范改为 **`Filter = Linear` + `Mipmaps = on`**
+  （Nearest 用非像素图会硬锯齿）。素材尺寸也整体上调一档：角色 128²、地砖 64²、图标 64²。
 - **每次出图后及时归档**到 `assets/_wip/<类别>/<名称>.png`，避免 `D:\AI\outputs` 爆炸。
 - **Git LFS**：单张素材 > 100KB 都要 LFS，否则仓库会爆。
 
@@ -88,3 +90,4 @@
 | --- | --- |
 | 2026-10-09 | 初版：5 张里程碑任务卡片 + 标准模板，从 `ai-asset-generation.md` §7 拆分 |
 | 2026-10-09 | **统一里程碑编号**：以 `roadmap.md` 为权威，重命名 4 张卡片（`M8-inventory`→`M11`、`M9-dungeon`→`M10`、`M10-attributes`→`M8`、`M11-multiplayer`→`M14`）并同步全部交叉引用；新增「编号变更对照」表 |
+| 2026-10-10 | **风格基线改为"不做像素风"**：全局规则里"必须 Nearest 滤波"改为 **`Filter = Linear` + `Mipmaps = on`**；素材尺寸整体上调一档（角色 128² / 地砖 64² / 图标 64²）；`_template.md` 的后期要点由"像素化"改"平滑降采样" |

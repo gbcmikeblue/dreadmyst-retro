@@ -83,8 +83,13 @@ ext.y  = |right.y| * half_w + |up.y| * half_h
 ```gdscript
 sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 sprite.shaded = false            # 不受光照影响，保持 2D 观感
-sprite.alpha_cut = ALPHA_CUT_DISCARD
-sprite.texture_filter = TEXTURE_FILTER_NEAREST   # 像素风
+sprite.alpha_cut = ALPHA_CUT_DISCARD         # ⚠️ 会硬切羽化边，见下方
+sprite.texture_filter = TEXTURE_FILTER_NEAREST   # ⚠️ 非像素风下应为 LINEAR_WITH_MIPMAPS
+
+> ⚠️ **风格基线已改为"不做像素风"**（2026-10-10，见 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)）：
+> 真素材接入后这两行都要改 —— `texture_filter` 应为 **Linear + Mipmaps**（Nearest 用在非像素图上会硬锯齿），
+> `alpha_cut` 应从 `ALPHA_CUT_DISCARD` 改成 `ALPHA_CUT_DISABLED` 才能保住 1px 羽化边。
+> 两者都**待出图跑通后按实际观感定**，当前代码保持原样。
 ```
 
 完全 billboard 的精灵永远正对相机，所以固定俯角下**看起来是直立的、无畸变的 2D 图**。
