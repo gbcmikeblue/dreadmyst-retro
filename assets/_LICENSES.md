@@ -26,28 +26,55 @@
 | Medieval - CE | LoRA | https://civitai.com/models/754926?modelVersionId=851008 （作者 CreativeEdge） | 通用中世纪风格（兜底）；触发词 `mdvlCE` | Civitai License：`allowCommercialUse = Image / RentCivit`；`allowNoCredit = True` | **✓ 允许** | 否 | ⛔ **未下载**（作者要求登录，`401 Unauthorized`） | — | 345 MB | `D:\AI\models\lora\medieval_ce_v1.safetensors` |
 | Knight | LoRA | https://civitai.com/models/299760?modelVersionId=336656 （作者 oosayam） | 骑士（角色/Boss 轻量试错）；触发词 `knight`, `armor` | Civitai License：`allowCommercialUse = Image / RentCivit`；`allowNoCredit = True` | **✓ 允许** | 否 | ⛔ **未下载**（同上） | — | 15 MB | `D:\AI\models\lora\knight_v1.safetensors` |
 | Fantasy Knight Armor | LoRA | https://civitai.com/models/320076?modelVersionId=358910 （作者 Ark_Ai） | 奇幻骑士铠甲（角色/Boss）；触发词 `FantasyKnightV1` | Civitai License：`allowCommercialUse = Image / RentCivit / Rent`；`allowNoCredit = True` | **✓ 允许** | 否 | ⛔ **未下载**（同上） | — | 72 MB | `D:\AI\models\lora\fantasy_knight_armor_v1.safetensors` |
+| **Crucible knight armor (ELDEN RING)** | LoRA | https://civitai.com/models/561251?modelVersionId=625113 （作者 tn1102） | 角色 / Boss · 熔炉骑士铠甲（ELDEN RING 风格）；触发词 `crucible armor` | Civitai License：`allowCommercialUse = Image / RentCivit / Rent / Sell / SellMerge`；`allowNoCredit = True`；**base = SD 1.5** | **✓ 含 Image** | 否 | 已部署 | 2026-10-12 | 72.1 MB | `D:\AI\models\lora\sd15_A_crucible_knight.safetensors` |
+| **Dragonborn Concept LoRA** | LoRA | https://civitai.com/models/114079?modelVersionId=123280 （作者 Lykon） | 角色 / Boss · 龙裔；触发词 `dragonborn`, `[color] dragonborn` | Civitai License：`allowCommercialUse = Image / RentCivit / Rent`；`allowNoCredit = True`；**base = SD 1.5** | **✓ 含 Image** | 否 | 已部署 | 2026-10-12 | 144.1 MB | `D:\AI\models\lora\sd15_A_dragonborn.safetensors` |
+| **Game Item UI** | LoRA | https://civitai.com/models/21102?modelVersionId=25116 （作者 378866459393） | 装备图标 / UI 通用；触发词（无） | Civitai License：`allowCommercialUse = 空`；`allowNoCredit = True`；**base = SD 1.5** | ✗ 不含 Image（非商用可用） | 否 | 已部署 | 2026-10-12 | 36.1 MB | `D:\AI\models\lora\sd15_C_game_item_ui.safetensors` |
+| **宝石（Game gems）** | LoRA | https://civitai.com/models/142127?modelVersionId=157564 （作者 MysteriousEasternpower） | 装备图标 · 宝石与物品列表；触发词 `Game icons`, `gem designs`, `item lists` | Civitai License：`allowCommercialUse = 空`；`allowNoCredit = True`；**base = SD 1.5** | ✗ 不含 Image（非商用可用） | 否 | 已部署 | 2026-10-12 | 144.1 MB | `D:\AI\models\lora\sd15_C_game_gems.safetensors` |
+| **Nargacuga Armorset (Monster Hunter)** | LoRA | https://civitai.com/models/59787?modelVersionId=80896 （作者 pensive_penguin） | 角色装备 · 铠甲套装（Monster Hunter）；触发词 `nargacuga armor` | Civitai License：`allowCommercialUse = Rent / RentCivit`；`allowNoCredit = True`；**base = SD 1.5** | ✗ 不含 Image（非商用可用） | 否 | 已部署 | 2026-10-12 | 36.1 MB | `D:\AI\models\lora\sd15_C_armorset_nargacuga.safetensors` |
+| **Real dragons 真实龙** | LoRA | https://civitai.com/models/82903?modelVersionId=88077 （作者 ArienTOP） | Boss · 龙；触发词 `dragon_real`, `flame` | Civitai License：`allowCommercialUse = 空`；`allowNoCredit = True`；**base = SD 1.5** | ✗ 不含 Image（非商用可用） | 否 | 已部署 | 2026-10-12 | 72.1 MB | `D:\AI\models\lora\sd15_D_real_dragons.safetensors` |
+| **Creature - Abstract Monster** | LoRA | https://civitai.com/models/221532?modelVersionId=249879 （作者 MerrowDreamer） | Boss · 抽象怪物；触发词 `AbstractMonster` | Civitai License：`allowCommercialUse = 空`；`allowNoCredit = True`；**base = SD 1.5** | ✗ 不含 Image（非商用可用） | 否 | 已部署 | 2026-10-12 | 27.1 MB | `D:\AI\models\lora\sd15_D_abstract_monster.safetensors` |
+| **GameIconResearch_skill_Lora3** | LoRA | https://civitai.com/models/82609?modelVersionId=87745 （作者 ConceptConnoisseur） | M7 技能图标；触发词 `skill icon`, `game icon` | Civitai License：`allowCommercialUse = 空`；`allowNoCredit = True`；**base = SD 1.5** | ✗ 不含 Image（非商用可用） | 否 | 已部署 | 2026-10-12 | 72.1 MB | `D:\AI\models\lora\sd15_E_skill_icon_research.safetensors` |
+| **Game Icon_Skill_Healing** | LoRA | https://civitai.com/models/84345?modelVersionId=89666 （作者 HuXiangameicon） | M7 技能图标 · 治疗系；触发词 `cureglowing\(skill icon\)`, `glowing`, `aura` | Civitai License：`allowCommercialUse = 空`；`allowNoCredit = **False**`；**base = SD 1.5** | ✗ 不含 Image（非商用可用） | **⚠️ 是（必须署名）** | 已部署 | 2026-10-12 | 72.1 MB | `D:\AI\models\lora\sd15_E_skill_icon_healing.safetensors` |
+| **UIA game scene lora｜European architecture** | LoRA | https://civitai.com/models/157637?modelVersionId=177074 （作者 UIAlngenuity） | UI / 场景 · 欧式建筑；触发词 `UIAYX` | Civitai License：`allowCommercialUse = Image / RentCivit / Rent / Sell / SellMerge`；`allowNoCredit = True`；**base = SD 1.5** | **✓ 含 Image** | 否 | 已部署 | 2026-10-12 | 36.1 MB | `D:\AI\models\lora\sd15_F_ui_scene_european.safetensors` |
+| **Fantasy Character Portraits** | LoRA | https://civitai.com/models/2350357?modelVersionId=2643504 （作者 SebQuenet） | 角色 / Boss · 奇幻立绘；触发词（无） | Civitai License：`allowCommercialUse = Image / RentCivit / Rent / Sell / SellMerge`；`allowNoCredit = True`；**base = SDXL 1.0** | **✓ 含 Image** | 否 | 已部署 | 2026-10-12 | 217.9 MB | `D:\AI\models\lora\sdxl_A_fantasy_portraits.safetensors` |
+| **Seamless Patterns by Styx** | LoRA | https://civitai.com/models/949221?modelVersionId=1062759 （作者 STXai） | 地砖 · 无缝图案；触发词（无） | Civitai License：`allowCommercialUse = RentCivit`；`allowNoCredit = True`；**base = SDXL 1.0** | ✗ 不含 Image（非商用可用） | 否 | 已部署 | 2026-10-12 | 217.9 MB | `D:\AI\models\lora\sdxl_B_seamless_patterns_styx.safetensors` |
+| **[SDXL] RPG Item Icons** | LoRA | https://civitai.com/models/2507819?modelVersionId=2818920 （作者 ai_thingies） | 装备图标 · RPG 物品；触发词（无） | Civitai License：`allowCommercialUse = Image / RentCivit / Rent`；`allowNoCredit = True`；**base = SDXL 1.0** | **✓ 含 Image** | 否 | 已部署 | 2026-10-12 | 177.1 MB | `D:\AI\models\lora\sdxl_C_rpg_item_icons.safetensors` |
+| **Weapon Sword & Shield - By HailoKnight** | LoRA | https://civitai.com/models/230342?modelVersionId=259964 （作者 HailoKnight） | 装备图标 · 剑与盾；触发词 `Sword and shield` | Civitai License：`allowCommercialUse = Image / RentCivit / Rent / Sell / SellMerge`；`allowNoCredit = **False**`；**base = SDXL 1.0** | **✓ 含 Image** | **⚠️ 是（必须署名）** | 已部署 | 2026-10-12 | 217.9 MB | `D:\AI\models\lora\sdxl_C_sword_shield.safetensors` |
+| **Dark Fantasy Art** | LoRA | https://civitai.com/models/227408?modelVersionId=256543 （作者 humblemikey） | Boss · 暗黑奇幻；触发词 `dark fantasy` | Civitai License：`allowCommercialUse = Image / RentCivit`；`allowNoCredit = True`；**base = SDXL 1.0** | **✓ 含 Image** | 否 | 已部署 | 2026-10-12 | 40.9 MB | `D:\AI\models\lora\sdxl_D_dark_fantasy_art.safetensors` |
+| **Western Dragon Collection XL - Classic style** | LoRA | https://civitai.com/models/153332?modelVersionId=171702 （作者 kuritsutian197） | Boss · 西式龙；触发词 `dragon`, `classic dragon`, `exotic dragon` | Civitai License：`allowCommercialUse = Image / RentCivit`；`allowNoCredit = True`；**base = SDXL 1.0** | **✓ 含 Image** | 否 | 已部署 | 2026-10-12 | 163.5 MB | `D:\AI\models\lora\sdxl_D_western_dragon.safetensors` |
 | _待填_ | LoRA | _Civitai URL_ | _角色/场景/物品/UI_ | _Open RAIL-M / CC-BY-SA / 等_ | _是/否_ | _是/否_ | _待部署_ | _YYYY-MM-DD_ | _X MB_ | `D:\AI\models\lora\子目录\xxx.safetensors` |
 
-> ⚠️ **许可取值口径修正**（2026-10-10）：Civitai 的许可字段在**模型层级**（`/api/v1/models/{id}` 的
-> `allowCommercialUse` / `allowNoCredit` / `allowDerivatives` / `allowDifferentLicense`），**不在**版本层级
-> （版本详情只有 `usageControl`，所有模型都是同一个值，用不了）。`allowCommercialUse` 里**必须有 `Image`**
-> 才表示"生成的图片可用于商业用途"；只有 `RentCivit` / `Rent` 则表示**不能**商用生成图。
+> ⚠️ **许可取值口径**（2026-10-12 随「本项目非商用」修订，见 `AGENTS.md` §1）：Civitai 的许可字段在
+> **模型层级**（`/api/v1/models/{id}` 的 `allowCommercialUse` / `allowNoCredit` / `allowDerivatives` /
+> `allowDifferentLicense`），**不在**版本层级（版本详情只有 `usageControl`，所有模型同一个值，用不了）。
+> 字段含义：`allowCommercialUse` **含 `Image`** = 生成图可商用；只有 `RentCivit` / `Rent` = **不能**商用生成图；
+> **为空** = 未授权商用。上表取值**全部取自模型层级 API**（模型页右侧 Details 卡片的 **License** 一栏可复核），
+> 页面若有 API 之外的附加条款以页面为准。
 >
-> 上表的许可值**全部取自模型层级 API**（模型页右侧 Details 卡片里的 **License** 一栏可复核）；
-> 页面若有 API 字段之外的附加条款，以页面为准。
-> **`Dark and Darker - Portraits` 因不允许商用，发布前必须换掉**（已由下面这批可商用的替代）。
+> ✅ **批量筛选口径**（本项目**非商用** → 2026-10-12 起放开）：
+> 用 `/api/v1/models?query=...&types=LORA&baseModels=SD 1.5|SDXL 1.0&sort=Most Downloaded&nsfw=false` 检索
+> （**列表接口也带模型层级许可字段**，一次请求即可筛）→ **`allowCommercialUse` 不再作为筛选硬条件**，
+> `Image` / `RentCivit` / `Rent` / `Sell` / 空值**都可用**。本表仍逐条记录它 ——
+> **那是将来转商用复核的唯一依据，不能省**。
+> 仍需排除的只有两类：① 明确禁止任何使用 / 仅限查看；② **base 与目标 checkpoint 不一致**的版本
+> （SD 1.5 的 LoRA 不能上 SDXL，反之亦然）。`allowNoCredit = False` 的条目**必须署名**（非商用也不免）。
 >
-> ✅ **批量筛选口径（2026-10-10 起固定用这条）**：用 `/api/v1/models?query=...&types=LORA&baseModels=SD 1.5`
-> 检索（**列表接口也带模型层级许可字段**，一次请求即可筛），只保留 `allowCommercialUse` **含 `Image`** 的；
-> 本轮 60+ 个候选里**有 7 个被这一条挡掉**。另发现 2 类要单独排除：
-> ①`allowCommercialUse` **为空**（如 `Game Icon_Skill_Healing`，同作者另一条却写着 `Sell`）→ 按未授权处理；
-> ② 只有 `RentCivit` / `Rent`（如 Dark and Darker）→ 不能商用生成图。
+> ⚠️ **登录墙**（2026-10-12 实测）：大量模型现在要求登录才能下载，匿名请求返回
+> `401 {"error":"Unauthorized","message":"The creator of this asset requires you to be logged in to download it"}`。
+> 破解办法：下载 URL 后加 `?token=<Civitai API Key>`（`civitai.com/user/account` → API Keys）。
+> 本轮 33 次下载尝试里**有 17 个被这堵墙挡住**（完整清单见 `docs/tasks/backlog.md` T-06）。
+>
+> ⚠️ **`Dark and Darker - Portraits`**：许可只有 `RentCivit`，**非商用下可用**；
+> **待对比结果出来后再决定是否删除**（backlog T-07），不再要求"发布前必须换掉"。
 
 > **如何快速填这一行**：
 > 1. 在 Civitai 找 LoRA 时，**同时复制 LoRA 页面 URL + License 字段**（页面右下角"License"下拉）；
-> 2. 文件名按"用途分类 + 描述"命名（如 `角色_topdown_pixel_v1.safetensors`）；
-> 3. 放到 `D:\AI\models\lora\角色\` / `场景\` / `物品\` / `UI\` 对应子目录；
-> 4. 在本表加一行 → 提交 git → 启动 Forge 校验。
+> 2. 文件名按「**base + 用途 + 描述**」命名，例如 `sd15_C_game_gems.safetensors`、`sdxl_D_dark_fantasy_art.safetensors`
+>    —— `sd15_` / `sdxl_` 前缀直接标明它能在哪个 checkpoint 上测；
+> 3. **全部平铺在 `D:\AI\models\lora\`**，不要再分子目录（旧文档写的 `角色\` / `场景\` / `物品\` / `UI\` 已废弃，
+>    避免和登记表两套口径）；
+> 4. 本表加一行 + 同步 `tools/lora-compare/data/loras.json`（对比台靠它自动注入触发词、判断 base 兼容）
+>    → 提交 git。
 
 ## 2. 直接使用的素材（图、纹理、spritesheet 等）
 

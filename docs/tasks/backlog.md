@@ -22,25 +22,42 @@
 
 | ID | 事项 | 依赖 | 优先级 |
 | --- | --- | --- | --- |
-| **T-01** | **搭 LoRA 对比台**（静态 web 项目，建议 `tools/lora-compare/`） | — | **P0** |
-| | ① 同一提示词下，SD 1.5 与 SDXL 分别跑不同 LoRA，**并排对比** | | |
-| | ② **提示词库**：查看 / 编辑 / 保存（含修改历史，可回退） | | |
-| | ③ 每次生成落盘：记录 + 图片（`data/results.json`） | | |
-| | ④ 人工评分（0~5）+ 结论（保留 / 待定 / 淘汰）+ 备注 | | |
-| | ⑤ 一键导出 **`RESULTS.md` 对比文档**，作为"最终保留哪些 LoRA"的依据 | | |
-| | ⑥ 端到端验证：用真实出图跑通一次 | | |
-| **T-02** | 本地服务：静态文件 + `/forge/*` 反向代理 + 写盘 API —— **T-01 的前置**（Forge 没开 CORS） | — | **P0** |
-| **T-03** | 用对比台跑一轮 **基线（无 LoRA）vs 各 LoRA** 体检，每个 LoRA 至少 1 组，产出 `RESULTS.md` | T-01 | **P0** |
+| **T-03** | 用对比台跑一轮 **基线（无 LoRA）vs 各 LoRA** 体检（每个 LoRA 至少 1 组），产出 `RESULTS.md`，据此决定保留哪些（**这一步只有你能做：需要人眼判断风格**） | T-01 ✅ | **P0** |
+| **T-15** | 启动方式固化：Forge **必须用 `webui-user.bat`（带 `--api`）**，用 `webui.bat` 会导致出图接口 `{"detail":"Not Found"}` —— 已在工具 README 记下，可考虑加个启动检查脚本 | — | P3 |
 
 ### 1.2 许可与模型库
 
 | ID | 事项 | 依赖 | 优先级 |
 | --- | --- | --- | --- |
-| **T-04** | `assets/_LICENSES.md` 的「批量筛选口径」按新规则改写：**去掉 `allowCommercialUse` 含 `Image` 的硬过滤**，改为"全部登记 + 记录商用列，供转商用复核" | — | **P0** |
-| **T-05** | **扩大范围重搜 LoRA**：SD 1.5 + SDXL 两个 base，覆盖 角色 / 怪物 / Boss / 装备图标 / 技能图标 / 地砖 / UI / 特效，按非商用门槛重选一批并下载登记 | T-04 | P1 |
-| **T-06** | 补齐 3 个被**登录墙**挡住的 LoRA（`medieval_ce_v1` 345MB / `knight_v1` 15MB / `fantasy_knight_armor_v1` 72MB）：需浏览器下载，或提供 Civitai API token 走代理重下 | 你 | P2 |
+| **T-05** | **继续补 LoRA 覆盖**：现有 25 个仍有 3 个类别空档（SD 1.5 地砖 / SDXL 技能特效 / SDXL UI），换关键词重搜 | T-14 | P2 |
+| **T-06** | 补齐被**登录墙**挡住的 **20 个** LoRA（2026-10-12 本轮 33 次尝试里 **17 个 401**，另有 10-10 的 3 个）。被挡清单见下。**解法：给一个 Civitai API Key**（下载 URL 后加 `?token=`，用完可立刻吊销），或你自己在浏览器里逐个下 | 你 | P2 |
 | **T-07** | **Dark and Darker Portraits 的去留**：非商用下可用，但只核对过许可、没测过效果 → **待 T-03 出对比结果后再决定是否删除** | T-03 | P1 |
-| **T-08** | `D:\AI\models\lora\` 的空子目录（`actors / boss / data / skill / ui / world / 角色`）与 `_LICENSES.md` 写的 `角色 / 场景 / 物品 / UI` **命名不统一** → 二选一后统一 | — | P3 |
+| **T-14** | **补 3 个类别缺口**（现有 25 个 LoRA 覆盖不到的）：① SD 1.5 **地砖** ② SDXL **技能特效** ③ SDXL **UI** —— 原候选全被登录墙挡住，需换关键词重搜或走 T-06 | T-06 | P2 |
+
+**T-06 被登录墙挡住的完整清单**（`401 Unauthorized · The creator of this asset requires you to be logged in to download it`）：
+
+| 目标文件 | versionId | base | 用途 |
+| --- | --- | --- | --- |
+| `medieval_ce_v1` | 851008 | SD 1.5 | 通用中世纪 |
+| `knight_v1` | 336656 | SD 1.5 | 骑士 |
+| `fantasy_knight_armor_v1` | 358910 | SD 1.5 | 奇幻骑士铠甲 |
+| `sd15_A_fantasy_classes` | 322959 | SD 1.5 | 职业角色（fighter/wizard/mage） |
+| `sd15_B_stylized_textures` | 560098 | SD 1.5 | 风格化贴图 |
+| `sd15_B_seamless_blocks` | 424453 | SD 1.5 | 无缝方块 |
+| `sd15_F_treasure_chest` | 451690 | SD 1.5 | 宝箱 / 金币 UI |
+| `sd15_F_ui_huanqing` | 400627 | SD 1.5 | 欧美风游戏界面 |
+| `sdxl_A_knight_warrior` | 2606736 | SDXL | 骑士 / 战士 |
+| `sdxl_A_high_fantasy_creator` | 1661841 | SDXL | 高奇幻角色 |
+| `sdxl_A_fantasy_chars` | 1225645 | SDXL | 奇幻游戏角色 |
+| `sdxl_B_handpainted_seamless` | 537948 | SDXL | 手绘无缝贴图 |
+| `sdxl_C_game_icon_forge` | 3093666 | SDXL | 万能游戏图标 |
+| `sdxl_C_rune_sword` | 896933 | SDXL | 符文剑 |
+| `sdxl_C_dual_swords` | 354293 | SDXL | 双剑 |
+| `sdxl_C_curved_sword_slash` | 410839 | SDXL | 弯刀挥砍 |
+| `sdxl_D_dark_fantasy_krea` | 1618369 | SDXL | 暗黑奇幻 KREA2 |
+| `sdxl_D_dark_fantasy_painting` | 752937 | SDXL | 暗黑奇幻厚涂 |
+| `sdxl_E_magic_duel` | 715524 | SDXL | 法术 / 火焰特效 |
+| `sdxl_F_wooden_gui` | 835075 | SDXL | 木质 GUI |
 
 ### 1.3 M15 素材接入（主线）
 
@@ -87,6 +104,9 @@
 | LoRA 下载 | 10 个：**7 成功 / 3 被登录墙挡住**；磁盘现有 9 个 / 976 MB |
 | 风格基线 | 像素风口径已从 `_PROMPTS.md` / `ai-asset-generation.md` / `tasks/README.md` 移除 |
 | 许可口径 | `AGENTS.md` §1 新增"非商用 → 放开模型许可门槛 + 保留署名义务" |
+| **LoRA 对比台** | [`tools/lora-compare/`](../../tools/lora-compare/README.md) 落地：静态前端 + 本地代理服务 + 提示词库（含历史回退）+ 评分 / 结论 + 一键导出 `RESULTS.md`；端到端验证通过 |
+| **LoRA 池** | 扩大检索后**新增 16 个**（SD 1.5 ×10 / SDXL ×6），磁盘共 **25 个 / 2.66 GB**；Forge 识别 25 个、登记表 25 行，三方一致 |
+| **许可筛选口径** | `_LICENSES.md` 改为「非商用 → `allowCommercialUse` 不硬过滤，但逐条记录供转商用复核」；LoRA 命名统一为 `sd15_`/`sdxl_` + 用途 + 描述，平铺不再分子目录 |
 
 ---
 
@@ -112,3 +132,4 @@
 | --- | --- |
 | 2026-10-10 | 初版：把本轮对话里散落的待办收成 **T-01 ~ T-13** + 4 条未决 + 7 条已作废；顶部固化三条口径（非商用 / 不做像素风 / Forge 无 CORS 必须代理）；文末补「已探明的接口事实」 |
 | 2026-10-10 | 修正：删掉「`.tmp-asset-compare/` 临时对比目录」这条未决项 —— 该目录已清理，无需再拍板 |
+| 2026-10-12 | 落地 **T-01~T-05、T-08**：新增 **LoRA 对比台**（`tools/lora-compare/`，端到端验证通过）；扩大检索并**下载 16 个新 LoRA**（磁盘共 25 个 / 2.66 GB）；许可筛选口径改为「非商用放开」；LoRA 命名统一。**发现 Civitai 登录墙**（33 次尝试里 17 个 `401`）→ 新开 **T-06**（20 个被挡清单）/ **T-14** / 重写 **T-05** |
