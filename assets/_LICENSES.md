@@ -112,6 +112,26 @@
 
 ---
 
+**生图后端批次（2026-10-12 换用 Qwen-Image 2.1 + ComfyUI）**
+
+> ⚠️ **SD 系全部弃用**：SD 1.5 / SDXL / 国风3 底模、54 个 SD LoRA、ControlNet tile —— 与 Qwen 架构不通，
+> **LoRA 一律不可复用**。上面各表的登记行**保留存档**（用于复核"是否已从磁盘删除"），本机正在清理。
+>
+> ⚠️ **`ComfyUI` 仅作为本机工具使用**（GPL-3.0，不进本仓库、不复制其代码），符合 §1 的"不复制 GPL 项目代码"铁律。
+
+| 名称 | 类型 | 来源 | 用途 | 许可原文 | 商用 | 状态 | 登记日期 | 体积 | 本地路径 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Qwen-Image 2.1** | Diffusion(unet) | <https://www.modelscope.cn/models/Comfy-Org/Qwen-Image-2.1>（ComfyUI 官方重打包；原模型 `Qwen/Qwen-Image-2.1`） | 主生成模型（视觉生成分支 7B，**原生 RGBA 透明图**） | **Qwen Research License（研究用途）**：免费下载、个人/技术评估可用；**商用（含电商素材、商业插画）需另行申请授权** | ⚠️ **非商用可用；转商用必须申请** | 已部署 | 2026-10-12 | 6.76 GB | `D:\AI\models-comfy\diffusion_models\qwen_image_2.1_int8_convrot.safetensors` |
+| **Qwen3-VL-8B**（文本编码器） | Text encoder | 同上 | 文本编码器（`CLIPLoader` 的 type = `qwen_image`） | 随 Qwen-Image 2.1 一并分发，同上许可 | ⚠️ 同上 | 已部署 | 2026-10-12 | 8.71 GB | `D:\AI\models-comfy\text_encoders\qwen3vl_8b_int8_convrot.safetensors` |
+| **Qwen-Image 2.1 VAE** | VAE | 同上 | 解码（**带 alpha 通道**，透明底的关键） | 同上 | ⚠️ 同上 | 已部署 | 2026-10-12 | 0.63 GB | `D:\AI\models-comfy\vae\qwen_image_2.1_vae_bf16.safetensors` |
+| **Qwen-Image 2.1 Turbo LoRA** | LoRA | 同上 | 8 步加速。⚠️ **用它就必须 cfg=1，此时负向提示词完全失效** | 同上 | ⚠️ 同上 | 已部署 | 2026-10-12 | 0.85 GB | `D:\AI\models-comfy\loras\qwen_image_2.1_turbo_lora_avg_rank_178_bf16.safetensors` |
+| **ComfyUI 0.39.0** | 出图前端 | <https://github.com/Comfy-Org/ComfyUI> | 出图界面 / API（**仅本机工具，不入仓库**） | GPL-3.0 | — | 已部署 | 2026-10-12 | — | `D:\AI\ComfyUI\comfyui-master` |
+
+> 未下载（8GB 显存下**必须不启用**）：两个「提示词增强器」各 8.82 GB、ControlNet 补丁 3.52 GB。
+> 可选优化（未下）：`qwen3vl_8b_w4a8` 文本编码器 **5.88 GB**（比现在的 int8 少 2.83 GB）。
+
+---
+
 ## 2. 直接使用的素材（图、纹理、spritesheet 等）
 
 | 名称 | 来源 | 用途 | License | 作者署名要求 | 项目内路径 |
