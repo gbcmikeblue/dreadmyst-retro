@@ -212,11 +212,18 @@ async function boot() {
     S.pristine = JSON.parse(JSON.stringify(S.prompts));
     const lm = await get(F_LORAS);
     S.meta = lm.loras || {};
+  } catch (e) {
+    banner('err', '读取 data/prompts.json 或 data/loras.json 失败：' + e.message);
+    return;
+  }
+
+  // 对比记录是**本地文件**（已被 .gitignore 排除）：第一次用、或换了机器时它不存在是正常的，
+  // 所以这里单独兜底 —— 缺了就当作空记录，第一次「保存记录」时会自动生成。
+  try {
     const rs = await get(F_RESULTS);
     S.records = rs.records || [];
-  } catch (e) {
-    banner('err', '读取 data/*.json 失败：' + e.message);
-    return;
+  } catch (_) {
+    S.records = [];
   }
 
   renderTemplates();

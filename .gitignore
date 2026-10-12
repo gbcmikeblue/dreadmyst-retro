@@ -12,6 +12,9 @@ Thumbs.db
 .idea/
 *.tmp
 
-# LoRA 对比台：生成的对比图是过程产物（体积大、>100KB 会触发 Git LFS），
-# 只把文本记录入库（data/results.json + RESULTS.md）
+# LoRA 对比台：生成的对比图是过程产物（体积大、>100KB 会触发 Git LFS），不入库
 /tools/lora-compare/images/
+
+# LoRA 对比台：对比记录是本地数据（人工评分 / 结论 / 备注），**不入库**
+# 需要把结论分享出去时，导出 RESULTS.md 即可（它才是可交付物）
+/tools/lora-compare/data/results.json

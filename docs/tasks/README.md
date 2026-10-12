@@ -38,7 +38,8 @@
 
 ```
 1. 打开本卡片 → 看「资源清单」和「关联代码」
-2. 打开 assets/_PROMPTS.md → 复制对应模板（角色=B, 物品=C, 技能=E, UI=F, Boss=D）
+2. 打开 assets/_PROMPTS.md → 复制对应模板
+   （**角色 = A1 立绘 + A2 视角转换（两阶段）**, 地砖 = B, 物品 = C, Boss = D, 技能 = E, UI = F）
 3. 打开 assets/_LICENSES.md → 确认需要的 LoRA 都已登记
 4. 启动 Forge → 顶部 checkpoint 选 SD 1.5/SDXL
 5. 出图 → 存到 D:\AI\outputs\YYYY-MM-DD\

@@ -164,10 +164,34 @@
 > 【要求 / 规范】页改，带历史可回退）。只读速查版在 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)，
 > 那里还有 E（技能图标）、F（UI 元素）两个本文件没有的模板。**改一边要同步另外两边。**
 
-#### A. 角色 sprite（3/4 俯视，SD 1.5 + 角色 LoRA）
+#### A1. 角色立绘（阶段1 · 文生图，SD 1.5 / SDXL + 角色 LoRA）
 
-> ⚠️ **更正（2026-10-12）**：原模板写的 `top-down view` 是错的 —— 本作相机是 **-45° 正交 + billboard**，
-> 纯俯视只会得到"只看得到头顶"的图。改用 **3/4 高角度** 并把俯视写进负向。
+> 📌 **两阶段流程（2026-10-12 修订）**：角色 sprite **不要**用文生图直接出"3/4 俯视" —— 那是强约束任务，
+> 命中率极低，只会变成反复抽卡。正确做法：**① 文生图出一张满意的正面全身立绘 → ② 图生图转 3/4 俯视**。
+> A1 里**故意不写任何视角要求**。
+
+**Prompt：**
+```
+full body character, standing pose, front view, plain background,
+2.5D retro RPG style, soft shading, limited palette,
+centered composition, simple background, game asset,
+single character, clean readable silhouette, equipment clearly readable,
+painted 2D game sprite
+```
+
+**Negative：**
+```
+multiple characters, two people, full scene, cropped,
+pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
+signature, blurry, deformed, extra limbs, ugly
+```
+
+**抽卡**：一次出 4 张不同 seed 再挑（对比台的「每项出 N 张」）。**阶段1 先不做后期**。
+
+#### A2. 视角转换 → 3/4 俯视（阶段2 · **图生图**，SD 1.5 + 角色 LoRA）
+
+> ⚠️ **不要写 `top-down view`**：本作相机是 **-45° 正交 + billboard**，纯俯视只会得到"只看得到头顶"的图。
+> 用 **3/4 高角度**，并把俯视写进负向。**底图 = 阶段1 选中的那张；尺寸跟随底图**。
 
 **Prompt：**
 ```
@@ -175,18 +199,21 @@ three-quarter high-angle view, camera pitched about 45 degrees down, full body,
 standing upright, facing the viewer, whole figure inside the frame,
 2.5D retro RPG style, soft shading, limited palette,
 centered composition, simple background, game asset,
-single character, clean readable silhouette, armor and equipment clearly readable,
-full body character, painted 2D game sprite, standing pose
+same character, same outfit, same colors, keep the original silhouette,
+painted 2D game sprite
 ```
 
 **Negative：**
 ```
-multiple characters, two people, full scene, cropped,
 bird's eye view, directly overhead, flat top-down layout,
-only the top of the head visible, extreme foreshortening,
+only the top of the head visible, extreme foreshortening, front view standing portrait,
+different character, different outfit,
 pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
 signature, blurry, deformed, extra limbs, ugly
 ```
+
+**denoise**：0.7 起手（0.65 保人 / 0.75~0.85 转得彻底 / ≥0.90 等于重新生成）。
+⚠️ 本机 ControlNet 为空 → 转视角**会改变角色长相**；要锁同一角色需先装 SD 1.5 的 `depth` / `openpose`。
 
 **后处理**（Aseprite/Pixelitor）：居中对齐 → 透明背景 → 切成多帧 → **平滑降到 128×128** → 拼成 spritesheet
 

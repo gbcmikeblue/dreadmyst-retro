@@ -43,11 +43,14 @@
 
 | 路径 | 说明 | 入库？ |
 | --- | --- | --- |
-| `data/prompts.json` | 提示词库（含每套模板的修改历史） | ✅ |
-| `data/loras.json` | LoRA 元数据：用途 / 触发词 / **base** / 许可 / 署名义务 | ✅ |
-| `data/results.json` | 全部对比记录（含评分与结论） | ✅ |
-| `RESULTS.md` | 由记录生成的结论文档（分组对比 + 建议保留哪些 LoRA） | ✅ |
+| `data/prompts.json` | 提示词库 + 要求块（含各自的修改历史） | ✅ |
+| `data/loras.json` | LoRA 元数据：用途 / **分组** / 触发词 / **base** / 许可 / 署名义务 | ✅ |
+| `data/results.json` | 全部对比记录（含评分与结论） | ❌ **本地专用**，已在 `.gitignore`；首次保存时自动生成 |
+| `RESULTS.md` | 由记录生成的结论文档（分组对比 + 建议保留哪些 LoRA） | ✅ **这才是可交付物** |
 | `images/*.png` | 生成的对比图（过程产物，体积大） | ❌ 已被 `.gitignore` 排除 |
+
+> 换机器 / 新克隆时 `data/results.json` 不存在是正常的：工具会当作空记录启动，
+> 你第一次点「保存记录」时自动创建。要带走结论请导 `RESULTS.md`。
 
 `data/loras.json` 里的 `base` 字段来自 Civitai `model-versions` API 的 `baseModel`——
 **它决定这个 LoRA 能在哪个 checkpoint 上测**。
