@@ -8,7 +8,7 @@
         "名称": "立绘要求（阶段1）",
         "类型": "正向",
         "用途": "阶段1 文生图出角色立绘 —— 这是 base 模型最擅长的，命中率高",
-        "文本": "full body character, standing pose, front view, plain background"
+        "文本": "full body character, standing pose, front view, plain background, entire figure head to toe, nothing cropped, clear margin around the figure"
       },
       "viewshift": {
         "名称": "视角转换要求（阶段2）",
@@ -20,7 +20,7 @@
         "名称": "风格要求",
         "类型": "正向",
         "用途": "所有模板",
-        "文本": "2.5D retro RPG style, soft shading, limited palette"
+        "文本": "colorful painted illustration, warm palette, smooth colors, 2.5D retro RPG style, soft shading, limited palette"
       },
       "composition": {
         "名称": "构图要求",
@@ -38,10 +38,12 @@
         "名称": "通用负向",
         "类型": "负向",
         "用途": "所有模板",
-        "文本": "pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text, signature, blurry, deformed, extra limbs, ugly"
+        "文本": "monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color, pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text, signature, blurry, deformed, extra limbs, ugly"
       }
     },
     "其他规范": [
+      "**上色必须显式要求**（2026-10-12 实测踩到）：只写 `soft shading` / `limited palette` 时，SD 1.5 会给出**灰阶线稿**（`line art` 风），后续 img2img 只会把它画得更像漫画。所以风格要求里要写 `colorful painted illustration, warm palette, smooth colors`，通用负向要压 `monochrome, greyscale, line art, sketch, ink outline, black outline, flat color`",
+      "**构图要写「不许裁」**：只写 `full body` 仍可能把头顶裁出画框 → 立绘要求里补 `entire figure head to toe, nothing cropped, clear margin around the figure`",
       "角色 sprite 走两阶段：① 文生图出立绘（正面全身）② 图生图转 3/4 俯视。不要把视角要求塞进阶段1，那是抽卡地狱",
       "阶段2 的 denoise：0.55~0.65 保人、0.70~0.85 转得彻底。纯色块底图必须 ≥0.65 才有内容；圆形底图不能当角色底（模型会当画框）",
       "没有 ControlNet 时，转视角会改变角色长相；要严格保持同一角色需先装 ControlNet（depth / openpose）模型",
