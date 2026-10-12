@@ -4,6 +4,7 @@
   "loras": {
     "sd15_A_crucible_knight": {
       "用途": "角色 / Boss · 熔炉骑士铠甲（ELDEN RING 风格）",
+      "分组": "A 角色",
       "触发词": "crucible armor",
       "base": "SD 1.5",
       "许可": "Civitai: Image / RentCivit / Rent / Sell / SellMerge",
@@ -15,6 +16,7 @@
     },
     "sd15_A_dragonborn": {
       "用途": "角色 / Boss · 龙裔",
+      "分组": "A 角色",
       "触发词": "dragonborn, [color] dragonborn",
       "base": "SD 1.5",
       "许可": "Civitai: Image / RentCivit / Rent",
@@ -26,6 +28,7 @@
     },
     "sd15_C_game_item_ui": {
       "用途": "装备图标 / UI 通用",
+      "分组": "C 装备",
       "触发词": "",
       "base": "SD 1.5",
       "许可": "Civitai: 空",
@@ -37,6 +40,7 @@
     },
     "sd15_C_game_gems": {
       "用途": "装备图标 · 宝石与物品列表",
+      "分组": "C 装备",
       "触发词": "Game icons, gem designs, item lists",
       "base": "SD 1.5",
       "许可": "Civitai: 空",
@@ -48,6 +52,7 @@
     },
     "sd15_C_armorset_nargacuga": {
       "用途": "角色装备 · 铠甲套装（Monster Hunter）",
+      "分组": "C 装备",
       "触发词": "nargacuga armor",
       "base": "SD 1.5",
       "许可": "Civitai: Rent / RentCivit",
@@ -59,6 +64,7 @@
     },
     "sd15_D_real_dragons": {
       "用途": "Boss · 龙",
+      "分组": "D Boss",
       "触发词": "dragon_real, flame",
       "base": "SD 1.5",
       "许可": "Civitai: 空",
@@ -70,6 +76,7 @@
     },
     "sd15_D_abstract_monster": {
       "用途": "Boss · 抽象怪物",
+      "分组": "D Boss",
       "触发词": "AbstractMonster",
       "base": "SD 1.5",
       "许可": "Civitai: 空",
@@ -81,6 +88,7 @@
     },
     "sd15_E_skill_icon_research": {
       "用途": "M7 技能图标",
+      "分组": "E 技能",
       "触发词": "skill icon, game icon",
       "base": "SD 1.5",
       "许可": "Civitai: 空",
@@ -92,6 +100,7 @@
     },
     "sd15_E_skill_icon_healing": {
       "用途": "M7 技能图标 · 治疗系",
+      "分组": "E 技能",
       "触发词": "cureglowing\\(skill icon\\), glowing, aura",
       "base": "SD 1.5",
       "许可": "Civitai: 空",
@@ -103,6 +112,7 @@
     },
     "sd15_F_ui_scene_european": {
       "用途": "UI / 场景 · 欧式建筑",
+      "分组": "F UI",
       "触发词": "UIAYX",
       "base": "SD 1.5",
       "许可": "Civitai: Image / RentCivit / Rent / Sell / SellMerge",
@@ -114,6 +124,7 @@
     },
     "sdxl_A_fantasy_portraits": {
       "用途": "角色 / Boss · 奇幻立绘",
+      "分组": "A 角色",
       "触发词": "",
       "base": "SDXL 1.0",
       "许可": "Civitai: Image / RentCivit / Rent / Sell / SellMerge",
@@ -125,6 +136,7 @@
     },
     "sdxl_B_seamless_patterns_styx": {
       "用途": "地砖 · 无缝图案",
+      "分组": "B 地砖",
       "触发词": "",
       "base": "SDXL 1.0",
       "许可": "Civitai: RentCivit",
@@ -136,6 +148,7 @@
     },
     "sdxl_C_rpg_item_icons": {
       "用途": "装备图标 · RPG 物品",
+      "分组": "C 装备",
       "触发词": "",
       "base": "SDXL 1.0",
       "许可": "Civitai: Image / RentCivit / Rent",
@@ -147,6 +160,7 @@
     },
     "sdxl_C_sword_shield": {
       "用途": "装备图标 · 剑与盾",
+      "分组": "C 装备",
       "触发词": "Sword and shield",
       "base": "SDXL 1.0",
       "许可": "Civitai: Image / RentCivit / Rent / Sell / SellMerge",
@@ -158,6 +172,7 @@
     },
     "sdxl_D_dark_fantasy_art": {
       "用途": "Boss · 暗黑奇幻",
+      "分组": "D Boss",
       "触发词": "dark fantasy",
       "base": "SDXL 1.0",
       "许可": "Civitai: Image / RentCivit",
@@ -169,6 +184,7 @@
     },
     "sdxl_D_western_dragon": {
       "用途": "Boss · 西式龙",
+      "分组": "D Boss",
       "触发词": "dragon, classic dragon, exotic dragon",
       "base": "SDXL 1.0",
       "许可": "Civitai: Image / RentCivit",
@@ -180,6 +196,7 @@
     },
     "bg3_item_icons_v1": {
       "用途": "M11 装备图标（50~100 张）",
+      "分组": "C 装备",
       "触发词": "bg3 item icon",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit/Rent",
@@ -191,6 +208,7 @@
     },
     "dark_and_darker_portraits_v1": {
       "用途": "角色 / Boss 立绘风格",
+      "分组": "A 角色",
       "触发词": "dark_and_darker_game_portrait_style, low_resolution",
       "base": "SD 1.5",
       "许可": "Civitai: RentCivit（不含 Image）",
@@ -202,6 +220,7 @@
     },
     "medieval_armor_suit_v1": {
       "用途": "护甲类装备图标 + 角色装备",
+      "分组": "C 装备",
       "触发词": "medieval armor",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit/Rent/Sell/SellMerge",
@@ -213,6 +232,7 @@
     },
     "creatures_portraits_v1": {
       "用途": "怪物 / Boss 立绘",
+      "分组": "D Boss",
       "触发词": "a fantz creature",
       "base": "SD 1.5",
       "许可": "Civitai: Image",
@@ -224,6 +244,7 @@
     },
     "creatures_design_v1": {
       "用途": "怪物设计",
+      "分组": "D Boss",
       "触发词": "fantz creature, monster",
       "base": "SD 1.5",
       "许可": "Civitai: Image",
@@ -235,6 +256,7 @@
     },
     "game_icon_skill_buff_v1": {
       "用途": "M7 技能图标（增益 / 光环类）",
+      "分组": "E 技能",
       "触发词": "guangquan(skill icon), aura, glowing",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit/Rent/Sell/SellMerge",
@@ -246,6 +268,7 @@
     },
     "handpainted_rpg_icons_v1": {
       "用途": "图标兜底（手绘 RPG 图标）",
+      "分组": "其他",
       "触发词": "rpgicondiff",
       "base": "SD 1.5",
       "许可": "Civitai: Image",
@@ -257,6 +280,7 @@
     },
     "medieval_background_slider_v1": {
       "用途": "场景 / 去现代感",
+      "分组": "B 地砖",
       "触发词": "Half-timbered Construction",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit",
@@ -268,6 +292,7 @@
     },
     "monsters_attack_v1": {
       "用途": "怪群 / 多怪场景氛围",
+      "分组": "D Boss",
       "触发词": "",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit/Rent/Sell/SellMerge",
@@ -279,6 +304,7 @@
     },
     "medieval_ce_v1": {
       "用途": "通用中世纪风格（兜底）",
+      "分组": "其他",
       "触发词": "mdvlCE",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit",
@@ -290,6 +316,7 @@
     },
     "knight_v1": {
       "用途": "骑士（角色 / Boss 轻量试错）",
+      "分组": "A 角色",
       "触发词": "knight, armor",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit",
@@ -301,6 +328,7 @@
     },
     "fantasy_knight_armor_v1": {
       "用途": "奇幻骑士铠甲（角色 / Boss）",
+      "分组": "A 角色",
       "触发词": "FantasyKnightV1",
       "base": "SD 1.5",
       "许可": "Civitai: Image/RentCivit/Rent",

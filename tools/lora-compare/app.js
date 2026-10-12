@@ -32,7 +32,32 @@ const S = {
   busy: false,
   poll: null,
   saveTimer: null,
+  // 以下三项是纯 UI 状态，存 localStorage（不进 results.json，免得污染决策数据）
+  weights: {},        // LoRA -> 单独权重（没有该键 = 继承全局权重）
+  recent: [],         // 最近生成过的 LoRA（用于排序）
+  filter: { q: '', base: 'all', group: 'all', sort: 'group' },
 };
+
+const LS_KEY = 'loraCompare.ui.v1';
+
+function loadUiState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o && typeof o === 'object') {
+      S.weights = o.weights || {};
+      S.recent = Array.isArray(o.recent) ? o.recent : [];
+      S.filter = Object.assign(S.filter, o.filter || {});
+    }
+  } catch (_) { /* 忽略坏数据 */ }
+}
+
+function saveUiState() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ weights: S.weights, recent: S.recent, filter: S.filter }));
+  } catch (_) { /* 忽略 */ }
+}
 
 /* ------------------------------- 小工具 ------------------------------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -80,6 +105,58 @@ const del = (u, body) => req(u, { method: 'DELETE', headers: { 'Content-Type': '
 const saveText = (path, content) => post('/api/save', { path, content }, 30000);
 const saveImage = (name, data) => post('/api/image', { name, data }, 120000);
 
+/* ------------------------------- 复制到剪贴板 -------------------------------
+   127.0.0.1 属于安全上下文，navigator.clipboard 可用；其余情况退回 execCommand。 */
+async function copyText(text, btn) {
+  const t = String(text == null ? '' : text);
+  if (!t) return false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(t);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = t;
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    if (btn) {
+      const old = btn.textContent;
+      btn.textContent = '已复制 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1500);
+    }
+    return true;
+  } catch (e) {
+    banner('warn', '复制失败（浏览器拒绝）：' + e.message + ' —— 可以手动选中复制。');
+    return false;
+  }
+}
+
+/** 生成一个「复制」按钮；getText 惰性求值，保证复制的是当时的内容 */
+function copyBtn(getText, label) {
+  const b = h('button', { type: 'button', class: 'mini', text: label || '复制' });
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    copyText(getText(), b);
+  });
+  return b;
+}
+
+/* ------------------------------- LoRA 权重 ------------------------------- */
+function hasOwnWeight(key) {
+  return typeof S.weights[key] === 'number' && isFinite(S.weights[key]);
+}
+/** 该 LoRA 本批要用多少权重：单独设过就用它，否则跟随全局滑块 */
+function weightOf(key) {
+  if (key === NONE) return null;
+  return hasOwnWeight(key) ? S.weights[key] : Number($('#lw').value);
+}
+
 /* ------------------------------- 横幅 / 状态灯 ------------------------------- */
 function banner(kind, msg) {
   const b = $('#banner');
@@ -117,6 +194,7 @@ function compatible(key) {
    启动
    ========================================================================== */
 async function boot() {
+  loadUiState();               // 单条权重 / 最近使用 / 筛选条件（存 localStorage）
   if (location.protocol === 'file:') {
     banner('err', '不能直接双击 index.html 打开：这样既无法调用 Forge API（CORS 被拦），也无法把结果写回磁盘。请双击 start.bat，用 http://127.0.0.1:7788/ 访问。');
     return;
@@ -146,10 +224,14 @@ async function boot() {
   renderSummary();
   renderReqs();
   await refreshForge();
+  $('#lora-search').value = S.filter.q || '';
+  $('#lora-base-filter').value = S.filter.base || 'all';
+  $('#lora-sort').value = S.filter.sort || 'group';
   renderLoRA();
   await refreshImages();
   bind();
   updatePreview();
+  renderInspector();
 }
 
 /* ------------------------------- 读 Forge ------------------------------- */
@@ -193,6 +275,7 @@ async function refreshForge() {
   for (const s of S.samplers) sp.append(h('option', { value: s, text: s }));
   if (S.samplers.includes('DPM++ 2M')) sp.value = 'DPM++ 2M';
 
+  renderCkptCards();
   applyDefaults(false);
 }
 
@@ -287,56 +370,197 @@ function readParams() {
   };
 }
 
-/* ------------------------------- LoRA 列表 ------------------------------- */
-function renderLoRA() {
-  const ul = $('#lora-list');
+/* ------------------------------- LoRA 列表 / 选择器 ------------------------------- */
+function loraKeys() {
+  const keys = [], seen = new Set();
+  for (const n of S.disk) if (!seen.has(n)) { seen.add(n); keys.push(n); }
+  for (const n of Object.keys(S.meta)) if (!seen.has(n)) { seen.add(n); keys.push(n); }
+  return keys;
+}
+
+const GROUP_BY_PREFIX = { A: 'A 角色', B: 'B 地砖', C: 'C 装备', D: 'D Boss', E: 'E 技能', F: 'F UI' };
+function groupOf(key) {
+  const m = metaOf(key);
+  if (m.分组) return m.分组;
+  const mm = /^(?:sd15|sdxl)_([A-F])_/.exec(key);
+  return mm ? GROUP_BY_PREFIX[mm[1]] : '其他';
+}
+
+/** 该 LoRA 现在能不能选：在磁盘上 + base 兼容（或显式允许跨 base） */
+function loraEnabled(key) {
+  return S.disk.includes(key) && (compatible(key) || $('#force-base').checked);
+}
+
+/** 已选 tray：本批到底要测哪些、各自权重多少 */
+function renderTray() {
+  const ul = $('#lora-tray');
   ul.textContent = '';
-
-  const keys = [];
-  const seen = new Set();
-  for (const name of S.disk) { if (!seen.has(name)) { seen.add(name); keys.push(name); } }
-  for (const name of Object.keys(S.meta)) { if (!seen.has(name)) { seen.add(name); keys.push(name); } }
-  keys.sort();
-
-  const add = (key, label, sub, tags, enabled) => {
-    const cb = h('input', { type: 'checkbox', value: key });
-    cb.checked = S.sel.has(key);
-    if (!enabled) cb.disabled = true;
-    cb.addEventListener('change', () => {
-      if (cb.checked) S.sel.add(key); else S.sel.delete(key);
-      updateLoraCount();
-      updatePreview();
-    });
-    const li = h('li', { class: 'lora-item' + (enabled ? '' : ' bad') },
-      h('label', {}, cb, h('div', { class: 'grow' },
-        h('div', { class: 'lora-name' }, label, ...tags.map((t) => h('span', { class: 'tag ' + (t.k || ''), text: t.text }))),
-        h('div', { class: 'lora-sub', text: sub }))));
-    ul.append(li);
-  };
-
-  add(NONE, '（无 LoRA 基线）', '对照组：不加任何 LoRA，用来判断"加 LoRA 到底有没有变好"',
-    [{ text: '基线', k: 'ok' }], true);
-
-  for (const key of keys) {
-    const m = metaOf(key);
-    const onDisk = S.disk.includes(key);
-    const tags = [];
-    if (m.base) tags.push({ text: m.base, k: '' });
-    else tags.push({ text: 'base 未知', k: 'warn' });
-    if (!onDisk) tags.push({ text: m.状态 || '未部署', k: 'bad' });
-    if (m.署名) tags.push({ text: '须署名', k: 'warn' });
-    const ok = onDisk && (compatible(key) || $('#force-base').checked);
-    if (onDisk && !compatible(key)) tags.push({ text: '与当前 checkpoint 不兼容', k: 'bad' });
-    const sub = [m.用途, m.触发词 && ('触发词 ' + m.触发词)].filter(Boolean).join(' · ') || '(loras.json 里没有元数据)';
-    add(key, key, sub, tags, ok);
-    if (!ok) S.sel.delete(key);
+  const keys = Array.from(S.sel);
+  if (!keys.length) { ul.append(h('li', { class: 'tray-item', text: '（未选）' })); return; }
+  keys.sort((a, b) => (a === NONE ? -1 : b === NONE ? 1 : a.localeCompare(b)));
+  for (const k of keys) {
+    const own = hasOwnWeight(k);
+    ul.append(h('li', { class: 'tray-item' + (k === NONE ? ' base' : '') },
+      k === NONE ? '（基线）' : k,
+      k !== NONE ? h('span', {
+        class: 'w', text: (own ? '★' : '') + weightOf(k).toFixed(2),
+        title: own ? '单独权重（不跟随全局）' : '跟随全局权重',
+      }) : null,
+      h('button', {
+        type: 'button', class: 'x', text: '✕', title: '从本批移除',
+        onclick: () => { S.sel.delete(k); renderLoRA(); updatePreview(); renderInspector(); },
+      })));
   }
-  updateLoraCount();
 }
 
 function updateLoraCount() {
-  const n = Array.from(S.sel).filter((k) => k === NONE || S.disk.includes(k)).length;
+  const n = Array.from(S.sel).filter((k) => k === NONE || loraEnabled(k)).length;
   $('#lora-count').textContent = `已选 ${n} 项（含基线）`;
+}
+
+function baselineRow() {
+  const cb = h('input', { type: 'checkbox', value: NONE });
+  cb.checked = S.sel.has(NONE);
+  cb.addEventListener('change', () => {
+    if (cb.checked) S.sel.add(NONE); else S.sel.delete(NONE);
+    renderTray(); updateLoraCount(); updatePreview(); renderInspector();
+  });
+  return h('li', { class: 'lora-item' },
+    h('label', {}, cb,
+      h('div', { class: 'grow' },
+        h('div', { class: 'lora-name' }, '（无 LoRA 基线）', h('span', { class: 'tag ok', text: '对照组' })),
+        h('div', { class: 'lora-sub', text: '不加任何 LoRA。没有它就判断不出「加 LoRA 到底有没有变好」' }))));
+}
+
+function loraRow(key) {
+  const m = metaOf(key);
+  const ok = loraEnabled(key);
+  const cb = h('input', { type: 'checkbox', value: key });
+  cb.checked = S.sel.has(key);
+  cb.disabled = !ok;
+  cb.addEventListener('change', () => {
+    if (cb.checked) S.sel.add(key); else S.sel.delete(key);
+    renderTray(); updateLoraCount(); updatePreview(); renderInspector();
+  });
+
+  const tags = [{ text: m.base || 'base 未知', k: m.base ? '' : 'warn' }];
+  if (!S.disk.includes(key)) tags.push({ text: m.状态 || '未部署', k: 'bad' });
+  if (m.署名) tags.push({ text: '须署名', k: 'warn' });
+  if (S.disk.includes(key) && !compatible(key)) tags.push({ text: 'base 不兼容', k: 'bad' });
+
+  const nameEl = h('span', { title: '点一下复制名字' }, key);
+  nameEl.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); copyText(key, null); });
+  const triggerEl = m.触发词 ? h('div', { class: 'lora-sub', title: '点一下复制触发词', text: '触发词 ' + m.触发词 }) : null;
+  if (triggerEl) triggerEl.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); copyText(m.触发词, null); });
+
+  const wrap = h('div', { class: 'perw' + (hasOwnWeight(key) ? ' on' : ''), title: '单独权重（默认跟随全局；改了会标黄）' });
+  const wIn = h('input', { type: 'number', min: '0', max: '1.5', step: '0.05', value: weightOf(key).toFixed(2) });
+  wIn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+  wIn.addEventListener('input', () => {
+    const v = Number(wIn.value);
+    if (isFinite(v) && v >= 0) S.weights[key] = v; else delete S.weights[key];
+    wrap.classList.toggle('on', hasOwnWeight(key));
+    saveUiState();
+    renderTray(); updatePreview(); renderInspector();
+  });
+  const reset = h('button', { type: 'button', class: 'reset', text: '↺', title: '恢复跟随全局权重' });
+  reset.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    delete S.weights[key];
+    wIn.value = weightOf(key).toFixed(2);
+    wrap.classList.remove('on');
+    saveUiState();
+    renderTray(); updatePreview(); renderInspector();
+  });
+  wrap.append(wIn, reset);
+
+  return h('li', { class: 'lora-item' + (ok ? '' : ' bad') },
+    h('label', {}, cb,
+      h('div', { class: 'grow' },
+        h('div', { class: 'lora-name' }, nameEl, ...tags.map((t) => h('span', { class: 'tag ' + (t.k || ''), text: t.text }))),
+        h('div', { class: 'lora-sub', text: m.用途 || '(loras.json 里没有元数据)' }),
+        triggerEl),
+      wrap));
+}
+
+function renderLoRA() {
+  const all = loraKeys();
+
+  // 分组下拉（选项跟着数据变）
+  const gf = $('#lora-group-filter');
+  const groups = [...new Set(all.map(groupOf))].sort();
+  const keepG = gf.value || 'all';
+  gf.textContent = '';
+  gf.append(h('option', { value: 'all', text: '分组: 全部' }));
+  for (const g of groups) gf.append(h('option', { value: g, text: '分组: ' + g }));
+  gf.value = groups.includes(keepG) ? keepG : 'all';
+
+  // 过滤
+  const f = S.filter;
+  f.group = gf.value;
+  let list = all.slice();
+  if (f.q) {
+    const q = f.q.toLowerCase();
+    list = list.filter((k) => {
+      const m = metaOf(k);
+      return (k + ' ' + (m.用途 || '') + ' ' + (m.触发词 || '')).toLowerCase().includes(q);
+    });
+  }
+  if (f.base === 'ok') list = list.filter(loraEnabled);
+  else if (f.base !== 'all') list = list.filter((k) => metaOf(k).base === f.base);
+  if (f.group !== 'all') list = list.filter((k) => groupOf(k) === f.group);
+
+  // 排序
+  const cmpName = (a, b) => a.localeCompare(b);
+  if (f.sort === 'name') list.sort(cmpName);
+  else if (f.sort === 'base') list.sort((a, b) => String(metaOf(a).base).localeCompare(String(metaOf(b).base)) || cmpName(a, b));
+  else if (f.sort === 'recent') list.sort((a, b) => (S.recent.indexOf(b) - S.recent.indexOf(a)) || cmpName(a, b));
+  else list.sort((a, b) => groupOf(a).localeCompare(groupOf(b)) || cmpName(a, b));
+
+  // 已经是「不能选」的从本批剔掉
+  for (const k of Array.from(S.sel)) if (k !== NONE && !loraEnabled(k)) S.sel.delete(k);
+
+  // 渲染
+  const ul = $('#lora-list');
+  ul.textContent = '';
+  ul.append(baselineRow());
+  let last = null;
+  for (const key of list) {
+    const g = groupOf(key);
+    if (f.sort === 'group' && g !== last) { ul.append(h('li', { class: 'lora-group', text: g })); last = g; }
+    ul.append(loraRow(key));
+  }
+  if (!list.length) ul.append(h('li', { class: 'lora-group', text: '（没有符合筛选条件的 LoRA）' }));
+
+  $('#picker-count').textContent = `筛选出 ${list.length} / 共 ${all.length}`;
+  $('#lora-sort').value = f.sort;
+  renderTray();
+  updateLoraCount();
+}
+
+/* ------------------------------- Checkpoint 卡片 ------------------------------- */
+function renderCkptCards() {
+  const box = $('#ckpt-cards');
+  box.textContent = '';
+  const cur = $('#ckpt').value;
+  if (!S.ckpts.length) {
+    box.append(h('div', { class: 'hint', text: '（读不到 checkpoint —— Forge 没启动，或启动时没带 --api）' }));
+    $('#ckpt-note').textContent = '';
+    return;
+  }
+  for (const c of S.ckpts) {
+    const card = h('div', { class: 'ckpt-card' + (c.title === cur ? ' sel' : ''), title: c.title },
+      h('span', { class: 'dot' }),
+      h('span', { class: 'nm', text: plain(c.title) }),
+      h('span', { class: 'tag', text: baseOf(c.title) }));
+    card.addEventListener('click', () => {
+      $('#ckpt').value = c.title;
+      $('#ckpt').dispatchEvent(new Event('change'));
+      renderCkptCards();
+    });
+    box.append(card);
+  }
+  $('#ckpt-note').textContent = cur ? '当前：' + baseOf(cur) : '';
 }
 
 function selectableKeys() {
@@ -404,7 +628,7 @@ function positiveFor(key, tpl) {
   const parts = [];
   if (key !== NONE) {
     const m = metaOf(key);
-    parts.push(`<lora:${key}:${Number($('#lw').value).toFixed(2)}>`);
+    parts.push(`<lora:${key}:${weightOf(key).toFixed(2)}>`);
     if ($('#inject-trigger').checked && m.触发词) parts.push(m.触发词);
   }
   parts.push(...blocksOf(tpl, '正向'), tpl.要求, tpl.positive);
@@ -576,6 +800,123 @@ function updatePreview() {
   if (targets.length > 1) {
     box.append(h('span', { class: 'hint', text: `已选 ${targets.length} 项：其余只是把 <lora:…> 与触发词换掉，其它完全相同。` }));
   }
+  renderInspector();          // 预览与检查面板永远同步
+}
+
+/* ------------------------------- 提示词检查 -------------------------------
+   把最终提示词按逗号切成 chip，并标注每个词来自哪个块 —— 排查"怪词从哪来"的关键。
+   这里**故意不去重**（拼装时才去重），所以能看见重复与冲突。                 */
+function promptParts(key, tpl, type) {
+  const parts = [];
+  const push = (text, src, kind) => {
+    for (const piece of String(text || '').split(/[,，]+/)) {
+      const w = piece.trim().replace(/\s+/g, ' ');
+      if (w) parts.push({ tag: w, src, kind });
+    }
+  };
+  const defs = blockDefs();
+  if (type === '正向') {
+    if (key !== NONE) {
+      const m = metaOf(key);
+      push(`<lora:${key}:${weightOf(key).toFixed(2)}>`, 'LoRA', 'lora');
+      if ($('#inject-trigger').checked && m.触发词) push(m.触发词, '触发词', 'trigger');
+    }
+    for (const k of (tpl.套用要求 || [])) {
+      const b = defs[k];
+      if (b && b.类型 === '正向') push(b.文本, b.名称 || k, 'block');
+    }
+    push(tpl.要求, '模板·要求', 'tplreq');
+    push(tpl.positive, '模板·正向', 'tplpos');
+  } else {
+    for (const k of (tpl.套用要求 || [])) {
+      const b = defs[k];
+      if (b && b.类型 === '负向') push(b.文本, b.名称 || k, 'blockneg');
+    }
+    push(tpl.negative, '模板·负向', 'tplneg');
+  }
+  return parts;
+}
+
+const CONFLICT_PAIRS = [
+  ['top-down', 'three-quarter', '视角冲突：既要正俯视又要 3/4 视角'],
+  ["top-down", "bird's eye", '视角冲突：两个词都在描述俯视'],
+  ['front view', 'high-angle', '视角冲突：正面平视与高角度俯视'],
+  ['pixel art', 'painted', '风格冲突：像素风与手绘'],
+  ['pixel art', 'painterly', '风格冲突：像素风与厚涂'],
+  ['close-up', 'full body', '取景冲突：特写与全身'],
+];
+const NEG_ONLY_WORDS = ['pixel art', 'watermark', 'blurry', 'signature', 'deformed', 'ugly'];
+
+function findConflicts(posChips, negChips) {
+  const out = [];
+  const posText = posChips.map((c) => c.tag.toLowerCase()).join(' | ');
+  for (const [a, b, msg] of CONFLICT_PAIRS) {
+    if (posText.includes(a) && posText.includes(b)) out.push(`${msg}（正向里同时有 \`${a}\` 与 \`${b}\`）`);
+  }
+  const posSet = new Set(posChips.map((c) => c.tag.toLowerCase()));
+  for (const c of negChips) {
+    if (posSet.has(c.tag.toLowerCase())) out.push(`\`${c.tag}\` 同时出现在正向和负向 —— 负向会被正向压掉，建议二选一`);
+  }
+  for (const w of NEG_ONLY_WORDS) {
+    if (posText.includes(w)) out.push(`正向里出现了本该在负向的词 \`${w}\``);
+  }
+  const seen = {};
+  for (const c of posChips) {
+    const t = c.tag.toLowerCase();
+    seen[t] = (seen[t] || 0) + 1;
+  }
+  for (const [t, n] of Object.entries(seen)) {
+    if (n > 1) out.push(`正向里 \`${t}\` 出现了 ${n} 次 —— 拼装时会自动去重，但建议从来源块里删掉一处`);
+  }
+  return [...new Set(out)].slice(0, 12);
+}
+
+function renderChips(boxId, parts) {
+  const box = $('#' + boxId);
+  box.textContent = '';
+  if (!parts.length) { box.append(h('span', { class: 'hint', text: '（空）' })); return; }
+  const counts = {};
+  for (const p of parts) counts[p.tag.toLowerCase()] = (counts[p.tag.toLowerCase()] || 0) + 1;
+  for (const p of parts) {
+    const dup = counts[p.tag.toLowerCase()] > 1;
+    const chip = h('span', {
+      class: 'chip s-' + p.kind,
+      title: `来源：${p.src}${dup ? '（重复出现）' : ''}\n点一下复制这一个词`,
+    }, h('span', { class: 'src', text: p.src.slice(0, 4) }), p.tag);
+    chip.addEventListener('click', () => copyText(p.tag, null));
+    box.append(chip);
+  }
+}
+
+function renderInspector() {
+  if (!S.prompts) return;
+  const tpl = editorTpl();
+  const targets = Array.from(S.sel);
+  const key = targets.length ? targets[0] : NONE;
+  const pos = promptParts(key, tpl, '正向');
+  const neg = promptParts(key, tpl, '负向');
+  renderChips('inspect-pos', pos);
+  renderChips('inspect-neg', neg);
+  const words = pos.reduce((n, p) => n + p.tag.split(/\s+/).length, 0);
+  $('#inspect-stat').textContent = `正向 ${pos.length} 段 / ${words} 词 · 负向 ${neg.length} 段 · ${key === NONE ? '基线' : key}`;
+
+  const box = $('#inspect-conflict');
+  const list = findConflicts(pos, neg);
+  box.textContent = '';
+  if (!list.length) { box.hidden = true; return; }
+  box.hidden = false;
+  box.append(h('div', { text: `⚠️ 发现 ${list.length} 处值得看一眼的地方（不一定错）：` }));
+  const ul = h('ul', {});
+  for (const t of list) ul.append(h('li', { text: t }));
+  box.append(ul);
+}
+
+/** 复制整段时用的文本 —— 与真实发出去的一致（含自动去重） */
+function finalPromptText(kind) {
+  const tpl = editorTpl();
+  const targets = Array.from(S.sel);
+  const key = targets.length ? targets[0] : NONE;
+  return kind === 'neg' ? negativeFor(tpl) : positiveFor(key, tpl);
 }
 
 async function switchCheckpoint(title) {
@@ -780,7 +1121,8 @@ async function generate() {
           width: cfg.w, height: cfg.h,
           steps: cfg.steps, cfg: cfg.cfg, sampler: cfg.sampler, seed: thisSeed,
           lora: key === NONE ? null : key,
-          weight: key === NONE ? null : cfg.weight,
+          weight: key === NONE ? null : weightOf(key),
+          own_weight: key === NONE ? false : hasOwnWeight(key),
           trigger: key === NONE ? '' : (($('#inject-trigger').checked && metaOf(key).触发词) || ''),
           final_prompt: prompt,
           negative_prompt: negText,
@@ -789,6 +1131,11 @@ async function generate() {
         };
         S.records.push(rec);
         created.push(rec);
+        if (key !== NONE && !S.recent.includes(key)) {
+          S.recent.unshift(key);              // 「最近使用」排序用
+          S.recent = S.recent.slice(0, 30);
+          saveUiState();
+        }
         renderResults(); renderSummary();
         await persist();
         setBar(done / total);
@@ -853,23 +1200,30 @@ function renderResults() {
       h('div', { class: 'card-head' },
         h('span', { class: 'lora-name', text: isBase ? '（基线·无 LoRA）' : r.lora }),
         h('span', { class: 'tag', text: r.base }),
-        r.weight != null ? h('span', { class: 'tag', text: 'w ' + Number(r.weight).toFixed(2) }) : null),
+        r.weight != null ? h('span', { class: 'tag', text: 'w ' + Number(r.weight).toFixed(2) }) : null,
+        r.own_weight ? h('span', { class: 'warn-badge', text: '单独权重' }) : null,
+        r.阶段 === 'img2img' ? h('span', { class: 'tag warn', text: 'i2i ' + Number(r.denoise || 0).toFixed(2) }) : null),
       h('div', { class: 'card-sub', text: `${r.template} · ${r.width}×${r.height} · steps ${r.steps} · CFG ${r.cfg} · seed ${r.seed}` }),
       stars, ver, notes,
       h('details', {}, h('summary', { text: '最终提示词' }),
         h('pre', { text: r.final_prompt + '\n\n[负向]\n' + (r.negative_prompt || '') })),
-      h('button', {
-        class: 'del', text: '设为底图 →',
-        onclick: () => setInitImage(String(r.image || '').split('images/').pop()),
-      }),
-      h('button', {
-        class: 'del', text: '删除这条记录',
-        onclick: async () => {
-          S.records = S.records.filter((x) => x.id !== r.id);
-          try { await del('/api/delete', { path: r.image }); } catch (_) {}
-          renderResults(); renderSummary(); await persist();
-        },
-      })));
+      h('div', { class: 'acts' },
+        copyBtn(() => r.final_prompt, '复制正向'),
+        copyBtn(() => r.negative_prompt || '', '复制负向'),
+        copyBtn(() => `steps ${r.steps} · CFG ${r.cfg} · ${r.sampler} · seed ${r.seed} · ${r.width}x${r.height}` +
+          (r.阶段 === 'img2img' ? ` · denoise ${Number(r.denoise || 0).toFixed(2)}` : ''), '复制参数'),
+        h('button', {
+          class: 'del', text: '设为底图 →',
+          onclick: () => setInitImage(String(r.image || '').split('images/').pop()),
+        }),
+        h('button', {
+          class: 'del danger', text: '删除',
+          onclick: async () => {
+            S.records = S.records.filter((x) => x.id !== r.id);
+            try { await del('/api/delete', { path: r.image }); } catch (_) {}
+            renderResults(); renderSummary(); await persist();
+          },
+        }))));
     box.append(card);
   }
 }
@@ -1095,6 +1449,25 @@ function bind() {
     updatePreview();
   });
   $('#btn-refresh').addEventListener('click', async () => { await refreshForge(); renderLoRA(); banner(null); });
+
+  // —— 模型选择器：搜索 / 筛选 / 排序 ——
+  $('#lora-search').addEventListener('input', () => { S.filter.q = $('#lora-search').value; saveUiState(); renderLoRA(); });
+  $('#lora-base-filter').addEventListener('change', () => { S.filter.base = $('#lora-base-filter').value; saveUiState(); renderLoRA(); });
+  $('#lora-group-filter').addEventListener('change', () => { S.filter.group = $('#lora-group-filter').value; saveUiState(); renderLoRA(); });
+  $('#lora-sort').addEventListener('change', () => { S.filter.sort = $('#lora-sort').value; saveUiState(); renderLoRA(); });
+
+  // —— 复制按钮：HTML 里标了 data-copy="元素id" 的，复制那个元素的值 ——
+  for (const b of $$('[data-copy]')) {
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      const el = $('#' + b.dataset.copy);
+      if (el) copyText(el.value, b);
+    });
+  }
+  $('#copy-preview-pos').addEventListener('click', (e) => copyText(finalPromptText('pos'), e.currentTarget));
+  $('#copy-preview-neg').addEventListener('click', (e) => copyText(finalPromptText('neg'), e.currentTarget));
+  $('#copy-inspect-pos').addEventListener('click', (e) => copyText(finalPromptText('pos'), e.currentTarget));
+  $('#copy-inspect-neg').addEventListener('click', (e) => copyText(finalPromptText('neg'), e.currentTarget));
   $('#btn-gen').addEventListener('click', generate);
   $('#btn-save').addEventListener('click', async () => {
     try { await persist(); banner('info', '对比记录已写入 data/results.json。'); }
