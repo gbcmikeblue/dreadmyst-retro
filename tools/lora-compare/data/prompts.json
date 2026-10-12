@@ -44,10 +44,11 @@
         "名称": "国风符号（东方玄幻）",
         "类型": "正向",
         "用途": "角色 / 场景 / 装备 / Boss 勾选；技能与 UI 图标不勾（词不搭）",
-        "文本": "chinese oriental fantasy theme, xianxia immortal aesthetics, ruyi cloud pattern, jade ornaments, gold trim, silk ribbons, tassel, embroidered silk, traditional chinese motifs"
+        "文本": "chinese decorative motifs, ruyi cloud pattern, jade ornaments, gold trim, embroidered silk, brocade texture, tassel, paper lantern glow, traditional chinese ornamentation"
       }
     },
     "其他规范": [
+      "**题材不转，只借风格**（2026-10-12 决定）：本项目内容仍是**中世纪奇幻**（模板里的 `fantasy medieval dungeon` / `dark fantasy creature` 等题材词**不动**）—— 只借梦幻西游方向的**渲染风格（2.5D 高饱和手绘）+ 投影语言 + 中式装饰符号**。因此 `guofeng` 块**只保留装饰 / 工艺词**，不含 `xianxia` / `chinese oriental fantasy` 这类**题材**词（否则会把内容拽向仙侠）",
       "**投影词是硬需求，不要写相机术语**（2026-10-12 联网查证，来源 artpromptgenerator.org）：`isometric` 必须放**开头**（权重最高）+ `no perspective` / `orthographic` + `30 degree angle` —— **缺一个只会得到「稍微倾斜的 3D 渲染图」**；负向必须压 `perspective, vanishing point, tilted camera, wide angle lens, photographic`。此前写的 `camera pitched about 45 degrees down` 是相机术语，是视角出不来的主因",
       "**国风不要写抽象词**（来源 php.cn）：`chinese style` / `oriental aesthetics` 这类抽象概念模型没学过 → 要写**具体符号**（云纹 `ruyi cloud pattern` / 玉佩 `jade` / 披帛 `silk ribbons` / 流苏 `tassel` / 描金 `gold trim`），即新增的 `guofeng` 块",
       "**要「梦幻西游那种东方玄幻风」，但明确不要 Q 版**（2026-10-12 决定）：保持正常头身比 → 通用负向固定压 `chibi, big head, super deformed`；为此 `style` 块去掉 `limited palette` 改 `rich vivid colors, high saturation`，`3d render` 改为 `photorealistic 3d render, plastic 3d model` 以保住 2.5D 手绘质感",

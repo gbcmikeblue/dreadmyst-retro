@@ -13,6 +13,7 @@
 | **许可** | 本项目**非商用** → 第三方模型的 `allowCommercialUse` **不再作为筛选硬条件**（含 `RentCivit` / `Rent` / `Sell` / 空值都可用），只排除「明确禁止任何使用」的条目；**署名义务不受影响**（`allowNoCredit = False` 必须署名）。⚠️ **转商用前必须回头复核 `assets/_LICENSES.md` 全部条目** |
 | **风格** | **不做像素风**（见 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)）→ 走「低分辨率 + 复古观感」平滑手绘路线；即上轮三选一里的 **C 路线**（不引第三方图，纯 AI 出图）。**CC0 像素素材全部出局** |
 | **调用方式** | Forge 启动**未开 CORS**（`/sdapi/v1/cmd-flags` 的 `cors_allow_origins` 为空）→ **任何网页工具都必须自带本地代理**才能调 Forge API，纯静态页直连必然失败 |
+| **题材** | **不转题材，只借风格**（2026-10-12 决定）：内容仍是**中世纪奇幻**，只借梦幻西游方向的**渲染风格（2.5D 高饱和手绘）+ 投影语言（`isometric / orthographic / no perspective`）+ 中式装饰符号**。模板里的 `fantasy medieval dungeon` / `dark fantasy creature` 等题材词**不动**；`guofeng` 块只含装饰 / 工艺词 |
 
 ---
 
@@ -25,7 +26,7 @@
 | **T-03** | 用对比台跑一轮 **基线（无 LoRA）vs 各 LoRA** 体检（每个 LoRA 至少 1 组），产出 `RESULTS.md`，据此决定保留哪些（**这一步只有你能做：需要人眼判断风格**） | T-01 ✅ | **P0** |
 | **T-15** | 启动方式固化：Forge **必须用 `webui-user.bat`（带 `--api`）**，用 `webui.bat` 会导致出图接口 `{"detail":"Not Found"}` —— 已在工具 README 记下，可考虑加个启动检查脚本 | — | P3 |
 | **T-16** | 把 2026-10-12 新下的 **8 个 LoRA + 国风3 底模**同步进对比台的 `data/loras.json` / checkpoint 预设（否则工具里的用途 / 触发词 / 署名提示缺失），并把「国风3」加进 checkpoint 下拉 | — | P2 |
-| **T-17** | 主题材决策：模板里的 `fantasy medieval dungeon` / `dark fantasy creature` 等**中世纪题材词**要不要改成仙侠/玄幻？改了等于把美术方向从「中世纪暗黑」转向「东方玄幻」，会波及 M15 与怪物/装备设计 | 你 | P1 |
+
 
 ### 1.2 许可与模型库
 
@@ -117,3 +118,4 @@
 | 2026-10-12 | **阶段1 实测 + 要求块修正**：确认"灰阶线稿 / 头顶裁切"是提示词问题并修好（提交 `8de0800`，A1 立绘已上色且不裁切）；**但 3/4 俯视仍出不来** → 新开 **§2 未决项「3/4 俯视角色怎么出」（P0，卡住 T-09）**，记录三组实测证据与 4 条候选路线（SDXL / 社区底模 / 角色 LoRA / 3D 渲染）。另：`control_v11f1e_sd15_tile` 下载并由 Forge 识别（**运行时新增 ControlNet 模型必须重启 Forge**，仅 25s） |
 | 2026-10-12 | **清单清理**：删掉已完成的 **T-05 / T-06 / T-14** 与 §2「3 个被挡 LoRA 怎么取」（登录墙的 20 个已全部落盘）；§4 计数由「25 个 / 2.66 GB」更正为 **45 个 / 5.90 GB** |
 | 2026-10-12 | **风格基线改为「东方玄幻（梦幻西游向）· 非 Q 版」**：联网查证后把**相机术语换成投影词**（`isometric / no perspective / orthographic`，负向压 `perspective, vanishing point`）；新增 **`guofeng` 国风符号块**；通用负向固定压 `chibi, big head`。落地「国风 / 西游 / 等距」批次（**国风3 底模** + 8 个 LoRA）。**实测结论：国风3 解决了「风格」、没解决「等距视角」** → 更新 §2 该项候选路线，新增 **T-16**（新模型同步进对比台元数据）/ **T-17**（主题材是否转东方玄幻，需拍板） |
+| 2026-10-12 | **题材决策落定（T-17 已决）**：**不转题材，只借风格** → 内容仍是中世纪，只借渲染风格 + 投影词 + 中式装饰符号。为此把 `guofeng` 块里的**题材词**（`xianxia immortal aesthetics` / `chinese oriental fantasy theme`）换成**装饰 / 工艺词**（`chinese decorative motifs` / `brocade texture` / `paper lantern glow`）。该决策升为 §0 第 4 条口径；T-17 从 §1 删除 |
