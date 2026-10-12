@@ -34,8 +34,13 @@ UI 元素按显示尺寸 1:1。非像素风下 32×32 装不下细节，比像�
 
 ## ⭐ 角色 sprite 的两阶段流程（2026-10-12 修订）
 
-**不要把「3/4 俯视」写进文生图提示词** —— 那是强约束任务，base 模型命中率极低，结果就是反复抽卡。
+**首选路线**：不要把「3/4 俯视」写进文生图提示词 —— 那是强约束任务，base 模型命中率极低，结果就是反复抽卡。
 正确做法分两步：
+
+> ⚠️ **2026-10-12 实测补充（阶段2 没能跑通）**：`denoise` **0.80 / 0.85 / 0.90 三档都没把正面转成 3/4 俯视**，
+> 且 0.85 以上反而把角色**糊成色块剪影**；同时「文生图直接带视角要求 + 抽卡 4 张」也没出俯视（仍正面 / 略仰视）。
+> 结论指向**底模能力**（本机只有原始 SD 1.5 base，无社区微调底模）→ 新增模板 **A3** 作为并行尝试；
+> 两阶段路线**暂不废弃但待重估**。证据与 4 条候选路线见 `docs/tasks/backlog.md` §2「3/4 俯视角色怎么出」。
 
 ```
 阶段1  🖼 文生图 txt2img  →  出一张满意的角色【立绘】（正面全身、plain background）
@@ -61,8 +66,11 @@ UI 元素按显示尺寸 1:1。非像素风下 32×32 装不下细节，比像�
 - **圆形底图不能当角色底**：模型把圆环当"画框"，把角色画在圈里
 - 菱形底图适合掉落物 / 宝石；**网格底图 0.85 能出可用的地砖**
 
-⚠️ **当前限制**：本机 **ControlNet 模型为空** → 转视角**会改变角色长相**。
-要严格锁定同一角色，需下载 SD 1.5 的 `depth` / `openpose` ControlNet（各约 1.4GB）后在阶段2 锁形体。
+⚠️ **当前限制**：转视角**会改变角色长相**。
+要严格锁定同一角色，需 SD 1.5 的 `depth` / `openpose` ControlNet（各约 1.4GB）在阶段2 锁形体。
+> 2026-10-12：已下载 `control_v11f1e_sd15_tile`（1.35 GB，Forge 已识别），但 **tile 是"保持画面结构"用的，
+> 既不能锁角色形体、也不解决转视角** —— 别再指望它。
+> ⚠️ 另：**运行时新增 ControlNet 模型必须重启 Forge**（模型列表只在启动时扫描，重启仅 25 秒）。
 
 ---
 
@@ -76,6 +84,8 @@ UI 元素按显示尺寸 1:1。非像素风下 32×32 装不下细节，比像�
 **正向**（视角要求**故意不写**，"正面全身"就够）：
 ```
 full body character, standing pose, front view, plain background,
+entire figure head to toe, nothing cropped, clear margin around the figure,
+colorful painted illustration, warm palette, smooth colors,
 2.5D retro RPG style, soft shading, limited palette,
 centered composition, simple background, game asset,
 single character, clean readable silhouette, equipment clearly readable,
@@ -85,6 +95,7 @@ painted 2D game sprite
 **负向**：
 ```
 multiple characters, two people, full scene, cropped,
+monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color,
 pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
 signature, blurry, deformed, extra limbs, ugly
 ```
@@ -109,6 +120,7 @@ signature, blurry, deformed, extra limbs, ugly
 ```
 three-quarter high-angle view, camera pitched about 45 degrees down, full body,
 standing upright, facing the viewer, whole figure inside the frame,
+colorful painted illustration, warm palette, smooth colors,
 2.5D retro RPG style, soft shading, limited palette,
 centered composition, simple background, game asset,
 same character, same outfit, same colors, keep the original silhouette,
@@ -120,6 +132,7 @@ painted 2D game sprite
 bird's eye view, directly overhead, flat top-down layout,
 only the top of the head visible, extreme foreshortening, front view standing portrait,
 different character, different outfit,
+monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color,
 pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
 signature, blurry, deformed, extra limbs, ugly
 ```
@@ -128,6 +141,52 @@ signature, blurry, deformed, extra limbs, ugly
 
 **参数**：`steps 25 · CFG 7 · DPM++ 2M Karras · seed -1（首次探索）`  
 **已验证版本**：_待填（首次出图后回填真实 seed + 备注）_
+
+---
+
+## A3. 3/4 俯视立绘（**一步出图 · 文生图**，SD 1.5，LoRA 可选）
+
+> 🆕 2026-10-12 新增。**替代路线**：A1→A2 两阶段转视角实测失败后的并行尝试（见上「两阶段流程」的实测补充）。
+
+**用途**：一步到位直接文生图出 3/4 俯视角色，省掉阶段2。  
+**出图尺寸**：512×512（SD 1.5）/ 1024×1024（SDXL）  
+**抽卡**：**必开**，一次出 4~8 张（视角命中率低，靠数量挑）  
+**后期**：透明背景 → 平滑降到 128×128
+
+⚠️ **不要勾 `portrait`（立绘要求）块** —— 它含 `front view`，与俯视直接冲突。  
+（拼装 = `viewshift` + `style` + `composition` + **`viewneg`** + `commonneg`，**不含** `portrait`）
+
+**正向**：
+```
+three-quarter high-angle view, camera pitched about 45 degrees down, full body,
+standing upright, facing the viewer, whole figure inside the frame,
+colorful painted illustration, warm palette, smooth colors,
+2.5D retro RPG style, soft shading, limited palette,
+centered composition, simple background, game asset,
+single character, clean readable silhouette, equipment clearly readable,
+painted 2D game sprite
+```
+
+**负向**：
+```
+bird's eye view, directly overhead, flat top-down layout,
+only the top of the head visible, extreme foreshortening, front view standing portrait,
+monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color,
+pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
+signature, blurry, deformed, extra limbs, ugly,
+multiple characters, two people, full scene, cropped
+```
+
+**参数**：`steps 25 · CFG 7 · DPM++ 2M · seed -1（靠抽卡，不是固定 seed）`  
+**已验证版本**：_待填_
+
+**已知可优化点**（拿到实测图后按这 5 条改）：
+
+1. `camera pitched about 45 degrees down` 是**相机术语**，对 SD 1.5 偏抽象 → 试**等距词汇**：`isometric view` / `game sprite sheet, isometric rpg`
+2. `facing the viewer` 是**正面词** → 可改 `seen from behind` / `back visible`
+3. 负向只压了 `front view standing portrait` → 可再压 `eye level, straight-on, side view`
+4. `colorful` 与 `limited palette` **互相抵消**，择一
+5. 背景压不住（`full scene` 已在负向仍出天空草地）→ `plain background, blank background` 靠前放
 
 ---
 
@@ -304,3 +363,4 @@ pixel art, 8-bit, hard pixel edges
 | 2026-10-10 | **风格基线改为"不做像素风"**：A/B/C/E/F 去掉 `pixel art` / `sharp edges` / `sharp outline`，负向统一加 `pixel art, 8-bit, hard pixel edges`，改用 `painted 2D game sprite` / `soft shading` / `clean silhouette`；目标分辨率整体上调一档（角色 128²、地砖 64²、图标 64²）；**后期流程从"最近邻像素化"改为"平滑降采样 + 调色板收敛"**，新增「后期统一规范」节；D（Boss）本来就符合新基线，未改内容；**LoRA 改为可选**（不再写进模板，一致性改靠固定 seed 家族 + 一图多格 + 调色板收敛） |
 | 2026-10-12 | **提示词拆成「模板 + 要求」两层**：视角 / 风格 / 构图 / 通用负向 四类要求集中到可编辑副本 `tools/lora-compare/data/prompts.json`（对比台的【要求 / 规范】页可改可存、带历史回退、实时预览拼装结果），本文件降级为只读速查；**更正 A 模板视角写法**（`top-down view` → `three-quarter high-angle view, camera pitched about 45 degrees down`，并把 `bird's eye view / only the top of the head visible` 写进负向）；拼装时对逗号分段**自动去重** |
 | 2026-10-12 | **角色 sprite 改为两阶段**：新增「⭐ 角色 sprite 的两阶段流程」一节（denoise 档位表 + 底图要求），原 A 模板拆成 **A1 角色立绘（文生图）** 与 **A2 视角转换 → 3/4 俯视（图生图，denoise 0.7 起）**；A1 里**故意不含任何视角要求**。使用规则补「优先用可编辑副本」「提示词是两层」「抽卡一次出 4 张」 |
+| 2026-10-12 | **同步 `prompts.json` + 新增 A3**：① A1/A2 正负向补上「显式上色 + 构图不许裁」的实测修正（`colorful painted illustration, warm palette, smooth colors` / `entire figure head to toe, nothing cropped` / 负向加 `monochrome, greyscale, line art, sketch, ink outline, black outline, flat color`）；② 新增 **A3「3/4 俯视立绘（一步出图 · 文生图）」** —— 两阶段转视角实测失败后的并行路线，**明确不含 `portrait` 块**（其 `front view` 与俯视冲突），并附 5 条已知可优化点；③ 「两阶段流程」节补实测结论（`denoise` 0.80/0.85/0.90 均未转成俯视、0.85+ 糊成色块）；④ 更正「ControlNet 模型为空」→ 已装 `control_v11f1e_sd15_tile`，但 tile **不解决转视角**，且**运行时新增模型必须重启 Forge** |

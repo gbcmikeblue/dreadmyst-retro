@@ -90,6 +90,20 @@
       "history": []
     },
     {
+      "id": "A3",
+      "name": "3/4 俯视立绘（一步出图 · 文生图）",
+      "阶段": "txt2img",
+      "用途": "**一步到位**直接文生图出 3/4 俯视角色 —— A1→A2 两阶段转视角实测失败（2026-10-12）之后的替代路线",
+      "出图尺寸": "512×512（SD 1.5）／1024×1024（SDXL）",
+      "base建议": "sd15",
+      "套用要求": ["viewshift", "style", "composition", "viewneg", "commonneg"],
+      "要求": "single character, clean readable silhouette, equipment clearly readable",
+      "positive": "painted 2D game sprite",
+      "negative": "multiple characters, two people, full scene, cropped",
+      "备注": "⚠️ **不要勾 `portrait` 块** —— 它含 `front view`，与俯视直接冲突（首次实测是在脚本里硬删掉的）。⚠️ 视角命中率低，把「每项出 N 张」调到 4~8，靠数量挑。已知可优化点：① `camera pitched about 45 degrees down` 是相机术语，对 SD 1.5 偏抽象 → 可试等距词汇（`isometric view` / `game sprite sheet, isometric rpg`）；② `facing the viewer` 是正面词，可改 `seen from behind` / `back visible`；③ `viewneg` 可再压 `eye level, straight-on, side view`；④ `colorful` 与 `limited palette` 互相抵消；⑤ 背景压不住（`full scene` 已在负向仍出天空草地）→ `plain background` 要靠前放。⚠️ 底模限制：本机只有原始 SD 1.5 base，视角可能仍不稳定（见 docs/tasks/backlog.md §2）",
+      "history": []
+    },
+    {
       "id": "B",
       "name": "场景 tileset",
       "阶段": "txt2img",
