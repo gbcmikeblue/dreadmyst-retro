@@ -159,23 +159,33 @@
 ### 4.2 Prompt 模板（针对本项目）
 
 > ⚠️ **风格基线：不做像素风**（2026-10-10 决定，走「低分辨率 + 复古观感」的平滑手绘路线）。
-> 下面是**模板的副本**，权威版在 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md) —— 那里还有
-> E（技能图标）、F（UI 元素）两个本文件没有的模板，以及「后期统一规范」。**改一边就要同步另一边。**
+> 下面是**模板的副本**；**真正可编辑、且决定实际出图的是
+> [`tools/lora-compare/data/prompts.json`](../../tools/lora-compare/data/prompts.json)**（在对比台的
+> 【要求 / 规范】页改，带历史可回退）。只读速查版在 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)，
+> 那里还有 E（技能图标）、F（UI 元素）两个本文件没有的模板。**改一边要同步另外两边。**
 
-#### A. 俯视角角色 sprite（SD 1.5 + 角色 LoRA）
+#### A. 角色 sprite（3/4 俯视，SD 1.5 + 角色 LoRA）
+
+> ⚠️ **更正（2026-10-12）**：原模板写的 `top-down view` 是错的 —— 本作相机是 **-45° 正交 + billboard**，
+> 纯俯视只会得到"只看得到头顶"的图。改用 **3/4 高角度** 并把俯视写进负向。
 
 **Prompt：**
 ```
-top-down view, full body character, single character, painted 2D game sprite,
-2.5D retro RPG style, soft shading, clean silhouette, simple background,
-game asset, centered composition, white background
+three-quarter high-angle view, camera pitched about 45 degrees down, full body,
+standing upright, facing the viewer, whole figure inside the frame,
+2.5D retro RPG style, soft shading, limited palette,
+centered composition, simple background, game asset,
+single character, clean readable silhouette, armor and equipment clearly readable,
+full body character, painted 2D game sprite, standing pose
 ```
 
 **Negative：**
 ```
-3d render, realistic, photo, blurry, multiple characters, full scene, watermark,
-text, signature, cropped, deformed, extra limbs, ugly,
-pixel art, 8-bit, hard pixel edges
+multiple characters, two people, full scene, cropped,
+bird's eye view, directly overhead, flat top-down layout,
+only the top of the head visible, extreme foreshortening,
+pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
+signature, blurry, deformed, extra limbs, ugly
 ```
 
 **后处理**（Aseprite/Pixelitor）：居中对齐 → 透明背景 → 切成多帧 → **平滑降到 128×128** → 拼成 spritesheet
@@ -336,6 +346,7 @@ Forge 出图 (.png, 1024²)
 | 2026-10-09 | §7 工作量估算表的里程碑编号改为与 `docs/roadmap.md` 一致（M7 / M8 / M10 / M11 / M14） |
 | 2026-10-10 | **风格基线改为"不做像素风"**（保留低分辨率 + 复古观感）：§2 表去掉"32×32 像素地砖 / pixel item icon"与 `pixel` 系列关键词，规格上调为角色 128²、地砖 64²、图标 64²，接口字段改回真 3D 时代的 `sprite_path`；§4.2 A/B/C 模板去像素化并补负向 `pixel art, 8-bit, hard pixel edges`（D 无需改）；§5.1 后期流程改"平滑降采样 + 调色板收敛"；§5.3 导入改 `Filter = Linear` + `Mipmaps = on`；给已过期的 §5.2（2D 时代）加警告；§7 标注人工后期为下限；**LoRA 由"起步必建 3–5 个"改为"非必需"**。同步改了 `assets/_PROMPTS.md` |
 | 2026-10-10 | **端到端跑通 + 实测结论入档**：§1.3 全面重写（torch 必须 2.7.0+cu128 / 交大镜像 / junction 替代路径参数 / `--api` / `cd /d "%~dp0"` / 代理 7890 / IWR 不认 308）；§2 新增「构图靠 img2img、风格靠 LoRA」的实测结论块（含"纯色块底图需 denoise≥0.65"、"圆底图不能当角色底"、"green background 触发词会染绿物体"）；§3.1 补代理与"Civitai API 已无许可字段、必须人工核对"。另在 `assets/_LICENSES.md` 登记 2 个 LoRA（许可留待确认） |
+| 2026-10-12 | **提示词拆成「模板 + 要求」两层**：新增对比台 `tools/lora-compare/`（静态前端 + Forge 反向代理），出图要求集中到可编辑的 `data/prompts.json`（网页可改可存 + 历史回退 + 拼装预览 + 自动去重）。§4.2 **更正 A 模板视角写法**：`top-down view` → `three-quarter high-angle view, camera pitched about 45 degrees down`，并把 `bird's eye view / only the top of the head visible` 写进负向（本作 -45° 正交 + billboard，纯俯视只会看到头顶）；§3.2 补 Civitai **登录墙**（`401`，用下载 URL 加 `?token=` 解决）；本文件与 `assets/_PROMPTS.md` 的模板降级为**副本**，以 `data/prompts.json` 为准 |
 
 ---
 

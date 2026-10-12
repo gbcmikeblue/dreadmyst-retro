@@ -144,9 +144,11 @@ async function boot() {
   renderTemplates();
   renderResults();
   renderSummary();
+  renderReqs();
   await refreshForge();
   renderLoRA();
   bind();
+  updatePreview();
 }
 
 /* ------------------------------- 读 Forge ------------------------------- */
@@ -208,10 +210,13 @@ function loadTplToEditor() {
   if (!t) return;
   $('#pos').value = t.positive || '';
   $('#neg').value = t.negative || '';
+  $('#tpl-req').value = t.要求 || '';
+  $('#apply-view').checked = t.套用全局视角 !== false;
   const sug = S.prompts.global.checkpointDefaults[t.base建议] || {};
   $('#tpl-meta').textContent = [t.用途, t.出图尺寸 && '尺寸 ' + t.出图尺寸, sug.label && ('建议 base ' + sug.label)].filter(Boolean).join(' · ');
   renderHistory();
   markDirty(false);
+  if ($('#preview')) updatePreview();
 }
 
 function markDirty(d) {
@@ -238,8 +243,11 @@ function renderHistory() {
         onclick: () => {
           $('#pos').value = v.positive || '';
           $('#neg').value = v.negative || '';
+          $('#tpl-req').value = v.要求 || '';
+          if (v.套用全局视角 !== undefined) $('#apply-view').checked = v.套用全局视角;
           markDirty(true);
-          banner('info', '已把该历史版本填回编辑器，点「保存修改」才会真正生效。');
+          updatePreview();
+          banner('info', '已把该历史版本填回编辑器，点「保存本模板」才会真正生效。');
         },
       })));
   });
@@ -288,6 +296,7 @@ function renderLoRA() {
     cb.addEventListener('change', () => {
       if (cb.checked) S.sel.add(key); else S.sel.delete(key);
       updateLoraCount();
+      updatePreview();
     });
     const li = h('li', { class: 'lora-item' + (enabled ? '' : ' bad') },
       h('label', {}, cb, h('div', { class: 'grow' },
@@ -325,15 +334,174 @@ function selectableKeys() {
   return Array.from(S.sel).filter((k) => k === NONE || (S.disk.includes(k) && (compatible(k) || $('#force-base').checked)));
 }
 
-/* ------------------------------- 出图 ------------------------------- */
-function composePrompt(key, positive) {
-  if (key === NONE) return positive.trim();
-  const m = metaOf(key);
-  const w = Number($('#lw').value).toFixed(2);
-  const parts = [`<lora:${key}:${w}>`];
-  if ($('#inject-trigger').checked && m.触发词) parts.push(m.触发词);
-  parts.push(positive.trim());
-  return parts.join(', ');
+/* ------------------------------- 提示词拼装 -------------------------------
+   分两层：全局「要求 / 规范」（网页上可改可存）+ 模板（内容描述）。
+   拼装顺序见 prompts.json 的 global.组装顺序，界面上有实时预览。          */
+const REQ_FIELDS = [
+  ['视角与构图要求', 'g-view'],
+  ['视角负向', 'g-viewneg'],
+  ['风格要求', 'g-style'],
+  ['构图要求', 'g-comp'],
+  ['通用负向', 'g-negextra'],
+  ['其他规范', 'g-rules'],
+];
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+/** 编辑器里的当前模板 —— 生成用编辑器内容（WYSIWYG），不必先保存 */
+function editorTpl() {
+  const t = currentTpl() || {};
+  return {
+    id: t.id,
+    name: t.name,
+    要求: $('#tpl-req').value,
+    positive: $('#pos').value,
+    negative: $('#neg').value,
+    套用全局视角: $('#apply-view').checked,
+  };
+}
+
+function joinPrompt(parts) {
+  // 分段 → 去重（不区分大小写、保留首次出现顺序）→ 重新拼接。
+  // 要求与模板之间很容易撞词（watermark、text、centered…），去重能省 prompt 预算。
+  const seen = new Set();
+  const out = [];
+  for (const p of parts) {
+    if (!p) continue;
+    for (const piece of String(p).split(/[,，]+/)) {
+      const w = piece.trim().replace(/\s+/g, ' ');
+      if (!w) continue;
+      const k = w.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(w);
+    }
+  }
+  return out.join(', ');
+}
+
+function positiveFor(key, tpl) {
+  const g = S.prompts.global || {};
+  const parts = [];
+  if (key !== NONE) {
+    const m = metaOf(key);
+    parts.push(`<lora:${key}:${Number($('#lw').value).toFixed(2)}>`);
+    if ($('#inject-trigger').checked && m.触发词) parts.push(m.触发词);
+  }
+  if (tpl.套用全局视角) parts.push(g['视角与构图要求']);
+  parts.push(g['风格要求'], g['构图要求'], tpl.要求, tpl.positive);
+  return joinPrompt(parts);
+}
+
+function negativeFor(tpl) {
+  const g = S.prompts.global || {};
+  const parts = [tpl.negative];
+  if (tpl.套用全局视角) parts.push(g['视角负向']);
+  parts.push(g['通用负向']);
+  return joinPrompt(parts);
+}
+
+/* 要求面板：读取 / 保存 / 历史 / 预览 */
+function reqValuesFromForm() {
+  const out = {};
+  for (const [key, id] of REQ_FIELDS) {
+    const raw = $('#' + id).value;
+    out[key] = key === '其他规范'
+      ? raw.split('\n').map((s) => s.trim()).filter(Boolean)
+      : raw.trim();
+  }
+  return out;
+}
+
+function fillReqForm(g) {
+  for (const [key, id] of REQ_FIELDS) {
+    const v = (g || {})[key];
+    $('#' + id).value = Array.isArray(v) ? v.join('\n') : (v || '');
+  }
+}
+
+function renderReqs() {
+  fillReqForm(S.prompts.global || {});
+  renderReqHistory();
+  $('#req-state').textContent = '';
+  updatePreview();
+}
+
+function renderReqHistory() {
+  const hist = (S.prompts.global && S.prompts.global.history) || [];
+  $('#req-hist-count').textContent = hist.length;
+  const ul = $('#req-history');
+  ul.textContent = '';
+  if (!hist.length) {
+    ul.append(h('li', { text: '（还没有修改记录）' }));
+    return;
+  }
+  hist.slice().reverse().forEach((v) => {
+    ul.append(h('li', {},
+      h('div', { class: 'when', text: `${v.at || '?'} · ${v.note || '无备注'}` }),
+      h('div', { text: String((v.snapshot || {})['视角与构图要求'] || '').slice(0, 60) + '…' }),
+      h('button', {
+        class: 'mini', text: '回退到此版本',
+        onclick: () => {
+          fillReqForm(v.snapshot || {});
+          $('#req-state').textContent = '已填入历史版本，点「保存要求」才生效';
+          updatePreview();
+        },
+      })));
+  });
+}
+
+async function saveReqs() {
+  const g = S.prompts.global;
+  const next = reqValuesFromForm();
+  const changed = REQ_FIELDS.some(([k]) => JSON.stringify(next[k]) !== JSON.stringify(g[k]));
+  if (!changed) { banner('info', '要求没有变化，无需保存。'); return; }
+  g.history = g.history || [];
+  const snapshot = {};
+  for (const [k] of REQ_FIELDS) snapshot[k] = g[k];
+  g.history.push({
+    at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+    note: '人工编辑要求',
+    snapshot,
+  });
+  Object.assign(g, next);
+  S.prompts.updated = new Date().toISOString().slice(0, 10);
+  try {
+    await saveText(F_PROMPTS, JSON.stringify(S.prompts, null, 2));
+    S.pristine = JSON.parse(JSON.stringify(S.prompts));
+    renderReqHistory();
+    $('#req-state').textContent = '已保存';
+    updatePreview();
+    banner('info', '要求已保存到 data/prompts.json（旧版压入历史，可回退）。');
+  } catch (e) {
+    banner('err', '要求保存失败：' + e.message);
+  }
+}
+
+function switchPane(name) {
+  for (const b of $$('.tab')) b.classList.toggle('active', b.dataset.pane === name);
+  $('#pane-tpl').hidden = name !== 'tpl';
+  $('#pane-req').hidden = name !== 'req';
+}
+
+/** 实时预览：改任何一处（模板 / 要求 / 权重 / 触发词 / 勾选）都会立刻反映 */
+function updatePreview() {
+  const box = $('#preview');
+  if (!box || !S.prompts) return;
+  const tpl = editorTpl();
+  const targets = Array.from(S.sel);
+  const key = targets.length ? targets[0] : NONE;
+  const add = (k, v) => {
+    box.append(h('b', { text: k + '：' }));
+    box.append(document.createTextNode((v || '（空）') + '\n\n'));
+  };
+  box.textContent = '';
+  add('模板', `${tpl.id || '?'} · ${tpl.name || '?'}` + (tpl.套用全局视角 ? '（套用全局视角与视角负向）' : '（不套用全局视角）'));
+  add('预览用的对比对象', key === NONE ? '（无 LoRA 基线）' : key);
+  add('正向提示词', positiveFor(key, tpl));
+  add('负向提示词', negativeFor(tpl));
+  if (targets.length > 1) {
+    box.append(h('span', { class: 'hint', text: `已选 ${targets.length} 项：其余只是把 <lora:…> 与触发词换掉，其它完全相同。` }));
+  }
 }
 
 async function switchCheckpoint(title) {
@@ -395,10 +563,12 @@ async function generate() {
       const key = targets[i];
       const label = key === NONE ? '（基线）' : key;
       setStatus(`第 ${i + 1}/${targets.length} 张 · ${label}`);
-      const prompt = composePrompt(key, tpl.positive);
+      const ed = editorTpl();                    // WYSIWYG：用编辑器里的当前内容
+      const prompt = positiveFor(key, ed);
+      const negText = negativeFor(ed);
       const payload = {
         prompt,
-        negative_prompt: $('#neg').value,
+        negative_prompt: negText,
         steps: cfg.steps, cfg_scale: cfg.cfg,
         width: cfg.w, height: cfg.h,
         sampler_name: cfg.sampler, seed,
@@ -430,7 +600,7 @@ async function generate() {
         weight: key === NONE ? null : cfg.weight,
         trigger: key === NONE ? '' : (($('#inject-trigger').checked && metaOf(key).触发词) || ''),
         final_prompt: prompt,
-        negative_prompt: $('#neg').value,
+        negative_prompt: negText,
         image: 'images/' + fname,
         rating: null, verdict: '', notes: '',
       };
@@ -695,7 +865,25 @@ function bind() {
     markDirty(true);
   });
   $('#btn-prompt-save').addEventListener('click', savePrompt);
-  $('#lw').addEventListener('input', () => { $('#lw-out').textContent = Number($('#lw').value).toFixed(2); });
+
+  // 页签 + 要求面板
+  for (const b of $$('.tab')) b.addEventListener('click', () => switchPane(b.dataset.pane));
+  $('#tpl-req').addEventListener('input', () => { markDirty(true); updatePreview(); });
+  $('#apply-view').addEventListener('change', () => { markDirty(true); updatePreview(); });
+  $('#inject-trigger').addEventListener('change', updatePreview);
+  for (const [, id] of REQ_FIELDS) {
+    $('#' + id).addEventListener('input', () => {
+      $('#req-state').textContent = '● 有未保存的修改';
+      updatePreview();
+    });
+  }
+  $('#btn-req-save').addEventListener('click', saveReqs);
+  $('#btn-req-reset').addEventListener('click', () => {
+    fillReqForm((S.pristine && S.pristine.global) || {});
+    $('#req-state').textContent = '已复位到上次保存的内容';
+    updatePreview();
+  });
+  $('#lw').addEventListener('input', () => { $('#lw-out').textContent = Number($('#lw').value).toFixed(2); updatePreview(); });
   $('#lw-out').textContent = Number($('#lw').value).toFixed(2);
   $('#ckpt').addEventListener('change', () => { applyDefaults(false); renderLoRA(); });
   $('#force-base').addEventListener('change', renderLoRA);
@@ -704,11 +892,13 @@ function bind() {
       if (!cb.disabled) { cb.checked = true; S.sel.add(cb.value); }
     }
     updateLoraCount();
+    updatePreview();
   });
   $('#btn-none').addEventListener('click', () => {
     S.sel.clear(); S.sel.add(NONE);
     for (const cb of document.querySelectorAll('#lora-list input[type="checkbox"]')) cb.checked = cb.value === NONE;
     updateLoraCount();
+    updatePreview();
   });
   $('#btn-refresh').addEventListener('click', async () => { await refreshForge(); renderLoRA(); banner(null); });
   $('#btn-gen').addEventListener('click', generate);
@@ -723,24 +913,32 @@ function bind() {
 async function savePrompt() {
   const t = currentTpl();
   if (!t) return;
-  const pos = $('#pos').value, neg = $('#neg').value;
-  if (pos === t.positive && neg === t.negative) { banner('info', '内容没变化，无需保存。'); return; }
+  const next = {
+    positive: $('#pos').value,
+    要求: $('#tpl-req').value,
+    negative: $('#neg').value,
+    套用全局视角: $('#apply-view').checked,
+  };
+  const changed = ['positive', 'negative', '要求', '套用全局视角'].some((k) => next[k] !== t[k]);
+  if (!changed) { banner('info', '本模板没有变化，无需保存。'); return; }
   t.history = t.history || [];
   t.history.push({
     at: new Date().toISOString().replace('T', ' ').slice(0, 19),
     note: '人工编辑',
     positive: t.positive,
     negative: t.negative,
+    要求: t.要求,
+    套用全局视角: t.套用全局视角,
   });
-  t.positive = pos;
-  t.negative = neg;
+  Object.assign(t, next);
   S.prompts.updated = new Date().toISOString().slice(0, 10);
   try {
     await saveText(F_PROMPTS, JSON.stringify(S.prompts, null, 2));
     S.pristine = JSON.parse(JSON.stringify(S.prompts));
     renderHistory();
     markDirty(false);
-    banner('info', `模板 ${t.id} 已保存（旧版已压入修改历史，可回退）。`);
+    updatePreview();
+    banner('info', `模板 ${t.id} 已保存（旧版压入修改历史，可回退）。`);
   } catch (e) {
     banner('err', '提示词保存失败：' + e.message);
   }

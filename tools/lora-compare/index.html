@@ -33,32 +33,95 @@
 
     <section class="panel">
       <h2><span class="num">1</span>提示词</h2>
-      <label class="field">
-        <span>模板</span>
-        <select id="tpl-select"></select>
-      </label>
-      <p class="meta" id="tpl-meta"></p>
 
-      <label class="field">
-        <span class="lbl-row">正向<span class="spacer"></span>
-          <button type="button" class="mini" id="btn-pos-reset">复位</button>
-        </span>
-        <textarea id="pos" rows="7" spellcheck="false"></textarea>
-      </label>
-
-      <label class="field">
-        <span>负向</span>
-        <textarea id="neg" rows="4" spellcheck="false"></textarea>
-      </label>
-
-      <div class="row">
-        <button id="btn-prompt-save" class="primary">保存修改</button>
-        <span class="hint" id="prompt-state"></span>
+      <div class="tabs">
+        <button type="button" class="tab active" data-pane="tpl">模板</button>
+        <button type="button" class="tab" data-pane="req">要求 / 规范</button>
       </div>
 
-      <details class="fold" id="hist-box">
-        <summary>修改历史（<span id="hist-count">0</span> 版）</summary>
-        <ul class="history" id="prompt-history"></ul>
+      <!-- ============ 页签 A：模板 ============ -->
+      <div id="pane-tpl">
+        <label class="field">
+          <span>模板</span>
+          <select id="tpl-select"></select>
+        </label>
+        <p class="meta" id="tpl-meta"></p>
+
+        <label class="field">
+          <span class="lbl-row">正向（内容描述）<span class="spacer"></span>
+            <button type="button" class="mini" id="btn-pos-reset">复位</button>
+          </span>
+          <textarea id="pos" rows="4" spellcheck="false"></textarea>
+        </label>
+
+        <label class="field">
+          <span>本模板额外要求（会拼进正向）</span>
+          <textarea id="tpl-req" rows="3" spellcheck="false"></textarea>
+        </label>
+
+        <label class="field">
+          <span>负向（本模板特有）</span>
+          <textarea id="neg" rows="3" spellcheck="false"></textarea>
+        </label>
+
+        <label class="check"><input type="checkbox" id="apply-view"> 套用全局『视角与构图要求』（角色 / Boss 类勾上；图标 / 地砖 / UI 不要勾）</label>
+
+        <div class="row">
+          <button id="btn-prompt-save" class="primary">保存本模板</button>
+          <span class="hint" id="prompt-state"></span>
+        </div>
+
+        <details class="fold" id="hist-box">
+          <summary>本模板修改历史（<span id="hist-count">0</span> 版）</summary>
+          <ul class="history" id="prompt-history"></ul>
+        </details>
+      </div>
+
+      <!-- ============ 页签 B：要求 / 规范 ============ -->
+      <div id="pane-req" hidden>
+        <p class="meta">这里是**全局要求**：改一处，所有模板一起变（拼装顺序见下方预览）。角色 / Boss 类才会拼『视角』相关两条。</p>
+
+        <label class="field">
+          <span>视角与构图要求（角色 / Boss 类会拼进正向）</span>
+          <textarea id="g-view" rows="3" spellcheck="false"></textarea>
+        </label>
+        <label class="field">
+          <span>视角负向（同上，只在勾了「套用全局视角」时拼进负向）</span>
+          <textarea id="g-viewneg" rows="2" spellcheck="false"></textarea>
+        </label>
+        <label class="field">
+          <span>风格要求（所有模板都拼）</span>
+          <textarea id="g-style" rows="2" spellcheck="false"></textarea>
+        </label>
+        <label class="field">
+          <span>构图要求（所有模板都拼）</span>
+          <textarea id="g-comp" rows="2" spellcheck="false"></textarea>
+        </label>
+        <label class="field">
+          <span>通用负向（所有模板都拼）</span>
+          <textarea id="g-negextra" rows="4" spellcheck="false"></textarea>
+        </label>
+        <label class="field">
+          <span>其他规范（只作文档、不参与出图，一行一条）</span>
+          <textarea id="g-rules" rows="6" spellcheck="false"></textarea>
+        </label>
+
+        <div class="row">
+          <button id="btn-req-save" class="primary">保存要求</button>
+          <button id="btn-req-reset" class="ghost">复位到上次保存</button>
+          <span class="hint" id="req-state"></span>
+        </div>
+
+        <details class="fold">
+          <summary>要求修改历史（<span id="req-hist-count">0</span> 版）</summary>
+          <ul class="history" id="req-history"></ul>
+        </details>
+      </div>
+
+      <!-- ============ 拼装预览 ============ -->
+      <details class="fold" id="preview-box" open>
+        <summary>拼装预览（改上面任何一处，这里立刻变）</summary>
+        <pre id="preview" class="preview"></pre>
       </details>
     </section>
 

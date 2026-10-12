@@ -109,6 +109,21 @@ output { color: var(--acc); font-weight: 600; font-size: 12px; }
 .check input { accent-color: var(--acc2); }
 .row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 
+/* ---------------- 页签 / 预览 ---------------- */
+.tabs { display: flex; gap: 6px; margin-bottom: 11px; border-bottom: 1px solid var(--line); }
+.tab {
+  border: none; background: none; border-radius: 0; padding: 6px 10px;
+  color: var(--fg3); border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { background: none; color: var(--fg2); }
+.tab.active { color: var(--fg); border-bottom-color: var(--acc2); }
+.preview {
+  margin: 8px 0 0; padding: 8px; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap;
+  word-break: break-word; max-height: 260px; overflow: auto; color: var(--fg2);
+}
+.preview b { color: var(--acc); font-weight: 600; }
+
 /* ---------------- 折叠 / 历史 ---------------- */
 .fold { margin-top: 11px; border-top: 1px solid var(--line); padding-top: 9px; }
 .fold summary { cursor: pointer; color: var(--fg2); font-size: 12px; }

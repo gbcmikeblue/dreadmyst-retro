@@ -3,6 +3,11 @@
 > 出图时**直接复制下面整块代码框**（含负向 prompt），粘贴到 WebUI 即可。
 > 完整文档（含参数解释、显存纪律、后期流程）见 `docs/reference/ai-asset-generation.md` §4。
 > 任务清单见 `docs/tasks/`，许可证见 `assets/_LICENSES.md`。
+>
+> ⚠️ **本文件是只读速查；可编辑副本在
+> [`tools/lora-compare/data/prompts.json`](../tools/lora-compare/data/prompts.json)。**
+> 视角 / 风格 / 构图 / 通用负向这四类**要求**现在集中在对比台的【要求 / 规范】页，
+> 改一处即对所有模板生效，并带修改历史可回退。改了那边**不会自动回写本文件**，以那份为准。
 
 ## 风格基线（2026-10-10 决定，取代"像素风"）
 
@@ -24,24 +29,34 @@ UI 元素按显示尺寸 1:1。非像素风下 32×32 装不下细节，比像�
 
 ---
 
-## A. 俯视角角色 sprite（SD 1.5，LoRA 可选）
+## A. 角色 sprite（3/4 俯视，SD 1.5，LoRA 可选）
+
+> ⚠️ **不要写 `top-down view`**：本作相机是 **-45° 正交 + billboard**，纯俯视只会得到"只看得到头顶"的图，
+> 构图必然很怪。正确写法是 **3/4 高角度**（`three-quarter high-angle view, camera pitched about 45 degrees
+> down, full body, facing the viewer`），并且要把它对应的**负向**写上（`bird's eye view, directly overhead,
+> only the top of the head visible`）。这条已统一放进对比台的【要求 / 规范】页，所有角色 / Boss 模板共用。
 
 **用途**：主角、敌人、NPC 的行走/待机/攻击帧。  
 **出图尺寸**：512×512  
 **后期**：Aseprite 居中对齐 → 透明背景 → 切帧 → **平滑降到 128×128** → 拼成 spritesheet → 喂 `scripts/actors/`
 
-**正向**：
+**正向**（下面把「视角 + 风格 + 构图」三段合并展示，实际由【要求 / 规范】页统一供给，模板里只写内容描述）：
 ```
-top-down view, full body character, single character, painted 2D game sprite,
-2.5D retro RPG style, soft shading, clean silhouette, simple background,
-game asset, centered composition, white background
+three-quarter high-angle view, camera pitched about 45 degrees down, full body,
+standing upright, facing the viewer, whole figure inside the frame,
+2.5D retro RPG style, soft shading, limited palette,
+centered composition, simple background, game asset,
+single character, clean readable silhouette, armor and equipment clearly readable,
+full body character, painted 2D game sprite, standing pose
 ```
 
 **负向**：
 ```
-3d render, realistic, photo, blurry, multiple characters, full scene, watermark,
-text, signature, cropped, deformed, extra limbs, ugly,
-pixel art, 8-bit, hard pixel edges
+multiple characters, two people, full scene, cropped,
+bird's eye view, directly overhead, flat top-down layout,
+only the top of the head visible, extreme foreshortening,
+pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
+signature, blurry, deformed, extra limbs, ugly
 ```
 
 **参数**：`steps 25 · CFG 7 · DPM++ 2M Karras · seed -1（首次探索）`  
@@ -220,3 +235,4 @@ pixel art, 8-bit, hard pixel edges
 | --- | --- |
 | 2026-10-09 | 初版：从 `docs/reference/ai-asset-generation.md` §4.2 抽出 A/B/C/D 四模板，新增 E（技能图标）、F（UI 元素） |
 | 2026-10-10 | **风格基线改为"不做像素风"**：A/B/C/E/F 去掉 `pixel art` / `sharp edges` / `sharp outline`，负向统一加 `pixel art, 8-bit, hard pixel edges`，改用 `painted 2D game sprite` / `soft shading` / `clean silhouette`；目标分辨率整体上调一档（角色 128²、地砖 64²、图标 64²）；**后期流程从"最近邻像素化"改为"平滑降采样 + 调色板收敛"**，新增「后期统一规范」节；D（Boss）本来就符合新基线，未改内容；**LoRA 改为可选**（不再写进模板，一致性改靠固定 seed 家族 + 一图多格 + 调色板收敛） |
+| 2026-10-12 | **提示词拆成「模板 + 要求」两层**：视角 / 风格 / 构图 / 通用负向 四类要求集中到可编辑副本 `tools/lora-compare/data/prompts.json`（对比台的【要求 / 规范】页可改可存、带历史回退、实时预览拼装结果），本文件降级为只读速查；**更正 A 模板视角写法**（`top-down view` → `three-quarter high-angle view, camera pitched about 45 degrees down`，并把 `bird's eye view / only the top of the head visible` 写进负向）；拼装时对逗号分段**自动去重** |
