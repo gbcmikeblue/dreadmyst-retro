@@ -33,7 +33,8 @@ from urllib import request as urlrequest
 from urllib.parse import parse_qs, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-FORGE = "http://127.0.0.1:7860"
+FORGE = "http://127.0.0.1:7860"      # 旧后端（Forge / SD），仅保留兼容
+COMFY = "http://127.0.0.1:8188"      # 现用后端：ComfyUI + Qwen-Image 2.1
 
 MAX_BODY = 64 * 1024 * 1024   # 64MB：base64 图片够用
 PROXY_TIMEOUT = 3600          # 出图 / 切模型都可能很久，别让代理先超时
@@ -107,6 +108,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/forge/"):
             return self._proxy("GET")
+        if self.path.startswith("/comfy/"):
+            return self._proxy("GET", COMFY, "/comfy")
         if self.path == "/api/ping":
             return self._json(200, {"ok": True, "forge": FORGE, "root": ROOT})
         if self.path.startswith("/api/list"):
@@ -116,6 +119,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path.startswith("/forge/"):
             return self._proxy("POST")
+        if self.path.startswith("/comfy/"):
+            return self._proxy("POST", COMFY, "/comfy")
         if self.path == "/api/save":
             return self._save_text()
         if self.path == "/api/image":
@@ -168,10 +173,11 @@ class Handler(SimpleHTTPRequestHandler):
         files.sort(key=lambda x: -x["mtime"])
         return self._json(200, {"ok": True, "dir": rel, "files": files})
 
-    # ---------------- Forge 反代 ----------------
+    # ---------------- 后端反代（/forge = 旧 Forge；/comfy = ComfyUI） ----------------
 
-    def _proxy(self, method):
-        upstream = FORGE + self.path[len("/forge"):]
+    def _proxy(self, method, base=None, prefix="/forge"):
+        base = base or FORGE
+        upstream = base + self.path[len(prefix):]
         try:
             body = self._body()
         except ValueError as exc:
@@ -182,12 +188,13 @@ class Handler(SimpleHTTPRequestHandler):
             req.add_header("Content-Type", ctype)
         try:
             with urlrequest.urlopen(req, timeout=PROXY_TIMEOUT) as resp:
+                # 取图（/comfy/view）返回的是二进制，这里原样转发
                 return self._relay(resp.status, resp.headers.get("Content-Type"), resp.read())
         except urlerror.HTTPError as exc:
             return self._relay(exc.code, exc.headers.get("Content-Type"), exc.read())
         except Exception as exc:
             return self._json(502, {"ok": False,
-                                    "error": "Forge 不可达（%s）：%s" % (FORGE, exc)})
+                                    "error": "后端不可达（%s）：%s" % (base, exc)})
 
     def _relay(self, code, ctype, data):
         self.send_response(code)
@@ -238,13 +245,15 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main():
-    global FORGE
+    global FORGE, COMFY
     ap = argparse.ArgumentParser(description="LoRA 对比台 · 本地服务")
     ap.add_argument("--port", type=int, default=7788, help="监听端口（默认 7788）")
-    ap.add_argument("--forge", default="http://127.0.0.1:7860", help="Forge API 地址")
+    ap.add_argument("--forge", default="http://127.0.0.1:7860", help="旧 Forge API 地址")
+    ap.add_argument("--comfy", default="http://127.0.0.1:8188", help="ComfyUI 地址")
     ap.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
     args = ap.parse_args()
     FORGE = args.forge.rstrip("/")
+    COMFY = args.comfy.rstrip("/")
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.daemon_threads = True
@@ -253,7 +262,8 @@ def main():
     print("=" * 62)
     print("  LoRA 对比台")
     print("  界面   : %s" % url)
-    print("  Forge  : %s" % FORGE)
+    print("  ComfyUI: %s" % COMFY)
+    print("  Forge  : %s（旧后端，可不用）" % FORGE)
     print("  目录   : %s" % ROOT)
     print("  Ctrl+C 退出")
     print("=" * 62)

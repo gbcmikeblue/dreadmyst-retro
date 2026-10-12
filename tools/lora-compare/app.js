@@ -10,7 +10,8 @@
    （cors_allow_origins 为空），浏览器直连 127.0.0.1:7860 会被拦。
    ========================================================================== */
 
-const FORGE = '/forge';
+const FORGE = '/forge';      // 旧后端（Forge / SD），已弃用但保留调用点兼容
+const COMFY = '/comfy';      // 现用后端：ComfyUI（Qwen-Image 2.1）
 const F_PROMPTS = 'data/prompts.json';
 const F_LORAS = 'data/loras.json';
 const F_RESULTS = 'data/results.json';
@@ -175,7 +176,11 @@ const setBar = (v) => { $('#bar-fill').style.width = Math.round(Math.max(0, Math
 
 /* ------------------------------- 工具函数 ------------------------------- */
 const plain = (t) => String(t || '').replace(/\s*\[[0-9a-f]{7,}\]\s*$/i, '').trim();
-const baseOf = (t) => (/xl/i.test(String(t)) ? 'SDXL' : 'SD 1.5');
+const baseOf = (t) => {
+  const s = String(t || '');
+  if (/qwen/i.test(s)) return 'Qwen-Image';     // Qwen-Image 2.1 底模（现用）
+  return /xl/i.test(s) ? 'SDXL' : 'SD 1.5';
+};
 const stamp = () => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const slug = (s) => String(s || '').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 60);
 
@@ -241,46 +246,47 @@ async function boot() {
   renderInspector();
 }
 
-/* ------------------------------- 读 Forge ------------------------------- */
+/* ------------------------------- 读 ComfyUI -------------------------------
+   后端已从 Forge 换成 ComfyUI：可用模型/编码器/VAE/LoRA/采样器
+   统一从 /object_info 的节点输入定义里取（不额外依赖自定义接口）。 */
 async function refreshForge() {
+  let oi = null;
   try {
-    const loras = await get(FORGE + '/sdapi/v1/loras', 25000);
-    S.disk = loras.map((x) => x.name);
+    oi = await get(COMFY + '/object_info', 90000);
     pill('pill-forge', true);
   } catch (e) {
-    S.disk = [];
+    S.disk = []; S.ckpts = []; S.samplers = [];
     pill('pill-forge', false);
-    banner('warn', '读不到 Forge 的 LoRA 列表：' + e.message + '（Forge 没启动的话请先起 Forge，再点「重读 LoRA 列表」）');
+    banner('warn', '读不到 ComfyUI：' + e.message + '（先启动它：在 D:\\AI\\ComfyUI\\comfyui-master 下运行 main.py --lowvram --port 8188）');
+    renderCkptCards();
+    return;
   }
-  try {
-    S.ckpts = await get(FORGE + '/sdapi/v1/sd-models', 25000);
-    const sm = await get(FORGE + '/sdapi/v1/samplers', 25000);
-    S.samplers = sm.map((x) => x.name);
-  } catch (_) {
-    S.ckpts = [];
-    S.samplers = ['DPM++ 2M'];
-  }
-  let cur = null;
-  try {
-    const o = await get(FORGE + '/sdapi/v1/options', 25000);
-    cur = plain(o.sd_model_checkpoint);
-    $('#pill-model').textContent = cur || '—';
-  } catch (_) { /* 忽略 */ }
+  const list = (node, field) => {
+    try {
+      const v = oi[node].input.required[field];
+      return Array.isArray(v[0]) ? v[0].slice() : [];
+    } catch (_) { return []; }
+  };
+  S.ckpts = list('UNETLoader', 'unet_name').map((n) => ({ title: n, model_name: n }));
+  S.disk = list('LoraLoader', 'lora_name');
+  S.aux = { clip: list('CLIPLoader', 'clip_name'), vae: list('VAELoader', 'vae_name') };
+  S.samplers = list('KSampler', 'sampler_name');
+  const sched = list('KSampler', 'scheduler');
+  S.scheduler = sched.includes('simple') ? 'simple' : (sched[0] || 'simple');
+  $('#pill-model').textContent = S.ckpts.length ? baseOf(S.ckpts[0].title) : '—';
 
   const sel = $('#ckpt');
   sel.textContent = '';
   if (!S.ckpts.length) {
-    sel.append(h('option', { value: '', text: '（读不到 checkpoint，请确认 Forge 已启动）' }));
+    sel.append(h('option', { value: '', text: '（ComfyUI 里没有可用 unet，请确认模型已放到 models-comfy/diffusion_models）' }));
   } else {
     for (const c of S.ckpts) sel.append(h('option', { value: c.title, text: `${c.title}  ·  ${baseOf(c.title)}` }));
-    const match = S.ckpts.find((c) => plain(c.title) === cur);
-    if (match) sel.value = match.title;
   }
 
   const sp = $('#sampler');
   sp.textContent = '';
   for (const s of S.samplers) sp.append(h('option', { value: s, text: s }));
-  if (S.samplers.includes('DPM++ 2M')) sp.value = 'DPM++ 2M';
+  if (S.samplers.includes('euler')) sp.value = 'euler';
 
   renderCkptCards();
   applyDefaults(false);
@@ -927,37 +933,91 @@ function finalPromptText(kind) {
 }
 
 async function switchCheckpoint(title) {
-  const want = plain(title);
-  let cur = null;
-  try { cur = plain((await get(FORGE + '/sdapi/v1/options', 20000)).sd_model_checkpoint); } catch (_) {}
-  if (cur === want) { $('#pill-model').textContent = want; return; }
-
-  setStatus(`正在切换 checkpoint → ${want}（8GB 显存下要数十秒）…`);
-  await post(FORGE + '/sdapi/v1/options', { sd_model_checkpoint: want }, 300000);
-  for (let i = 0; i < 180; i++) {
-    await sleep(1000);
-    try {
-      const o = await get(FORGE + '/sdapi/v1/options', 20000);
-      if (plain(o.sd_model_checkpoint) === want) { $('#pill-model').textContent = want; return; }
-    } catch (_) { /* 切换中会短暂失败，继续等 */ }
-  }
-  throw new Error('切换 checkpoint 超时（>' + 180 + 's）：' + want);
+  // ComfyUI 不需要「切换模型」：模型在每次提交的图里指定 —— 这里只更新状态灯。
+  $('#pill-model').textContent = title ? baseOf(title) : '—';
 }
 
 function startPoll() {
   stopPoll();
   S.poll = setInterval(async () => {
     try {
-      const p = await get(FORGE + '/sdapi/v1/progress?skip_current_image=true', 6000);
-      setBar(p.progress || 0);
-      const st = p.state || {};
-      if (st.sampling_step != null && st.sampling_steps) {
-        setStatus(`采样 ${st.sampling_step}/${st.sampling_steps}`);
-      }
+      const q = await get(COMFY + '/queue', 6000);
+      const run = (q.queue_running || []).length;
+      const pend = (q.queue_pending || []).length;
+      setStatus(`ComfyUI：运行中 ${run} · 排队 ${pend}`);
     } catch (_) { /* 忽略 */ }
   }, 1000);
 }
 function stopPoll() { if (S.poll) { clearInterval(S.poll); S.poll = null; } }
+
+/* ------------------------------- ComfyUI 提交 / 等待 / 取图 -------------------------------
+   图结构对照 ComfyUI 官方模板 image_qwen_image.json 的子图「Text to Image (Qwen-Image)」：
+     UNETLoader → ModelSamplingAuraFlow(shift 3.1) → [LoraLoaderModelOnly] → KSampler
+     CLIPLoader(type=qwen_image) → CLIPTextEncode ×2 ；EmptySD3LatentImage → VAEDecode → SaveImage
+   要点：cfg 默认 1（官方口径）；若挂了 Turbo LoRA 必须 cfg=1，否则画面会崩。 */
+function comfyGraph({ key, prompt, negText, cfg, seed }) {
+  const g = {
+    1: { class_type: 'UNETLoader', inputs: { unet_name: plain(cfg.ckpt), weight_dtype: 'default' } },
+    2: { class_type: 'ModelSamplingAuraFlow', inputs: { model: ['1', 0], shift: 3.1 } },
+    4: { class_type: 'CLIPLoader', inputs: { clip_name: (S.aux && S.aux.clip[0]) || '', type: 'qwen_image' } },
+    5: { class_type: 'CLIPTextEncode', inputs: { clip: ['4', 0], text: prompt } },
+    6: { class_type: 'CLIPTextEncode', inputs: { clip: ['4', 0], text: negText } },
+    7: { class_type: 'EmptySD3LatentImage', inputs: { width: cfg.w, height: cfg.h, batch_size: 1 } },
+    9: { class_type: 'VAELoader', inputs: { vae_name: (S.aux && S.aux.vae[0]) || '' } },
+    10: { class_type: 'VAEDecode', inputs: { samples: ['8', 0], vae: ['9', 0] } },
+    11: { class_type: 'SaveImage', inputs: { images: ['10', 0], filename_prefix: 'lora-compare' } },
+  };
+  const useLora = key !== NONE && S.disk.includes(key);
+  if (useLora) {
+    // 用节点挂 LoRA（不靠提示词里的 <lora:...> 语法，避免名字写错直接报错）
+    g[3] = { class_type: 'LoraLoaderModelOnly',
+             inputs: { model: ['2', 0], lora_name: key, strength_model: weightOf(key) } };
+  }
+  g[8] = { class_type: 'KSampler',
+           inputs: { model: useLora ? ['3', 0] : ['2', 0], positive: ['5', 0], negative: ['6', 0],
+                     latent_image: ['7', 0], seed: seed, steps: cfg.steps, cfg: cfg.cfg,
+                     sampler_name: cfg.sampler, scheduler: S.scheduler || 'simple', denoise: 1.0 } };
+  return g;
+}
+
+/** 轮询 /history 直到出图；把 ComfyUI 的执行错误抛出来（否则只会看到"超时"） */
+async function waitComfy(pid, timeoutMs = 1800000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    await sleep(2500);
+    let h = null;
+    try { h = await get(COMFY + '/history/' + pid, 20000); } catch (_) { continue; }
+    const e = h && h[pid];
+    if (!e) continue;
+    const st = ((e.status || {}).status_str) || '';
+    if (st === 'error') {
+      const msg = JSON.stringify((e.status && e.status.messages) || {}).slice(0, 600);
+      throw new Error('ComfyUI 执行失败：' + msg);
+    }
+    const outs = [];
+    for (const nid of Object.keys(e.outputs || {})) {
+      for (const im of (e.outputs[nid].images || [])) outs.push(im);
+    }
+    if (outs.length) return outs;
+  }
+  throw new Error('ComfyUI 超过 ' + Math.round(timeoutMs / 1000) + ' 秒未完成');
+}
+
+/** 经 /comfy/view 取图 → 裸 base64（给 /api/image 落盘用） */
+async function fetchComfyImage(im) {
+  const q = '?filename=' + encodeURIComponent(im.filename)
+    + '&subfolder=' + encodeURIComponent(im.subfolder || '')
+    + '&type=' + encodeURIComponent(im.type || 'output');
+  const res = await fetch(COMFY + '/view' + q, { cache: 'no-store' });
+  if (!res.ok) throw new Error('取图失败 HTTP ' + res.status);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1] || '');
+    fr.onerror = () => reject(new Error('读图失败'));
+    fr.readAsDataURL(blob);
+  });
+}
 
 /* ------------------------------- 图生图辅助 ------------------------------- */
 /** 从本机服务读一张图，转成裸 base64（Forge 的 init_images 要这个格式） */
@@ -1046,13 +1106,13 @@ async function generate() {
   if (!targets.length) { banner('warn', '至少要勾选一个对比对象。'); return; }
 
   const cfg = readParams();
-  if (!cfg.ckpt) { banner('err', '没读到 checkpoint，先把 Forge 起来再点「重读 LoRA 列表」。'); return; }
+  if (!cfg.ckpt) { banner('err', '没读到模型列表：先启动 ComfyUI，再点「重读 LoRA 列表」。'); return; }
 
   let seed = Number.isFinite(cfg.seed) && cfg.seed >= 0 ? cfg.seed : Math.floor(Math.random() * 2147483647);
   $('#seed').value = seed;   // 锁进界面：本批共用同一个 seed 家族，保证"只换了 LoRA"
 
   const ed0 = editorTpl();
-  const img2img = ed0.阶段 === 'img2img';
+  const img2img = false;   // ⚠️ Qwen 的图生图还没接进这个工具 → 一律按文生图走（模板 A2 只能测「同提示词不加底图」）
   const repeat = Math.max(1, Math.min(6, Number($('#repeat').value) || 1));
   let initName = '', initB64 = null;
   if (img2img) {
@@ -1088,29 +1148,19 @@ async function generate() {
         const prompt = positiveFor(key, ed);
         const negText = negativeFor(ed);
         const thisSeed = seed + r;
-        const payload = {
-          prompt,
-          negative_prompt: negText,
-          steps: cfg.steps, cfg_scale: cfg.cfg,
-          width: cfg.w, height: cfg.h,
-          sampler_name: cfg.sampler, seed: thisSeed,
-          batch_size: 1, n_iter: 1, save_images: false, send_images: true,
-          override_settings: { sd_model_checkpoint: plain(cfg.ckpt) },
-        };
-        if (img2img) {
-          payload.init_images = [initB64];
-          payload.denoising_strength = ed.denoise;
-          payload.resize_mode = 0;               // 不放大：避免"先缩放再重绘"毁掉轮廓
-          payload.mask_blur = 0;
-        }
+        if (img2img) banner('warn', 'Qwen 的图生图还没接进来：本次按文生图处理（模板 A2 暂不可用）。');
         startPoll();
-        let res;
+        let pid;
         try {
-          res = await post(FORGE + (img2img ? '/sdapi/v1/img2img' : '/sdapi/v1/txt2img'), payload, 900000);
+          const graph = comfyGraph({ key, prompt, negText, cfg, seed: thisSeed });
+          pid = (await post(COMFY + '/prompt', { prompt: graph }, 120000)).prompt_id;
         } finally { stopPoll(); }
+        if (!pid) throw new Error(label + '：ComfyUI 没返回 prompt_id');
 
-        const b64 = res && res.images && res.images[0];
-        if (!b64) throw new Error(label + '：返回里没有图片');
+        const outs = await waitComfy(pid);
+        if (!outs.length) throw new Error(label + '：ComfyUI 没产出图片');
+        const b64 = await fetchComfyImage(outs[0]);
+        if (!b64) throw new Error(label + '：取不到图片数据');
 
         const fname = `${stamp()}__${tpl.id}__${slug(baseOf(cfg.ckpt))}__${key === NONE ? 'base' : slug(key)}__s${thisSeed}${img2img ? '__i2i' + String(ed.denoise).replace('.', '') : ''}.png`;
         await saveImage(fname, b64);
