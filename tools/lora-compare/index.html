@@ -64,7 +64,17 @@
           <textarea id="neg" rows="3" spellcheck="false"></textarea>
         </label>
 
-        <label class="check"><input type="checkbox" id="apply-view"> 套用全局『视角与构图要求』（角色 / Boss 类勾上；图标 / 地砖 / UI 不要勾）</label>
+        <p class="meta">阶段：<b id="tpl-stage">—</b></p>
+
+        <label class="field" id="denoise-field" hidden>
+          <span class="lbl-row">denoise（图生图强度）<output id="denoise-out">0.70</output></span>
+          <input id="denoise" type="range" min="0.2" max="0.95" step="0.05" value="0.7">
+        </label>
+
+        <div class="field">
+          <span>套用哪些要求块（正向块进正向、负向块进负向）</span>
+          <div class="blocks-pick" id="blocks-pick"></div>
+        </div>
 
         <div class="row">
           <button id="btn-prompt-save" class="primary">保存本模板</button>
@@ -79,28 +89,10 @@
 
       <!-- ============ 页签 B：要求 / 规范 ============ -->
       <div id="pane-req" hidden>
-        <p class="meta">这里是**全局要求**：改一处，所有模板一起变（拼装顺序见下方预览）。角色 / Boss 类才会拼『视角』相关两条。</p>
+        <p class="meta">这里是**全局要求块**：改一处，所有勾了它的模板一起变（哪些模板用哪块在【模板】页勾）。角色 sprite 走两阶段 —— 阶段1 用「立绘要求」，阶段2 用「视角转换要求」。</p>
 
-        <label class="field">
-          <span>视角与构图要求（角色 / Boss 类会拼进正向）</span>
-          <textarea id="g-view" rows="3" spellcheck="false"></textarea>
-        </label>
-        <label class="field">
-          <span>视角负向（同上，只在勾了「套用全局视角」时拼进负向）</span>
-          <textarea id="g-viewneg" rows="2" spellcheck="false"></textarea>
-        </label>
-        <label class="field">
-          <span>风格要求（所有模板都拼）</span>
-          <textarea id="g-style" rows="2" spellcheck="false"></textarea>
-        </label>
-        <label class="field">
-          <span>构图要求（所有模板都拼）</span>
-          <textarea id="g-comp" rows="2" spellcheck="false"></textarea>
-        </label>
-        <label class="field">
-          <span>通用负向（所有模板都拼）</span>
-          <textarea id="g-negextra" rows="4" spellcheck="false"></textarea>
-        </label>
+        <div id="blocks-edit"></div>
+
         <label class="field">
           <span>其他规范（只作文档、不参与出图，一行一条）</span>
           <textarea id="g-rules" rows="6" spellcheck="false"></textarea>
@@ -142,6 +134,23 @@
         <span class="lbl-row">LoRA 权重<output id="lw-out">0.80</output></span>
         <input id="lw" type="range" min="0" max="1.2" step="0.05" value="0.8">
       </label>
+
+      <label class="field">
+        <span class="lbl-row">每项出<output id="repeat-out">1</output>张（抽卡：同提示词换 seed，一次多看几张再挑）</span>
+        <input id="repeat" type="range" min="1" max="6" step="1" value="1">
+      </label>
+
+      <div class="field" id="init-wrap">
+        <span>图生图底图（模板阶段 = img2img 时必选）</span>
+        <div class="row">
+          <select id="init-img"><option value="">（未选）</option></select>
+          <button type="button" class="ghost" id="btn-init-refresh">刷新</button>
+        </div>
+        <div class="row">
+          <input type="file" id="init-upload" accept="image/png,image/jpeg,image/webp">
+        </div>
+        <p class="hint">也可以直接在结果卡片上点「设为底图」。底图尺寸会自动填进上面的宽 / 高。</p>
+      </div>
 
       <label class="check"><input type="checkbox" id="inject-trigger" checked> 自动注入注册表里的触发词</label>
       <label class="check"><input type="checkbox" id="force-base"> 允许跨 base 测试（不推荐，结果无意义）</label>

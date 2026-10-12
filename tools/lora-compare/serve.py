@@ -30,6 +30,7 @@ import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib import error as urlerror
 from urllib import request as urlrequest
+from urllib.parse import parse_qs, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 FORGE = "http://127.0.0.1:7860"
@@ -108,6 +109,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._proxy("GET")
         if self.path == "/api/ping":
             return self._json(200, {"ok": True, "forge": FORGE, "root": ROOT})
+        if self.path.startswith("/api/list"):
+            return self._list_dir()
         return super().do_GET()
 
     def do_POST(self):
@@ -133,6 +136,37 @@ class Handler(SimpleHTTPRequestHandler):
             os.remove(target)
             return self._json(200, {"ok": True, "removed": os.path.relpath(target, ROOT)})
         return self._json(200, {"ok": True, "removed": None})
+
+    def _resolve_dir(self, rel):
+        """目录白名单：只允许本目录内的子目录（用于列 images/ 当图生图底图）。"""
+        rel = str(rel).replace("\\", "/").strip("/")
+        parts = [p for p in rel.split("/") if p not in ("", ".")]
+        if not parts or ".." in parts:
+            return None
+        target = os.path.normpath(os.path.join(ROOT, *parts))
+        if os.path.commonpath([ROOT, target]) != ROOT:
+            return None
+        return target
+
+    def _list_dir(self):
+        """/api/list?dir=images —— 列出目录内的可读文件（给图生图的「选底图」用）。"""
+        q = parse_qs(urlparse(self.path).query)
+        rel = (q.get("dir") or ["images"])[0]
+        target = self._resolve_dir(rel)
+        if target is None:
+            return self._json(403, {"ok": False, "error": "目录非法: %s" % rel})
+        files = []
+        if os.path.isdir(target):
+            for name in os.listdir(target):
+                p = os.path.join(target, name)
+                if not os.path.isfile(p):
+                    continue
+                if os.path.splitext(name)[1].lower() not in ALLOWED_EXT:
+                    continue
+                files.append({"name": name, "bytes": os.path.getsize(p),
+                              "mtime": int(os.path.getmtime(p))})
+        files.sort(key=lambda x: -x["mtime"])
+        return self._json(200, {"ok": True, "dir": rel, "files": files})
 
     # ---------------- Forge 反代 ----------------
 

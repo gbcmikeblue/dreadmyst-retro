@@ -147,6 +147,7 @@ async function boot() {
   renderReqs();
   await refreshForge();
   renderLoRA();
+  await refreshImages();
   bind();
   updatePreview();
 }
@@ -211,7 +212,12 @@ function loadTplToEditor() {
   $('#pos').value = t.positive || '';
   $('#neg').value = t.negative || '';
   $('#tpl-req').value = t.要求 || '';
-  $('#apply-view').checked = t.套用全局视角 !== false;
+  const img2img = t.阶段 === 'img2img';
+  $('#tpl-stage').textContent = img2img ? '图生图（img2img）' : '文生图（txt2img）';
+  $('#denoise-field').hidden = !img2img;
+  $('#denoise').value = t.denoise != null ? t.denoise : 0.7;
+  $('#denoise-out').textContent = Number($('#denoise').value).toFixed(2);
+  renderBlocksPick();
   const sug = S.prompts.global.checkpointDefaults[t.base建议] || {};
   $('#tpl-meta').textContent = [t.用途, t.出图尺寸 && '尺寸 ' + t.出图尺寸, sug.label && ('建议 base ' + sug.label)].filter(Boolean).join(' · ');
   renderHistory();
@@ -244,7 +250,10 @@ function renderHistory() {
           $('#pos').value = v.positive || '';
           $('#neg').value = v.negative || '';
           $('#tpl-req').value = v.要求 || '';
-          if (v.套用全局视角 !== undefined) $('#apply-view').checked = v.套用全局视角;
+          if (v.套用要求) {
+            for (const cb of $$('#blocks-pick input[type="checkbox"]')) cb.checked = v.套用要求.includes(cb.value);
+          }
+          if (v.denoise != null) { $('#denoise').value = v.denoise; $('#denoise-out').textContent = Number(v.denoise).toFixed(2); }
           markDirty(true);
           updatePreview();
           banner('info', '已把该历史版本填回编辑器，点「保存本模板」才会真正生效。');
@@ -335,28 +344,31 @@ function selectableKeys() {
 }
 
 /* ------------------------------- 提示词拼装 -------------------------------
-   分两层：全局「要求 / 规范」（网页上可改可存）+ 模板（内容描述）。
-   拼装顺序见 prompts.json 的 global.组装顺序，界面上有实时预览。          */
-const REQ_FIELDS = [
-  ['视角与构图要求', 'g-view'],
-  ['视角负向', 'g-viewneg'],
-  ['风格要求', 'g-style'],
-  ['构图要求', 'g-comp'],
-  ['通用负向', 'g-negextra'],
-  ['其他规范', 'g-rules'],
-];
+   三层：全局「要求块」（按类型自动分正向/负向）+ 模板（勾选用哪些块 + 自己的要求/正负向）。
+   拼装顺序见 prompts.json 的 global.组装顺序；界面上有实时预览。            */
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+/** 全局要求块：key -> { 名称, 类型, 用途, 文本 } */
+function blockDefs() {
+  return (S.prompts && S.prompts.global && S.prompts.global['要求块']) || {};
+}
 
 /** 编辑器里的当前模板 —— 生成用编辑器内容（WYSIWYG），不必先保存 */
 function editorTpl() {
   const t = currentTpl() || {};
+  const boxes = $$('#blocks-pick input[type="checkbox"]');
+  const use = boxes.length
+    ? boxes.filter((cb) => cb.checked).map((cb) => cb.value)
+    : (t.套用要求 || []);
   return {
     id: t.id,
     name: t.name,
+    阶段: t.阶段 || 'txt2img',
+    套用要求: use,
     要求: $('#tpl-req').value,
     positive: $('#pos').value,
     negative: $('#neg').value,
-    套用全局视角: $('#apply-view').checked,
+    denoise: Number($('#denoise').value),
   };
 }
 
@@ -379,49 +391,91 @@ function joinPrompt(parts) {
   return out.join(', ');
 }
 
+/** 取模板勾选的要求块里，属于 type（正向/负向）的文本 */
+function blocksOf(tpl, type) {
+  const defs = blockDefs();
+  return (tpl.套用要求 || [])
+    .map((k) => defs[k])
+    .filter((b) => b && b.类型 === type)
+    .map((b) => b.文本);
+}
+
 function positiveFor(key, tpl) {
-  const g = S.prompts.global || {};
   const parts = [];
   if (key !== NONE) {
     const m = metaOf(key);
     parts.push(`<lora:${key}:${Number($('#lw').value).toFixed(2)}>`);
     if ($('#inject-trigger').checked && m.触发词) parts.push(m.触发词);
   }
-  if (tpl.套用全局视角) parts.push(g['视角与构图要求']);
-  parts.push(g['风格要求'], g['构图要求'], tpl.要求, tpl.positive);
+  parts.push(...blocksOf(tpl, '正向'), tpl.要求, tpl.positive);
   return joinPrompt(parts);
 }
 
 function negativeFor(tpl) {
-  const g = S.prompts.global || {};
-  const parts = [tpl.negative];
-  if (tpl.套用全局视角) parts.push(g['视角负向']);
-  parts.push(g['通用负向']);
-  return joinPrompt(parts);
+  return joinPrompt([...blocksOf(tpl, '负向'), tpl.negative]);
 }
 
 /* 要求面板：读取 / 保存 / 历史 / 预览 */
 function reqValuesFromForm() {
-  const out = {};
-  for (const [key, id] of REQ_FIELDS) {
-    const raw = $('#' + id).value;
-    out[key] = key === '其他规范'
-      ? raw.split('\n').map((s) => s.trim()).filter(Boolean)
-      : raw.trim();
+  const blocks = {};
+  for (const key of Object.keys(blockDefs())) {
+    const el = $('#blk-' + key);
+    if (el) blocks[key] = el.value.trim();
   }
-  return out;
+  return {
+    要求块: blocks,
+    其他规范: $('#g-rules').value.split('\n').map((s) => s.trim()).filter(Boolean),
+  };
 }
 
+/** 支持两种形状：{要求块:{key:"文本"}} 或 {要求块:{key:{...,文本}}} */
 function fillReqForm(g) {
-  for (const [key, id] of REQ_FIELDS) {
-    const v = (g || {})[key];
-    $('#' + id).value = Array.isArray(v) ? v.join('\n') : (v || '');
+  const blocks = (g && g['要求块']) || {};
+  for (const key of Object.keys(blockDefs())) {
+    const el = $('#blk-' + key);
+    if (!el) continue;
+    const v = blocks[key];
+    el.value = typeof v === 'string' ? v : ((v && v.文本) || '');
+  }
+  $('#g-rules').value = ((g && g['其他规范']) || []).join('\n');
+}
+
+/** 【模板】页签里的「套用哪些要求块」勾选 */
+function renderBlocksPick() {
+  const box = $('#blocks-pick');
+  if (!box) return;
+  const use = (currentTpl() || {}).套用要求 || [];
+  box.textContent = '';
+  for (const [key, b] of Object.entries(blockDefs())) {
+    const cb = h('input', { type: 'checkbox', value: key });
+    cb.checked = use.includes(key);
+    cb.addEventListener('change', () => { markDirty(true); updatePreview(); });
+    box.append(h('label', { class: 'check' },
+      cb,
+      h('span', { class: 'tag ' + (b.类型 === '负向' ? 'bad' : 'ok'), text: b.类型 }),
+      (b.名称 || key)));
   }
 }
 
 function renderReqs() {
+  const box = $('#blocks-edit');
+  box.textContent = '';
+  for (const [key, b] of Object.entries(blockDefs())) {
+    const id = 'blk-' + key;
+    box.append(h('label', { class: 'field' },
+      h('span', {},
+        h('b', { text: b.名称 || key }),
+        h('span', { class: 'tag ' + (b.类型 === '负向' ? 'bad' : 'ok'), text: b.类型 }),
+        b.用途 ? ' ' + b.用途 : ''),
+      h('textarea', { id, rows: 3, spellcheck: 'false' })));
+    $('#' + id).addEventListener('input', () => {
+      $('#req-state').textContent = '● 有未保存的修改';
+      updatePreview();
+    });
+  }
   fillReqForm(S.prompts.global || {});
   renderReqHistory();
+  renderBlocksPick();
   $('#req-state').textContent = '';
   updatePreview();
 }
@@ -438,7 +492,7 @@ function renderReqHistory() {
   hist.slice().reverse().forEach((v) => {
     ul.append(h('li', {},
       h('div', { class: 'when', text: `${v.at || '?'} · ${v.note || '无备注'}` }),
-      h('div', { text: String((v.snapshot || {})['视角与构图要求'] || '').slice(0, 60) + '…' }),
+      h('div', { text: '要求块：' + Object.keys(((v.snapshot || {})['要求块']) || {}).join(', ').slice(0, 70) }),
       h('button', {
         class: 'mini', text: '回退到此版本',
         onclick: () => {
@@ -452,23 +506,37 @@ function renderReqHistory() {
 
 async function saveReqs() {
   const g = S.prompts.global;
-  const next = reqValuesFromForm();
-  const changed = REQ_FIELDS.some(([k]) => JSON.stringify(next[k]) !== JSON.stringify(g[k]));
+  const form = reqValuesFromForm();
+  const oldBlocks = g['要求块'] || {};
+  const newBlocks = {};
+  for (const key of Object.keys(form.要求块)) {
+    const old = oldBlocks[key] || {};
+    newBlocks[key] = {
+      名称: old.名称 || key,
+      类型: old.类型 || '正向',
+      用途: old.用途 || '',
+      文本: form.要求块[key],
+    };
+  }
+  const changed =
+    JSON.stringify(newBlocks) !== JSON.stringify(oldBlocks) ||
+    JSON.stringify(form['其他规范']) !== JSON.stringify(g['其他规范'] || []);
   if (!changed) { banner('info', '要求没有变化，无需保存。'); return; }
+
   g.history = g.history || [];
-  const snapshot = {};
-  for (const [k] of REQ_FIELDS) snapshot[k] = g[k];
   g.history.push({
     at: new Date().toISOString().replace('T', ' ').slice(0, 19),
     note: '人工编辑要求',
-    snapshot,
+    snapshot: { 要求块: JSON.parse(JSON.stringify(oldBlocks)), 其他规范: JSON.parse(JSON.stringify(g['其他规范'] || [])) },
   });
-  Object.assign(g, next);
+  g['要求块'] = newBlocks;
+  g['其他规范'] = form['其他规范'];
   S.prompts.updated = new Date().toISOString().slice(0, 10);
   try {
     await saveText(F_PROMPTS, JSON.stringify(S.prompts, null, 2));
     S.pristine = JSON.parse(JSON.stringify(S.prompts));
     renderReqHistory();
+    renderBlocksPick();
     $('#req-state').textContent = '已保存';
     updatePreview();
     banner('info', '要求已保存到 data/prompts.json（旧版压入历史，可回退）。');
@@ -495,7 +563,13 @@ function updatePreview() {
     box.append(document.createTextNode((v || '（空）') + '\n\n'));
   };
   box.textContent = '';
-  add('模板', `${tpl.id || '?'} · ${tpl.name || '?'}` + (tpl.套用全局视角 ? '（套用全局视角与视角负向）' : '（不套用全局视角）'));
+  const defs = blockDefs();
+  const usedNames = (tpl.套用要求 || []).map((k) => (defs[k] && defs[k].名称) || k);
+  add('模板', `${tpl.id || '?'} · ${tpl.name || '?'}`);
+  add('阶段', tpl.阶段 === 'img2img'
+    ? `图生图（denoise ${Number(tpl.denoise).toFixed(2)}，底图：${$('#init-img').value || '⚠️ 未选！'}）`
+    : '文生图');
+  add('套用的要求块', usedNames.length ? usedNames.join(' + ') : '（无）');
   add('预览用的对比对象', key === NONE ? '（无 LoRA 基线）' : key);
   add('正向提示词', positiveFor(key, tpl));
   add('负向提示词', negativeFor(tpl));
@@ -537,6 +611,84 @@ function startPoll() {
 }
 function stopPoll() { if (S.poll) { clearInterval(S.poll); S.poll = null; } }
 
+/* ------------------------------- 图生图辅助 ------------------------------- */
+/** 从本机服务读一张图，转成裸 base64（Forge 的 init_images 要这个格式） */
+async function loadImageB64(url) {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+}
+
+/** 读图片像素尺寸（图生图要让 w/h 跟随底图） */
+function imageSize(url) {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve([im.naturalWidth, im.naturalHeight]);
+    im.onerror = () => resolve(null);
+    im.src = url;
+  });
+}
+
+/** 选/换底图：自动把宽高设成底图的尺寸 */
+async function setInitImage(name) {
+  const sel = $('#init-img');
+  if (name && !Array.from(sel.options).some((o) => o.value === name)) {
+    sel.append(h('option', { value: name, text: name }));
+  }
+  sel.value = name || '';
+  if (name) {
+    const size = await imageSize('images/' + name);
+    if (size) { $('#w').value = size[0]; $('#h').value = size[1]; }
+    const t = currentTpl();
+    if (t && t.阶段 !== 'img2img') {
+      banner('info', `已把 ${name} 设为底图（宽高已跟随 ${size ? size[0] + '×' + size[1] : '底图'}）。要跑图生图，请把模板切到 A2「视角转换」。`);
+    }
+  }
+  updatePreview();
+}
+
+async function refreshImages() {
+  try {
+    const r = await get('/api/list?dir=images');
+    const sel = $('#init-img');
+    const cur = sel.value;
+    sel.textContent = '';
+    sel.append(h('option', { value: '', text: '（未选）' }));
+    for (const f of r.files) {
+      sel.append(h('option', { value: f.name, text: `${f.name}  (${Math.round(f.bytes / 1024)}KB)` }));
+    }
+    if (cur) sel.value = cur;
+  } catch (_) { /* 忽略 */ }
+}
+
+async function uploadInit(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  try {
+    const b64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result).split(',')[1]);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+    const name = 'uploaded__' + stamp() + '__' + slug(file.name.replace(/\.[^.]+$/, '')) + '.png';
+    await saveImage(name, b64);
+    await refreshImages();
+    await setInitImage(name);
+    banner('info', '已上传并设为底图：' + name);
+  } catch (e) {
+    banner('err', '上传底图失败：' + e.message);
+  } finally {
+    ev.target.value = '';
+  }
+}
+
 async function generate() {
   if (S.busy) return;
   const tpl = currentTpl();
@@ -549,66 +701,98 @@ async function generate() {
   if (!cfg.ckpt) { banner('err', '没读到 checkpoint，先把 Forge 起来再点「重读 LoRA 列表」。'); return; }
 
   let seed = Number.isFinite(cfg.seed) && cfg.seed >= 0 ? cfg.seed : Math.floor(Math.random() * 2147483647);
-  $('#seed').value = seed;   // 锁进界面：本批共用同一个 seed，保证"只换了 LoRA"
+  $('#seed').value = seed;   // 锁进界面：本批共用同一个 seed 家族，保证"只换了 LoRA"
+
+  const ed0 = editorTpl();
+  const img2img = ed0.阶段 === 'img2img';
+  const repeat = Math.max(1, Math.min(6, Number($('#repeat').value) || 1));
+  let initName = '', initB64 = null;
+  if (img2img) {
+    initName = $('#init-img').value;
+    if (!initName) {
+      banner('err', '这是图生图模板，但没选底图：先在参数区选一张（或点结果卡片上的「设为底图」）。');
+      return;
+    }
+    try {
+      initB64 = await loadImageB64('images/' + initName);
+    } catch (e) {
+      banner('err', '读不到底图：' + e.message);
+      return;
+    }
+  }
+  const total = targets.length * repeat;
 
   S.busy = true;
   $('#btn-gen').disabled = true;
-  banner('info', `开始生成 ${targets.length} 张 · checkpoint = ${plain(cfg.ckpt)} · seed = ${seed} · ${cfg.w}x${cfg.h} · steps ${cfg.steps} · CFG ${cfg.cfg}`);
+  banner('info', `开始 ${total} 张（${targets.length} 项 × 每项 ${repeat} 张）· ${img2img ? '图生图 denoise ' + ed0.denoise.toFixed(2) + ' · 底图 ' + initName : '文生图'} · checkpoint = ${plain(cfg.ckpt)} · seed ${seed}${repeat > 1 ? '…' + (seed + repeat - 1) : ''} · ${cfg.w}x${cfg.h} · steps ${cfg.steps} · CFG ${cfg.cfg}`);
   setBar(0);
 
   const created = [];
+  let done = 0;
   try {
     await switchCheckpoint(cfg.ckpt);
-    for (let i = 0; i < targets.length; i++) {
-      const key = targets[i];
-      const label = key === NONE ? '（基线）' : key;
-      setStatus(`第 ${i + 1}/${targets.length} 张 · ${label}`);
-      const ed = editorTpl();                    // WYSIWYG：用编辑器里的当前内容
-      const prompt = positiveFor(key, ed);
-      const negText = negativeFor(ed);
-      const payload = {
-        prompt,
-        negative_prompt: negText,
-        steps: cfg.steps, cfg_scale: cfg.cfg,
-        width: cfg.w, height: cfg.h,
-        sampler_name: cfg.sampler, seed,
-        batch_size: 1, n_iter: 1, save_images: false, send_images: true,
-        override_settings: { sd_model_checkpoint: plain(cfg.ckpt) },
-      };
-      startPoll();
-      let res;
-      try {
-        res = await post(FORGE + '/sdapi/v1/txt2img', payload, 900000);
-      } finally { stopPoll(); }
+    for (const key of targets) {
+      for (let r = 0; r < repeat; r++) {
+        done++;
+        const label = (key === NONE ? '（基线）' : key) + (repeat > 1 ? ` #${r + 1}` : '');
+        setStatus(`第 ${done}/${total} 张 · ${label}`);
+        const ed = editorTpl();                  // WYSIWYG：用编辑器里的当前内容
+        const prompt = positiveFor(key, ed);
+        const negText = negativeFor(ed);
+        const thisSeed = seed + r;
+        const payload = {
+          prompt,
+          negative_prompt: negText,
+          steps: cfg.steps, cfg_scale: cfg.cfg,
+          width: cfg.w, height: cfg.h,
+          sampler_name: cfg.sampler, seed: thisSeed,
+          batch_size: 1, n_iter: 1, save_images: false, send_images: true,
+          override_settings: { sd_model_checkpoint: plain(cfg.ckpt) },
+        };
+        if (img2img) {
+          payload.init_images = [initB64];
+          payload.denoising_strength = ed.denoise;
+          payload.resize_mode = 0;               // 不放大：避免"先缩放再重绘"毁掉轮廓
+          payload.mask_blur = 0;
+        }
+        startPoll();
+        let res;
+        try {
+          res = await post(FORGE + (img2img ? '/sdapi/v1/img2img' : '/sdapi/v1/txt2img'), payload, 900000);
+        } finally { stopPoll(); }
 
-      const b64 = res && res.images && res.images[0];
-      if (!b64) throw new Error(label + '：返回里没有图片');
+        const b64 = res && res.images && res.images[0];
+        if (!b64) throw new Error(label + '：返回里没有图片');
 
-      const fname = `${stamp()}__${tpl.id}__${slug(baseOf(cfg.ckpt))}__${key === NONE ? 'base' : slug(key)}__s${seed}.png`;
-      await saveImage(fname, b64);
+        const fname = `${stamp()}__${tpl.id}__${slug(baseOf(cfg.ckpt))}__${key === NONE ? 'base' : slug(key)}__s${thisSeed}${img2img ? '__i2i' + String(ed.denoise).replace('.', '') : ''}.png`;
+        await saveImage(fname, b64);
 
-      const rec = {
-        id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        at: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        template: tpl.id,
-        template_name: tpl.name,
-        base: baseOf(cfg.ckpt),
-        checkpoint: plain(cfg.ckpt),
-        width: cfg.w, height: cfg.h,
-        steps: cfg.steps, cfg: cfg.cfg, sampler: cfg.sampler, seed,
-        lora: key === NONE ? null : key,
-        weight: key === NONE ? null : cfg.weight,
-        trigger: key === NONE ? '' : (($('#inject-trigger').checked && metaOf(key).触发词) || ''),
-        final_prompt: prompt,
-        negative_prompt: negText,
-        image: 'images/' + fname,
-        rating: null, verdict: '', notes: '',
-      };
-      S.records.push(rec);
-      created.push(rec);
-      renderResults(); renderSummary();
-      await persist();
-      setBar((i + 1) / targets.length);
+        const rec = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+          template: tpl.id,
+          template_name: tpl.name,
+          阶段: img2img ? 'img2img' : 'txt2img',
+          denoise: img2img ? ed.denoise : null,
+          底图: img2img ? ('images/' + initName) : null,
+          base: baseOf(cfg.ckpt),
+          checkpoint: plain(cfg.ckpt),
+          width: cfg.w, height: cfg.h,
+          steps: cfg.steps, cfg: cfg.cfg, sampler: cfg.sampler, seed: thisSeed,
+          lora: key === NONE ? null : key,
+          weight: key === NONE ? null : cfg.weight,
+          trigger: key === NONE ? '' : (($('#inject-trigger').checked && metaOf(key).触发词) || ''),
+          final_prompt: prompt,
+          negative_prompt: negText,
+          image: 'images/' + fname,
+          rating: null, verdict: '', notes: '',
+        };
+        S.records.push(rec);
+        created.push(rec);
+        renderResults(); renderSummary();
+        await persist();
+        setBar(done / total);
+      }
     }
     banner('info', `完成 ${created.length} 张。给每张打分 / 选结论后，点右上角「导出 RESULTS.md」。`);
     setStatus('');
@@ -674,6 +858,10 @@ function renderResults() {
       stars, ver, notes,
       h('details', {}, h('summary', { text: '最终提示词' }),
         h('pre', { text: r.final_prompt + '\n\n[负向]\n' + (r.negative_prompt || '') })),
+      h('button', {
+        class: 'del', text: '设为底图 →',
+        onclick: () => setInitImage(String(r.image || '').split('images/').pop()),
+      }),
       h('button', {
         class: 'del', text: '删除这条记录',
         onclick: async () => {
@@ -869,14 +1057,20 @@ function bind() {
   // 页签 + 要求面板
   for (const b of $$('.tab')) b.addEventListener('click', () => switchPane(b.dataset.pane));
   $('#tpl-req').addEventListener('input', () => { markDirty(true); updatePreview(); });
-  $('#apply-view').addEventListener('change', () => { markDirty(true); updatePreview(); });
   $('#inject-trigger').addEventListener('change', updatePreview);
-  for (const [, id] of REQ_FIELDS) {
-    $('#' + id).addEventListener('input', () => {
-      $('#req-state').textContent = '● 有未保存的修改';
-      updatePreview();
-    });
-  }
+  $('#denoise').addEventListener('input', () => {
+    $('#denoise-out').textContent = Number($('#denoise').value).toFixed(2);
+    markDirty(true);
+    updatePreview();
+  });
+  $('#repeat').addEventListener('input', () => { $('#repeat-out').textContent = $('#repeat').value; });
+  $('#init-img').addEventListener('change', () => setInitImage($('#init-img').value));
+  $('#btn-init-refresh').addEventListener('click', refreshImages);
+  $('#init-upload').addEventListener('change', uploadInit);
+  $('#g-rules').addEventListener('input', () => {
+    $('#req-state').textContent = '● 有未保存的修改';
+    updatePreview();
+  });
   $('#btn-req-save').addEventListener('click', saveReqs);
   $('#btn-req-reset').addEventListener('click', () => {
     fillReqForm((S.pristine && S.pristine.global) || {});
@@ -913,13 +1107,16 @@ function bind() {
 async function savePrompt() {
   const t = currentTpl();
   if (!t) return;
+  const ed = editorTpl();
   const next = {
-    positive: $('#pos').value,
-    要求: $('#tpl-req').value,
-    negative: $('#neg').value,
-    套用全局视角: $('#apply-view').checked,
+    positive: ed.positive,
+    要求: ed.要求,
+    negative: ed.negative,
+    套用要求: ed.套用要求,
+    denoise: ed.denoise,
   };
-  const changed = ['positive', 'negative', '要求', '套用全局视角'].some((k) => next[k] !== t[k]);
+  const changed = ['positive', 'negative', '要求', '套用要求', 'denoise'].some(
+    (k) => JSON.stringify(next[k]) !== JSON.stringify(t[k]));
   if (!changed) { banner('info', '本模板没有变化，无需保存。'); return; }
   t.history = t.history || [];
   t.history.push({
@@ -928,7 +1125,8 @@ async function savePrompt() {
     positive: t.positive,
     negative: t.negative,
     要求: t.要求,
-    套用全局视角: t.套用全局视角,
+    套用要求: t.套用要求,
+    denoise: t.denoise,
   });
   Object.assign(t, next);
   S.prompts.updated = new Date().toISOString().slice(0, 10);

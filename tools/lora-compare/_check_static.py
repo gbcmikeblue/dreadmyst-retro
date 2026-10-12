@@ -29,6 +29,9 @@ def strip_comments_and_strings(src):
         c = src[i]
         nxt = src[i + 1] if i + 1 < n else ""
         if state is None:
+            if c == "\\":
+                # 正则字面量里的 \/ 要整体跳过，否则 /^a\// 会被误判成注释起点
+                i += 2; continue
             if c == "/" and nxt == "/":
                 state = "//"; i += 2; continue
             if c == "/" and nxt == "*":
