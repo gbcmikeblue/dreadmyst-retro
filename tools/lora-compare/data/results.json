@@ -1,0 +1,5 @@
+{
+  "note": "对比记录。每条 record = 一次生成。评分(rating 0~5) / 结论(verdict: 保留|待定|淘汰|空) / 备注(notes) 由人工在界面上填写，导出 RESULTS.md 时按 LoRA 汇总，用于决定最终保留哪些 LoRA。",
+  "updated": "2026-10-12",
+  "records": []
+}

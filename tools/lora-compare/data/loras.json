@@ -1,0 +1,138 @@
+{
+  "note": "LoRA 元数据。与 assets/_LICENSES.md §1 对应：新增 LoRA 请两边都登记。`base` 来自 Civitai model-versions API 的 baseModel 字段，决定它只能在哪个 checkpoint 上测（SD 1.5 的 LoRA 拿到 SDXL 上测不出有效结果）。",
+  "updated": "2026-10-12",
+  "loras": {
+    "bg3_item_icons_v1": {
+      "用途": "M11 装备图标（50~100 张）",
+      "触发词": "bg3 item icon",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit/Rent",
+      "署名": false,
+      "作者": "Lykon",
+      "来源": "https://civitai.com/models/114331?modelVersionId=123588",
+      "状态": "已部署",
+      "备注": "该模型只有 SD 1.5 一个版本"
+    },
+    "dark_and_darker_portraits_v1": {
+      "用途": "角色 / Boss 立绘风格",
+      "触发词": "dark_and_darker_game_portrait_style, low_resolution",
+      "base": "SD 1.5",
+      "许可": "Civitai: RentCivit（不含 Image）",
+      "署名": false,
+      "作者": "UncleJert",
+      "来源": "https://civitai.com/models/146048?modelVersionId=162546",
+      "状态": "已部署",
+      "备注": "⚠️ 许可不允许商用 —— 本项目为非商用可用，但**待对比结果出来后再决定是否删除**（backlog T-07）"
+    },
+    "medieval_armor_suit_v1": {
+      "用途": "护甲类装备图标 + 角色装备",
+      "触发词": "medieval armor",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit/Rent/Sell/SellMerge",
+      "署名": false,
+      "作者": "axebro",
+      "来源": "https://civitai.com/models/59925?modelVersionId=67849",
+      "状态": "已部署",
+      "备注": ""
+    },
+    "creatures_portraits_v1": {
+      "用途": "怪物 / Boss 立绘",
+      "触发词": "a fantz creature",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image",
+      "署名": true,
+      "作者": "smereces_ai",
+      "来源": "https://civitai.com/models/31845?modelVersionId=38286",
+      "状态": "已部署",
+      "备注": "⚠️ allowNoCredit=False → 用了就必须署名"
+    },
+    "creatures_design_v1": {
+      "用途": "怪物设计",
+      "触发词": "fantz creature, monster",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image",
+      "署名": true,
+      "作者": "smereces_ai",
+      "来源": "https://civitai.com/models/31618?modelVersionId=38059",
+      "状态": "已部署",
+      "备注": "⚠️ allowNoCredit=False → 用了就必须署名"
+    },
+    "game_icon_skill_buff_v1": {
+      "用途": "M7 技能图标（增益 / 光环类）",
+      "触发词": "guangquan(skill icon), aura, glowing",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit/Rent/Sell/SellMerge",
+      "署名": false,
+      "作者": "HuXiangameicon",
+      "来源": "https://civitai.com/models/86741?modelVersionId=92267",
+      "状态": "已部署",
+      "备注": ""
+    },
+    "handpainted_rpg_icons_v1": {
+      "用途": "图标兜底（手绘 RPG 图标）",
+      "触发词": "rpgicondiff",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image",
+      "署名": false,
+      "作者": "Nix0npolska",
+      "来源": "https://civitai.com/models/6876?modelVersionId=8081",
+      "状态": "已部署",
+      "备注": ""
+    },
+    "medieval_background_slider_v1": {
+      "用途": "场景 / 去现代感",
+      "触发词": "Half-timbered Construction",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit",
+      "署名": false,
+      "作者": "oosayam",
+      "来源": "https://civitai.com/models/247828?modelVersionId=286106",
+      "状态": "已部署",
+      "备注": "体积只有 3.1MB，是 slider 型 LoRA，权重可比常规高一些"
+    },
+    "monsters_attack_v1": {
+      "用途": "怪群 / 多怪场景氛围",
+      "触发词": "",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit/Rent/Sell/SellMerge",
+      "署名": false,
+      "作者": "Tomas_Aguilar",
+      "来源": "https://civitai.com/models/96018?modelVersionId=102553",
+      "状态": "已部署",
+      "备注": "无触发词，直接靠风格影响"
+    },
+    "medieval_ce_v1": {
+      "用途": "通用中世纪风格（兜底）",
+      "触发词": "mdvlCE",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit",
+      "署名": false,
+      "作者": "CreativeEdge",
+      "来源": "https://civitai.com/models/754926?modelVersionId=851008",
+      "状态": "未下载",
+      "备注": "作者要求登录（401），需手动下载 345MB"
+    },
+    "knight_v1": {
+      "用途": "骑士（角色 / Boss 轻量试错）",
+      "触发词": "knight, armor",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit",
+      "署名": false,
+      "作者": "oosayam",
+      "来源": "https://civitai.com/models/299760?modelVersionId=336656",
+      "状态": "未下载",
+      "备注": "作者要求登录（401），需手动下载 15MB"
+    },
+    "fantasy_knight_armor_v1": {
+      "用途": "奇幻骑士铠甲（角色 / Boss）",
+      "触发词": "FantasyKnightV1",
+      "base": "SD 1.5",
+      "许可": "Civitai: Image/RentCivit/Rent",
+      "署名": false,
+      "作者": "Ark_Ai",
+      "来源": "https://civitai.com/models/320076?modelVersionId=358910",
+      "状态": "未下载",
+      "备注": "作者要求登录（401），需手动下载 72MB"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "note": "提示词库。前端可查看 / 编辑 / 保存；每次保存会把旧版压进 history（可回退）。与 assets/_PROMPTS.md 对应，改这里也请同步那边。",
+  "updated": "2026-10-12",
+  "global": {
+    "negativeExtra": "pixel art, 8-bit, hard pixel edges",
+    "checkpointDefaults": {
+      "sd15": { "label": "SD 1.5", "width": 512, "height": 512, "steps": 25, "cfg": 7 },
+      "sdxl": { "label": "SDXL", "width": 1024, "height": 1024, "steps": 30, "cfg": 7 }
+    }
+  },
+  "templates": [
+    {
+      "id": "A",
+      "name": "俯视角角色 sprite",
+      "用途": "主角、敌人、NPC 的行走 / 待机 / 攻击帧",
+      "出图尺寸": "512×512 → 平滑降到 128×128",
+      "base建议": "sd15",
+      "positive": "top-down view, full body character, single character, painted 2D game sprite,\n2.5D retro RPG style, soft shading, clean silhouette, simple background,\ngame asset, centered composition, white background",
+      "negative": "3d render, realistic, photo, blurry, multiple characters, full scene, watermark,\ntext, signature, cropped, deformed, extra limbs, ugly,\npixel art, 8-bit, hard pixel edges",
+      "备注": "角色类 LoRA 的重灾区，重点看：姿态是否可切帧、剪影是否清晰、是否有第二个人",
+      "history": []
+    },
+    {
+      "id": "B",
+      "name": "场景 tileset",
+      "用途": "地面、墙、装饰等可平铺素材",
+      "出图尺寸": "1024×1024（再切 64×64）",
+      "base建议": "sd15",
+      "positive": "seamless tileset, top-down RPG, 64x64 grid, grass stone dirt path tiles,\npainterly fantasy medieval, orthographic view, soft shading, limited palette,\ngame asset, no characters, no UI",
+      "negative": "3d, perspective, isometric, characters, watermark, text, signature, blurry,\npixel art, 8-bit, hard pixel edges",
+      "备注": "⚠️ 原方案要配 ControlNet tile（control_v11f1e_sd15_tile / sai_xl_tile），但本机 models/controlnet 是空的 —— 当前只能出『看起来像地砖』的图，无缝性无法保证",
+      "history": []
+    },
+    {
+      "id": "C",
+      "name": "装备图标",
+      "用途": "武器、护甲、药水、材料等物品图标",
+      "出图尺寸": "512×512 → 平滑降到 64×64",
+      "base建议": "sd15",
+      "positive": "single game item icon, centered, transparent background, painted 2D game icon,\nsoft shading, clean outline, fantasy [sword/axe/potion/helmet], front view,\nRPG inventory icon",
+      "negative": "3d render, realistic, photo, multiple items, character, scene, watermark, text,\npixel art, 8-bit, hard pixel edges",
+      "备注": "`[sword/axe/potion/helmet]` 每次只替换一个词。装备类 LoRA（BG3 Item Icons / Medieval Style Armor Suit）主要在这条上测",
+      "history": []
+    },
+    {
+      "id": "D",
+      "name": "Boss 概念图",
+      "用途": "Boss 立绘、战斗场景背景、过场插画",
+      "出图尺寸": "1024×1536（全身）或 1024×1024（方图）",
+      "base建议": "sdxl",
+      "positive": "full body boss character, dark fantasy creature, dramatic pose,\natmospheric lighting, concept art, detailed, painterly,\ngame key art, 2.5D retro MMO style",
+      "negative": "pixel art, 8-bit, chibi, cute, blurry, low quality, watermark",
+      "备注": "角色 / 怪物立绘类 LoRA 走这条；8GB 显存下 SDXL 1024×1536 会 OOM，先按 1024×1024 测",
+      "history": []
+    },
+    {
+      "id": "E",
+      "name": "技能图标",
+      "用途": "M7 职业技能的图标",
+      "出图尺寸": "512×512 → 平滑降到 64×64",
+      "base建议": "sd15",
+      "positive": "single game skill icon, centered, transparent background, painted 2D game icon,\nsoft shading, clean outline, [fireball/heal/dash/shield/slash/burst],\nfront view, RPG skill icon",
+      "negative": "3d render, realistic, photo, multiple icons, character, scene, watermark, text,\npixel art, 8-bit, hard pixel edges",
+      "备注": "技能图标类 LoRA（Game Icon_Skill_Buff）在这条上测",
+      "history": []
+    },
+    {
+      "id": "F",
+      "name": "UI 元素",
+      "用途": "按钮、边框、菜单、提示框",
+      "出图尺寸": "256×256（小元素）/ 512×512（边框）",
+      "base建议": "sd15",
+      "positive": "single UI element, centered, transparent background, painted fantasy game UI,\nsoft shading, clean outline, fantasy [button/border/frame/icon], front view,\nRPG game UI asset",
+      "negative": "3d render, realistic, photo, multiple elements, character, scene, watermark, text,\npixel art, 8-bit, hard pixel edges",
+      "备注": "UI 类目前没有专用 LoRA，这条主要用于验证 base 模型本身够不够用",
+      "history": []
+    }
+  ]
+}

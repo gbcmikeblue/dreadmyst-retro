@@ -11,3 +11,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.tmp
+
+# LoRA 对比台：生成的对比图是过程产物（体积大、>100KB 会触发 Git LFS），
+# 只把文本记录入库（data/results.json + RESULTS.md）
+/tools/lora-compare/images/

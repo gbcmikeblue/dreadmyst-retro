@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoRA 对比台 · Dreadmyst 原型美术</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="hd">
+  <div class="brand">
+    <h1>LoRA 对比台</h1>
+    <span class="sub">同一提示词 · 逐个换 LoRA · 结果可决策</span>
+  </div>
+  <div class="pills">
+    <span class="pill" id="pill-server"><i></i>本地服务</span>
+    <span class="pill" id="pill-forge"><i></i>Forge</span>
+    <span class="pill plain" id="pill-model">—</span>
+  </div>
+  <div class="hd-actions">
+    <button id="btn-save" class="ghost">保存记录</button>
+    <button id="btn-export" class="primary">导出 RESULTS.md</button>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<main class="main">
+
+  <!-- ============ 左栏：提示词 + 参数 ============ -->
+  <aside class="col-left">
+
+    <section class="panel">
+      <h2><span class="num">1</span>提示词</h2>
+      <label class="field">
+        <span>模板</span>
+        <select id="tpl-select"></select>
+      </label>
+      <p class="meta" id="tpl-meta"></p>
+
+      <label class="field">
+        <span class="lbl-row">正向<span class="spacer"></span>
+          <button type="button" class="mini" id="btn-pos-reset">复位</button>
+        </span>
+        <textarea id="pos" rows="7" spellcheck="false"></textarea>
+      </label>
+
+      <label class="field">
+        <span>负向</span>
+        <textarea id="neg" rows="4" spellcheck="false"></textarea>
+      </label>
+
+      <div class="row">
+        <button id="btn-prompt-save" class="primary">保存修改</button>
+        <span class="hint" id="prompt-state"></span>
+      </div>
+
+      <details class="fold" id="hist-box">
+        <summary>修改历史（<span id="hist-count">0</span> 版）</summary>
+        <ul class="history" id="prompt-history"></ul>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">2</span>参数</h2>
+      <label class="field"><span>Checkpoint</span><select id="ckpt"></select></label>
+
+      <div class="grid2">
+        <label class="field"><span>宽</span><input id="w" type="number" step="64"></label>
+        <label class="field"><span>高</span><input id="h" type="number" step="64"></label>
+        <label class="field"><span>步数</span><input id="steps" type="number"></label>
+        <label class="field"><span>CFG</span><input id="cfg" type="number" step="0.5"></label>
+        <label class="field"><span>采样器</span><select id="sampler"></select></label>
+        <label class="field"><span>Seed</span><input id="seed" type="number" title="-1 = 本批随机取一次，然后全批锁定同一个 seed"></label>
+      </div>
+
+      <label class="field">
+        <span class="lbl-row">LoRA 权重<output id="lw-out">0.80</output></span>
+        <input id="lw" type="range" min="0" max="1.2" step="0.05" value="0.8">
+      </label>
+
+      <label class="check"><input type="checkbox" id="inject-trigger" checked> 自动注入注册表里的触发词</label>
+      <label class="check"><input type="checkbox" id="force-base"> 允许跨 base 测试（不推荐，结果无意义）</label>
+    </section>
+
+  </aside>
+
+  <!-- ============ 右栏：对比对象 + 结果 ============ -->
+  <section class="col-right">
+
+    <section class="panel">
+      <h2><span class="num">3</span>对比对象</h2>
+      <div class="row">
+        <button id="btn-all" class="ghost">全选可用</button>
+        <button id="btn-none" class="ghost">清空</button>
+        <button id="btn-refresh" class="ghost">重读 LoRA 列表</button>
+        <span class="hint" id="lora-count"></span>
+      </div>
+      <ul class="lora-list" id="lora-list"></ul>
+
+      <div class="row gen-row">
+        <button id="btn-gen" class="primary big">开始生成</button>
+        <span class="hint" id="gen-status"></span>
+      </div>
+      <div class="bar"><div id="bar-fill"></div></div>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">4</span>对比结果 <span class="hint" id="rec-count"></span></h2>
+      <div class="results" id="results"></div>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">5</span>结论汇总</h2>
+      <div id="summary" class="summary"></div>
+    </section>
+
+  </section>
+</main>
+
+<div class="lightbox" id="lightbox" hidden>
+  <img id="lightbox-img" alt="">
+  <div class="lightbox-cap" id="lightbox-cap"></div>
+</div>
+
+<script>
+/* 前端兜底：任何脚本异常 / 未捕获 Promise 都直接显示在顶部横幅，
+   避免出现"页面看着正常但其实早就挂了"这种最难查的情况。 */
+(function () {
+  function show(msg) {
+    var b = document.getElementById('banner');
+    if (!b) return;
+    b.hidden = false;
+    b.className = 'banner err';
+    b.textContent = '前端出错：' + msg;
+  }
+  window.addEventListener('error', function (e) {
+    show((e.message || e.error || '未知错误') + '  @ ' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || 0));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    show('Promise 未捕获：' + ((e.reason && e.reason.message) || e.reason));
+  });
+})();
+</script>
+<script src="app.js"></script>
+</body>
+</html>
