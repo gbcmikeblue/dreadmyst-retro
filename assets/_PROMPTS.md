@@ -34,6 +34,9 @@ UI 元素按显示尺寸 1:1。非像素风下 32×32 装不下细节，比像�
 
 ## ⭐ 角色 sprite 的两阶段流程（2026-10-12 修订）
 
+> ⚠️ **本文件的提示词文本是「快照」，可能与可编辑副本滞后** —— 实际以
+> [`tools/lora-compare/data/prompts.json`](../tools/lora-compare/data/prompts.json) 为准（网页上可实时预览拼装结果）。
+
 **首选路线**：不要把「3/4 俯视」写进文生图提示词 —— 那是强约束任务，base 模型命中率极低，结果就是反复抽卡。
 正确做法分两步：
 
@@ -85,9 +88,11 @@ UI 元素按显示尺寸 1:1。非像素风下 32×32 装不下细节，比像�
 ```
 full body character, standing pose, front view, plain background,
 entire figure head to toe, nothing cropped, clear margin around the figure,
-colorful painted illustration, warm palette, smooth colors,
-2.5D retro RPG style, soft shading, limited palette,
-centered composition, simple background, game asset,
+chinese oriental fantasy theme, xianxia immortal aesthetics, ruyi cloud pattern,
+jade ornaments, gold trim, silk ribbons, tassel, embroidered silk, traditional chinese motifs,
+2.5D oriental fantasy RPG style, painted illustration, rich vivid colors, high saturation,
+smooth soft shading, clean readable shapes, cohesive color palette, hand painted texture,
+centered composition, plain background, simple background, game asset,
 single character, clean readable silhouette, equipment clearly readable,
 painted 2D game sprite
 ```
@@ -96,7 +101,8 @@ painted 2D game sprite
 ```
 multiple characters, two people, full scene, cropped,
 monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color,
-pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
+pixel art, 8-bit, hard pixel edges, photorealistic 3d render, plastic 3d model, western fantasy, photo, watermark, text,
+chibi, big head, super deformed,
 signature, blurry, deformed, extra limbs, ugly
 ```
 
@@ -118,11 +124,13 @@ signature, blurry, deformed, extra limbs, ugly
 
 **正向**：
 ```
-three-quarter high-angle view, camera pitched about 45 degrees down, full body,
+isometric view, 30 degree angle, no perspective, orthographic, parallel projection, full body,
 standing upright, facing the viewer, whole figure inside the frame,
-colorful painted illustration, warm palette, smooth colors,
-2.5D retro RPG style, soft shading, limited palette,
-centered composition, simple background, game asset,
+chinese oriental fantasy theme, xianxia immortal aesthetics, ruyi cloud pattern,
+jade ornaments, gold trim, silk ribbons, tassel, embroidered silk, traditional chinese motifs,
+2.5D oriental fantasy RPG style, painted illustration, rich vivid colors, high saturation,
+smooth soft shading, clean readable shapes, cohesive color palette, hand painted texture,
+centered composition, plain background, simple background, game asset,
 same character, same outfit, same colors, keep the original silhouette,
 painted 2D game sprite
 ```
@@ -131,9 +139,11 @@ painted 2D game sprite
 ```
 bird's eye view, directly overhead, flat top-down layout,
 only the top of the head visible, extreme foreshortening, front view standing portrait,
+perspective, vanishing point, tilted camera, wide angle lens, photographic,
 different character, different outfit,
 monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color,
-pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
+pixel art, 8-bit, hard pixel edges, photorealistic 3d render, plastic 3d model, western fantasy, photo, watermark, text,
+chibi, big head, super deformed,
 signature, blurry, deformed, extra limbs, ugly
 ```
 
@@ -158,11 +168,13 @@ signature, blurry, deformed, extra limbs, ugly
 
 **正向**：
 ```
-three-quarter high-angle view, camera pitched about 45 degrees down, full body,
+isometric view, 30 degree angle, no perspective, orthographic, parallel projection, full body,
 standing upright, facing the viewer, whole figure inside the frame,
-colorful painted illustration, warm palette, smooth colors,
-2.5D retro RPG style, soft shading, limited palette,
-centered composition, simple background, game asset,
+chinese oriental fantasy theme, xianxia immortal aesthetics, ruyi cloud pattern,
+jade ornaments, gold trim, silk ribbons, tassel, embroidered silk, traditional chinese motifs,
+2.5D oriental fantasy RPG style, painted illustration, rich vivid colors, high saturation,
+smooth soft shading, clean readable shapes, cohesive color palette, hand painted texture,
+centered composition, plain background, simple background, game asset,
 single character, clean readable silhouette, equipment clearly readable,
 painted 2D game sprite
 ```
@@ -171,8 +183,10 @@ painted 2D game sprite
 ```
 bird's eye view, directly overhead, flat top-down layout,
 only the top of the head visible, extreme foreshortening, front view standing portrait,
+perspective, vanishing point, tilted camera, wide angle lens, photographic,
 monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color,
-pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text,
+pixel art, 8-bit, hard pixel edges, photorealistic 3d render, plastic 3d model, western fantasy, photo, watermark, text,
+chibi, big head, super deformed,
 signature, blurry, deformed, extra limbs, ugly,
 multiple characters, two people, full scene, cropped
 ```

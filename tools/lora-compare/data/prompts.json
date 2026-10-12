@@ -14,34 +14,43 @@
         "名称": "视角转换要求（阶段2）",
         "类型": "正向",
         "用途": "阶段2 图生图把立绘转成 3/4 俯视 —— 不要写进阶段1",
-        "文本": "three-quarter high-angle view, camera pitched about 45 degrees down, full body, standing upright, facing the viewer, whole figure inside the frame"
+        "文本": "isometric view, 30 degree angle, no perspective, orthographic, parallel projection, full body, standing upright, facing the viewer, whole figure inside the frame"
       },
       "style": {
         "名称": "风格要求",
         "类型": "正向",
         "用途": "所有模板",
-        "文本": "colorful painted illustration, warm palette, smooth colors, 2.5D retro RPG style, soft shading, limited palette"
+        "文本": "2.5D oriental fantasy RPG style, painted illustration, rich vivid colors, high saturation, smooth soft shading, clean readable shapes, cohesive color palette, hand painted texture"
       },
       "composition": {
         "名称": "构图要求",
         "类型": "正向",
         "用途": "所有模板",
-        "文本": "centered composition, simple background, game asset"
+        "文本": "centered composition, plain background, simple background, game asset"
       },
       "viewneg": {
         "名称": "视角转换负向（阶段2）",
         "类型": "负向",
         "用途": "阶段2 转视角时排除俯视/正面立绘",
-        "文本": "bird's eye view, directly overhead, flat top-down layout, only the top of the head visible, extreme foreshortening, front view standing portrait"
+        "文本": "bird's eye view, directly overhead, flat top-down layout, only the top of the head visible, extreme foreshortening, front view standing portrait, perspective, vanishing point, tilted camera, wide angle lens, photographic"
       },
       "commonneg": {
         "名称": "通用负向",
         "类型": "负向",
         "用途": "所有模板",
-        "文本": "monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color, pixel art, 8-bit, hard pixel edges, 3d render, photo, watermark, text, signature, blurry, deformed, extra limbs, ugly"
+        "文本": "monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color, pixel art, 8-bit, hard pixel edges, photorealistic 3d render, plastic 3d model, western fantasy, photo, watermark, text, signature, blurry, deformed, extra limbs, ugly, chibi, big head, super deformed"
+      },
+      "guofeng": {
+        "名称": "国风符号（东方玄幻）",
+        "类型": "正向",
+        "用途": "角色 / 场景 / 装备 / Boss 勾选；技能与 UI 图标不勾（词不搭）",
+        "文本": "chinese oriental fantasy theme, xianxia immortal aesthetics, ruyi cloud pattern, jade ornaments, gold trim, silk ribbons, tassel, embroidered silk, traditional chinese motifs"
       }
     },
     "其他规范": [
+      "**投影词是硬需求，不要写相机术语**（2026-10-12 联网查证，来源 artpromptgenerator.org）：`isometric` 必须放**开头**（权重最高）+ `no perspective` / `orthographic` + `30 degree angle` —— **缺一个只会得到「稍微倾斜的 3D 渲染图」**；负向必须压 `perspective, vanishing point, tilted camera, wide angle lens, photographic`。此前写的 `camera pitched about 45 degrees down` 是相机术语，是视角出不来的主因",
+      "**国风不要写抽象词**（来源 php.cn）：`chinese style` / `oriental aesthetics` 这类抽象概念模型没学过 → 要写**具体符号**（云纹 `ruyi cloud pattern` / 玉佩 `jade` / 披帛 `silk ribbons` / 流苏 `tassel` / 描金 `gold trim`），即新增的 `guofeng` 块",
+      "**要「梦幻西游那种东方玄幻风」，但明确不要 Q 版**（2026-10-12 决定）：保持正常头身比 → 通用负向固定压 `chibi, big head, super deformed`；为此 `style` 块去掉 `limited palette` 改 `rich vivid colors, high saturation`，`3d render` 改为 `photorealistic 3d render, plastic 3d model` 以保住 2.5D 手绘质感",
       "**上色必须显式要求**（2026-10-12 实测踩到）：只写 `soft shading` / `limited palette` 时，SD 1.5 会给出**灰阶线稿**（`line art` 风），后续 img2img 只会把它画得更像漫画。所以风格要求里要写 `colorful painted illustration, warm palette, smooth colors`，通用负向要压 `monochrome, greyscale, line art, sketch, ink outline, black outline, flat color`",
       "**构图要写「不许裁」**：只写 `full body` 仍可能把头顶裁出画框 → 立绘要求里补 `entire figure head to toe, nothing cropped, clear margin around the figure`",
       "角色 sprite 走两阶段：① 文生图出立绘（正面全身）② 图生图转 3/4 俯视。不要把视角要求塞进阶段1，那是抽卡地狱",
@@ -67,7 +76,7 @@
       "用途": "先出一个满意的角色全身立绘，作为阶段2 的底图",
       "出图尺寸": "512×512（SD 1.5）",
       "base建议": "sd15",
-      "套用要求": ["portrait", "style", "composition", "commonneg"],
+      "套用要求": ["portrait", "guofeng", "style", "composition", "commonneg"],
       "要求": "single character, clean readable silhouette, equipment clearly readable",
       "positive": "full body character, painted 2D game sprite",
       "negative": "multiple characters, two people, full scene, cropped",
@@ -82,7 +91,7 @@
       "用途": "把阶段1 选中的立绘（或任何角色图）转成本作要的 3/4 俯视 sprite",
       "出图尺寸": "跟随底图",
       "base建议": "sd15",
-      "套用要求": ["viewshift", "style", "composition", "viewneg", "commonneg"],
+      "套用要求": ["viewshift", "guofeng", "style", "composition", "viewneg", "commonneg"],
       "要求": "same character, same outfit, same colors, keep the original silhouette",
       "positive": "painted 2D game sprite",
       "negative": "different character, different outfit",
@@ -96,7 +105,7 @@
       "用途": "**一步到位**直接文生图出 3/4 俯视角色 —— A1→A2 两阶段转视角实测失败（2026-10-12）之后的替代路线",
       "出图尺寸": "512×512（SD 1.5）／1024×1024（SDXL）",
       "base建议": "sd15",
-      "套用要求": ["viewshift", "style", "composition", "viewneg", "commonneg"],
+      "套用要求": ["viewshift", "guofeng", "style", "composition", "viewneg", "commonneg"],
       "要求": "single character, clean readable silhouette, equipment clearly readable",
       "positive": "painted 2D game sprite",
       "negative": "multiple characters, two people, full scene, cropped",
@@ -110,7 +119,7 @@
       "用途": "地面、墙、装饰等可平铺素材",
       "出图尺寸": "1024×1024（再切 64×64）",
       "base建议": "sd15",
-      "套用要求": ["style", "composition", "commonneg"],
+      "套用要求": ["guofeng", "style", "composition", "commonneg"],
       "要求": "seamless tileset, 64x64 grid, ground and wall pieces, tileable edges, no characters, no UI",
       "positive": "grass stone dirt path tiles, fantasy medieval dungeon floor and walls, orthographic view",
       "negative": "characters, perspective, isometric",
@@ -124,7 +133,7 @@
       "用途": "武器、护甲、药水、材料等物品图标",
       "出图尺寸": "512×512 → 平滑降到 64×64",
       "base建议": "sd15",
-      "套用要求": ["style", "composition", "commonneg"],
+      "套用要求": ["guofeng", "style", "composition", "commonneg"],
       "要求": "single game item icon, transparent background, front view",
       "positive": "painted 2D game icon, fantasy [sword/axe/potion/helmet], RPG inventory icon",
       "negative": "multiple items, character, scene",
@@ -138,7 +147,7 @@
       "用途": "Boss 立绘、战斗场景背景、过场插画",
       "出图尺寸": "1024×1024（1536 会 OOM）",
       "base建议": "sdxl",
-      "套用要求": ["style", "composition", "commonneg"],
+      "套用要求": ["guofeng", "style", "composition", "commonneg"],
       "要求": "full body boss character, dramatic pose, dark fantasy creature",
       "positive": "concept art, detailed, painterly, game key art",
       "negative": "chibi, cute, low quality",

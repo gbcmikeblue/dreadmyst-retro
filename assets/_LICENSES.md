@@ -93,6 +93,25 @@
 > 4. 本表加一行 + 同步 `tools/lora-compare/data/loras.json`（对比台靠它自动注入触发词、判断 base 兼容）
 >    → 提交 git。
 
+**国风 / 西游 / 等距 批次（2026-10-12 新增，梦幻西游方向）**
+
+> 底模放在 `D:\AI\models\checkpoints\`（Forge 里经 junction `models\Stable-diffusion\_D_AI_ckpt` 可见），
+> LoRA 放在 `D:\AI\models\lora\`。体积均已与 Civitai API 报的 `sizeKB` 核对。
+
+| 名称 | 类型 | 来源 | 用途 | 许可原文 | 商用 | 署名 | 状态 | 登记日期 | 体积 | 本地路径 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **国风3 GuoFeng3** | Checkpoint | https://civitai.com/models/10415?modelVersionId=106289 （作者 xiaolxl，SD 1.5） | 国风3 底模（2.5D 古风游戏角色向） | `allowCommercialUse = []`；`allowNoCredit = False`；`allowDerivatives = True` | ⚠️ 字段为空 | **⚠️ 是（必须署名）** | 已部署 | 2026-10-12 | 2193.4 MB | `D:\AI\models\checkpoints\guofeng3_v32.safetensors` |
+| **Isometric Chinese style Architecture LoRa** | LoRA | https://civitai.com/models/63376?modelVersionId=67927 （作者 axebro，SD 1.5） | 等距中国建筑（场景） | `allowCommercialUse = ['Image','RentCivit','Rent','Sell','SellMerge']`；`allowNoCredit = True` | **✓ 允许** | 否 | 已部署 | 2026-10-12 | 72.1 MB | `D:\AI\models\lora\sd15_B_isometric_chinese_arch.safetensors` |
+| **HEZI Q版3D泡泡玛特质感** | LoRA | https://civitai.com/models/339670?modelVersionId=380348 （作者 HEZI_，SD 1.5） | Q版 3D 玩具质感（备用） | `allowCommercialUse = ['Image','RentCivit','Rent','Sell','SellMerge']`；`allowNoCredit = True` | **✓ 允许** | 否 | ⛔ **未下载**（`401` 登录墙） | 2026-10-12 | 108.1 MB | `D:\AI\models\lora\sd15_D_qstyle_3d_toy.safetensors` |
+| **西游主题插画（Chinese painting style）** | LoRA | https://civitai.com/models/61837?modelVersionId=66943 （作者 bird_of_pool，SD 1.5） | 西游题材插画风 | `allowCommercialUse = []`；`allowNoCredit = True` | ⚠️ 字段为空 | 否 | 已部署 | 2026-10-12 | 72.1 MB | `D:\AI\models\lora\sd15_D_westward_illust.safetensors` |
+| **西游Journey2West** | LoRA | https://civitai.com/models/71456?modelVersionId=76159 （作者 WanDou7，SD 1.5） | 西游人物（悟空）；触发词 `Monkey king, wukong_xingzhe` | `allowCommercialUse = []`；`allowNoCredit = True` | ⚠️ 字段为空 | 否 | 已部署 | 2026-10-12 | 36.1 MB | `D:\AI\models\lora\sd15_A_westward_wukong.safetensors` |
+| **中国仙侠** | LoRA | https://civitai.com/models/138759?modelVersionId=153361 （作者 ffffff，SD 1.5） | 中国仙侠；触发词 `cnxianxia` | `allowCommercialUse = []`；`allowNoCredit = True` | ⚠️ 字段为空 | 否 | 已部署 | 2026-10-12 | 144.1 MB | `D:\AI\models\lora\sd15_D_cn_xianxia.safetensors` |
+| **武侠 Wuxia V2** | LoRA | https://civitai.com/models/76637?modelVersionId=90181 （作者 chocolae，SD 1.5） | 武侠；触发词 `gu, wuxia, holding weapon, dragon` | `allowCommercialUse = []`；`allowNoCredit = True` | ⚠️ 字段为空 | 否 | 已部署 | 2026-10-12 | 96.4 MB | `D:\AI\models\lora\sd15_A_wuxia_v2.safetensors` |
+| **仙侠道 / xianxia / taoist** | LoRA | https://civitai.com/models/96244?modelVersionId=102800 （作者 chosen，SD 1.5） | 仙侠道；触发词 `taoist` | `allowCommercialUse = []`；`allowNoCredit = True` | ⚠️ 字段为空 | 否 | 已部署 | 2026-10-12 | 144.1 MB | `D:\AI\models\lora\sd15_A_xianxia_taoist.safetensors` |
+| **国风3Lora GuoFeng3_Lora** | LoRA | https://civitai.com/models/11352?modelVersionId=17518 （作者 xiaolxl，base `Other`） | 国风3 配套 LoRA（LoCon，576 MB） | `allowCommercialUse = []`；`allowNoCredit = False`；`allowDerivatives = True` | ⚠️ 字段为空 | **⚠️ 是（必须署名）** | 已部署 | 2026-10-12 | 576.1 MB | `D:\AI\models\lora\sd15_D_guofeng3_lora.safetensors` |
+
+---
+
 ## 2. 直接使用的素材（图、纹理、spritesheet 等）
 
 | 名称 | 来源 | 用途 | License | 作者署名要求 | 项目内路径 |
@@ -152,3 +171,4 @@
 | 2026-10-10 | SD 1.5 pruned-emaonly 状态改为**已部署**（实际 3.97 GB，路径 `D:\AI\models\checkpoints\`）；`D:\AI\models\{lora,controlnet,vae,embeddings}` 目前均为空 |
 | 2026-10-10 | 新增 2 个 LoRA：**BG3 Item Icons**（M11 装备图标）+ **Dark and Darker Portraits**（角色/Boss 立绘），各 144.1 MB，经本机代理从 Civitai 下载。**许可字段留「待确认」**——Civitai 新版 API 已不返回许可信息，需人工看模型页回填。`D:\AI\models\lora` 经 junction 挂到 Forge 的 `models\Lora\_D_AI` |
 | 2026-10-10 | **按"允许商用"重新筛选并批量下载 10 个 LoRA**（中世纪奇幻方向，风格要求放宽）：7 个已部署（Medieval Style Armor Suit / Creatures Portraits / Creatures Design V1 / Game Icon_Skill_Buff / Handpainted RPG Icons / Medieval Background slider / Monsters Attack），3 个因**作者要求登录（401）**暂缺。修正许可口径：字段在**模型层级**（不是版本层级），判定条件是 `allowCommercialUse` 含 `Image`。**`smereces_ai` 的两条要求署名**（`allowNoCredit=False`） |
+| 2026-10-12 | **新增「国风 / 西游 / 等距」批次 9 项**（梦幻西游方向，见 §1 的新表）：**8 个已部署 / 1 个被 401 挡**。含 **国风3 底模**（2193.4 MB，SD 1.5，2.5D 古风游戏角色向）——**必须署名**（`allowNoCredit=False`）；`国风3Lora` 同样**必须署名**。**原计划的 `Journey to the West Game Icons` 经查是 `Krea 2` 底模（不可用于 SD 1.5/SDXL）已弃用**，改用两个 SD 1.5 西游题材 LoRA 替代。检索与下载脚本在 `D:\AI\tmp\gf_fetch.py` / `gf_retry.py` |
