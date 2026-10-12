@@ -57,6 +57,45 @@ def strip_comments_and_strings(src):
     return "".join(out), state is None
 
 
+def check_hidden_conflicts(html, css_path):
+    """检查「带 hidden 的元素被 CSS 设了 display」—— 这类 bug 会让浮层常驻、整页点不动。"""
+    problems = []
+    hidden_ids, hidden_classes = set(), set()
+    for m in re.finditer(r"<[^>]*\bhidden\b[^>]*>", html):
+        tag = m.group(0)
+        mid = re.search(r'id="([A-Za-z0-9_-]+)"', tag)
+        if mid:
+            hidden_ids.add(mid.group(1))
+        for cls in re.findall(r'class="([^"]+)"', tag):
+            hidden_classes.update(cls.split())
+    if not (hidden_ids or hidden_classes) or not os.path.exists(css_path):
+        return problems
+
+    with open(css_path, encoding="utf-8") as fp:
+        css = re.sub(r"/\*.*?\*/", "", fp.read(), flags=re.S)
+
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", css)
+
+    # 若 CSS 里已有全局兜底 `[hidden] { display: none !important }`，冲突已被中和，不必再报
+    for sel, body in rules:
+        if "[hidden]" in sel and re.search(r"display\s*:\s*none", body) and "!important" in body:
+            return problems
+
+    for sel, body in rules:
+        sel = sel.strip()
+        if "@" in sel or "[hidden]" in sel or not re.search(r"\bdisplay\s*:", body):
+            continue
+        if "!important" in body:
+            continue
+        for sid in hidden_ids:
+            if "#" + sid in sel:
+                problems.append("CSS 规则 \"%s\" 给带 hidden 的 #%s 设了 display，会让它一直显示" % (sel, sid))
+        for sc in hidden_classes:
+            if "." + sc in sel:
+                problems.append("CSS 规则 \"%s\" 给带 hidden 的 .%s 设了 display，会让它一直显示" % (sel, sc))
+    return problems
+
+
 def main():
     with open(APP, encoding="utf-8") as fp:
         app = fp.read()
@@ -92,6 +131,8 @@ def main():
     all_ids = re.findall(r'id="([A-Za-z0-9_-]+)"', html)
     for dup in sorted({x for x in all_ids if all_ids.count(x) > 1}):
         problems.append("index.html 里 id=\"%s\" 重复出现" % dup)
+
+    problems.extend(check_hidden_conflicts(html, os.path.join(ROOT, "styles.css")))
 
     unused = sorted(defined - used)
     if unused:
