@@ -29,8 +29,8 @@
 > **建议执行顺序**：M7（技能） → M10（视觉骨架） → M11（内容） → M8（属性 UI） → M14（修饰）。
 
 > 📋 **不属于任何一张卡片的待做与未决项统一记在 [backlog.md](backlog.md)**
-> （非商用许可口径 · LoRA 对比台工具 · 扩大检索 LoRA · M15 素材接入前置 · 已作废清单 · Forge API 接口事实）。
-> 动工前建议先扫一眼——那里固化了三条口径（非商用 / 不做像素风 / Forge 无 CORS 必须走本地代理）。
+> （非商用许可口径 · LoRA 对比台工具 · 扩大检索 LoRA · M15 素材接入前置 · 已作废清单 · ComfyUI 接口事实）。
+> 动工前建议先扫一眼——那里固化了三条口径（非商用 / 不做像素风 / 浏览器需本地代理（serve.py 反代 ComfyUI））。
 
 ---
 
@@ -41,7 +41,7 @@
 2. 打开 assets/_PROMPTS.md → 复制对应模板
    （**角色 = A1 立绘 + A2 视角转换（两阶段）**, 地砖 = B, 物品 = C, Boss = D, 技能 = E, UI = F）
 3. 打开 assets/_LICENSES.md → 确认需要的 LoRA 都已登记
-4. 启动 Forge → 顶部 checkpoint 选 SD 1.5/SDXL
+4. 启动 ComfyUI（双击 `D:\AI\启动ComfyUI.bat`）→ 在对比台里选 unet（Qwen-Image 2.1）
 5. 出图 → 存到 D:\AI\outputs\YYYY-MM-DD\
 6. 后期处理（Aseprite / Tiled / Godot）→ 导入项目
 7. 在 GDScript 中替换 _draw() 或加新资源字段
@@ -54,7 +54,7 @@
 
 - **不复制 Stendhal 等 GPL 项目代码/素材**（仅借鉴结构与思想）。
 - **所有 LoRA 下载即登记** `assets/_LICENSES.md`（不登记不能出图）。
-- **8GB 显存纪律**：单批 1 张 + SD 1.5 ≤ 512² + SDXL ≤ 1024² + 最多 1 ControlNet。
+- **8GB 显存纪律**：单批 1 张 + 1024²（32 的倍数）+ 文本编码器用 nvfp4（5.87 GiB）；`--lowvram` 自 cu130 起已是 no-op，改由 DynamicVRAM 管理显存。
 - ~~**像素图导入 Godot 必须选 Nearest 滤波**~~ —— **2026-10-10 起风格基线改为"不做像素风"**（见
   [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)），导入规范改为 **`Filter = Linear` + `Mipmaps = on`**
   （Nearest 用非像素图会硬锯齿）。素材尺寸也整体上调一档：角色 128²、地砖 64²、图标 64²。

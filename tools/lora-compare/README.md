@@ -6,8 +6,8 @@
 - 纯静态前端（HTML / CSS / JS，无框架、无构建步骤）
 - 一个本地 Python 服务负责：静态托管 + **ComfyUI API 反向代理** + 结果落盘
 
-> ⚠️ **2026-10-12 换后端**：原本接的是 **Forge（SD 1.5 / SDXL）**，现已改为 **ComfyUI + Qwen-Image 2.1**。
-> SD 系底模与那 53 个 SD LoRA **全部弃用**（与 Qwen 架构不通），本机正在清理（见 `docs/tasks/backlog.md`）。
+> **后端是 ComfyUI + Qwen-Image 2.1**（2026-10-12 从 Forge 换过来；SD 系底模、45 个 SD LoRA 与
+> ControlNet 已于 2026-10-13 全部删除 —— 那次清理的收尾记录见 `docs/tasks/backlog.md`）。
 > 现在能对比的变量：**模板 / 提示词 / 模型(unet) / 尺寸 / 步数 / CFG / seed**，以及仓库里那 1 个 Qwen LoRA。
 
 ---
@@ -26,8 +26,10 @@
 
 ## 快速开始
 
-1. **先启动 ComfyUI**：双击 **`D:\AI\启动ComfyUI.bat`**（等价于在 `D:\AI\ComfyUI\comfyui-master` 下运行
-   `D:\AI\venv-comfy\Scripts\python.exe main.py --lowvram --port 8188`）。
+1. **先启动 ComfyUI**：双击 **`D:\AI\启动ComfyUI.bat`**（等价于先在 `D:\AI\ComfyUI\comfyui-master` 下
+   `cd`，再运行 `D:\AI\venv-comfy\Scripts\python.exe main.py --lowvram --port 8188`）。
+   ⚠️ 必须先 `cd` 到 `comfyui-master`，否则 `extra_model_paths.yaml` 不生效、模型列表会是空的。
+   ⚠️ 脚本里的 `--lowvram` **自 2026-10-13 起已是 no-op**（DynamicVRAM 接管，见下"显存 / 速度"一节），留着无害但别再指望它。
    界面在 <http://127.0.0.1:8188>，模型经 `extra_model_paths.yaml` 挂在 `D:\AI\models-comfy\`。
 2. **双击 `start.bat`** —— 找到 python、在 `127.0.0.1:7788` 起服务并自动开浏览器。
 3. 界面里按 1→5 走：
@@ -69,33 +71,40 @@
 
 ---
 
-## 🧠 8 GB 显存怎么优化（本机实测）
+## 🧠 8 GB 显存 / 速度（2026-10-13 全部重测）
 
-前提：Qwen-Image 2.1 的权重 **6.76 GB（unet）+ 8.71 GB（文本编码器）= 15.5 GB**，
-**必然超过 8 GB** → 每次出图都要在显存↔内存之间搬运十几个 GB。这才是慢的根因。
+> ⚠️ **本节旧版（截至 2026-10-12）已全部作废**：那时 torch 是 `2.7.0+cu128`，
+> comfy-kitchen 的 CUDA 内核被禁用、走 legacy `--lowvram`、**文本编码器跑在 CPU 上**。
+> 2026-10-13 升到 **torch 2.11.0+cu130** 后前提全变（详见 `docs/tasks/backlog.md` §0 / §4）。
 
-| 手段 | 收益 | 代价 |
-| --- | --- | --- |
-| ⚠️ ~~换更小的文本编码器 `qwen3vl_8b_w4a8`（5.88 GB）~~ —— **实测反而更慢，已否决** | 省 2.83 GB 搬运，但 **4bit 权重每步都要反量化**，开销远超收益 | 8 GB 下不划算（见下"实测"） |
-| **让 ComfyUI 常驻不回退**（别反复重启） | 省掉一次 ~15 GB 冷加载 | 常驻占 RAM |
-| **降分辨率** 1024² → 896²/768²（必须是 **32 的倍数**） | 中间张量显著变小，明显更快 | 细节变少 |
-| **关掉抢显存的东西**（Forge 实例 / 浏览器硬件加速） | 直接腾出百 MB~GB | — |
-| 启动参数保持 `--lowvram` | 8 GB 的正确选择 | `--novram` 更慢；`--gpu-only` 会 OOM |
-| 系统 RAM 尽量空（本机 31 GB，够 offload） | 避免换页拖慢 | — |
+现在的实际格局：
 
-**实测参考**（1024² / 8 步 / Turbo / cfg 1，同一台机器）：
-
-| 配置 | 单张耗时（热态） |
+| 项 | 现状 |
 | --- | --- |
-| int8 文本编码器（8.71 GB） | **395 秒** |
-| w4a8 文本编码器（5.88 GB） | **618 秒** ← 反而更慢 |
+| comfy-kitchen CUDA 内核 | **已启用**（`disabled: False`）：`int8_linear` / `dequantize_int8_convrot_weight` / `scaled_mm_nvfp4` 等 |
+| 显存调度 | **DynamicVRAM 接管**（日志：`DynamicVRAM support detected and enabled`） |
+| **`--lowvram`** | ⚠️ **已是 no-op**（`enables_dynamic_vram()` 的排除列表里没有它）。启动脚本里留着无害，但**别再指望它**；要调显存用 `--vram-headroom` / `--reserve-vram` |
+| 文本编码器 | **在 GPU 上**（aimdo 启用 → `text_encoder_device()` 返回 GPU），现用 **`qwen3vl_8b_nvfp4`（5.87 GB）** |
 
-⚠️ 结论**与直觉相反**：**权重文件更小 ≠ 更快** —— w4a8 每步都要把 4bit 权重反量化，开销远超省下的 2.83 GB 搬运
-（官方文档也提过 `int8_convrot` 比 4bit GGUF 快约 **2.28×**）。**结论：保持 int8**；w4a8 可以删掉省 5.88 GB。
+**实测**（1024² / 8 步 / Turbo LoRA / cfg 1 / 同 seed 家族，同一台机器）：
 
-⚠️ **耗时波动很大**（同配置两次能差 200 秒以上，受系统负载 / 热降频影响）→ 以后做时间对比要**交替多轮（A/B/A/B）**，别顺序跑。
+| 配置 | 冷 | **热** | 峰值显存（冷 / 热） |
+| --- | --- | --- | --- |
+| **nvfp4 编码器（5.87 GB）** | 18 s | **12 s** | 7162 / 7176 MB |
+| int8 编码器（8.71 GB） | 19 s | **12 s** | 7488 / 7268 MB |
+| ~~旧基线（cu128 + CPU 编码器，2026-10-12）~~ | — | **611 s（10 分 11 秒）** | — |
 
-因此真正的提速杠杆只有两条：**让 ComfyUI 常驻**（别反复重启）+ **降分辨率**（1024² → 896²/768²，必须是 32 的倍数）。
+⚠️ 三条容易读错的地方：
+
+1. **nvfp4 与 int8 热态打平（12 s vs 12 s）** → 选 nvfp4 是因为**体积小 2.84 GB**，**不是**因为"更快"。
+2. **提速 ~50 倍来自 cu130 升级**（kitchen 内核 + DynamicVRAM + 编码器回 GPU），**不是**换编码器。
+3. **"单张 395 s / 618 s"那组数字已作废** —— 它是编码器跑在 CPU 时代的产物；`w4a8` 的否决结论同理（当时 4bit 的收益本来就不存在）→ **w4a8 文件已删**。
+
+仍然有效的优化手段：**降分辨率**（1024² → 896²/768²，必须 32 的倍数）、
+**让 ComfyUI 常驻不回退**（省一次冷加载）、**关掉抢显存的东西**（浏览器硬件加速）。
+
+> 基准脚本（都在 `D:\AI\tmp\`，非仓库文件）：`enc_bench.py`（int8 vs w4a8，含冷/热设计）、
+> `nvfp4_vs_int8.py`（同场 A/B，可加第三档）。测试图落在 `images/_enc_*.png` / `_nv_*.png`。
 
 ---
 
@@ -142,7 +151,7 @@ python _check_static.py
 
 - **图生图未接**：模板 A2（视角转换）目前只能按**文生图**跑（界面会提示）。
   要接需要另做一版 Qwen-Edit 图结构。
-- **单张耗时 3~12 分钟**（见上"显存"一节）。
+- ~~单张耗时 3~12 分钟~~ → **2026-10-13 起为 12~37 秒**（见上"显存 / 速度"一节）。
 - `data/loras.json` 里那 50+ 个 SD LoRA **在 Qwen 上不可用**，只剩 1 个（Turbo）。
 
 ---
@@ -154,7 +163,7 @@ tools/lora-compare/
 ├── index.html        界面骨架（含前端异常兜底）
 ├── styles.css        深色样式
 ├── app.js            全部逻辑（无框架；含 ComfyUI 图构造 comfyGraph/waitComfy/fetchComfyImage）
-├── serve.py          本地服务：静态 + /comfy 反代（+/forge 兼容）+ /api/save|image|delete
+├── serve.py          本地服务：静态 + /comfy 反代 + /api/save|image|delete|list
 ├── start.bat         一键启动（自动找 python）
 ├── _check_static.py  静态自检（替代 node 语法检查）
 ├── _import_results.py 把脚本产物补登进 results.json 的幂等导入工具
@@ -166,14 +175,17 @@ tools/lora-compare/
 **ComfyUI 侧（本机）**：
 
 ```
-D:\AI\ComfyUI\comfyui-master\      ComfyUI 0.39.0 源码
-D:\AI\venv-comfy\                  它的 venv（python 3.10.11 + torch 2.7.0+cu128，移植自 Forge）
-D:\AI\models-comfy\                模型（16.95 GB）
-    diffusion_models\  qwen_image_2.1_int8_convrot.safetensors   6.76 GB
-    text_encoders\     qwen3vl_8b_int8_convrot.safetensors       8.71 GB
-    vae\               qwen_image_2.1_vae_bf16.safetensors       0.63 GB
-    loras\             qwen_image_2.1_turbo_lora_...bf16         0.85 GB
-D:\AI\启动ComfyUI.bat              一键启动
+D:\AI\ComfyUI\comfyui-master\      ComfyUI 0.39.0 源码（模板/前端已升到 0.11.78 / 1.55.14）
+D:\AI\venv-comfy\                  venv（python 3.10.11 + **torch 2.11.0+cu130**，tv 0.26.0 / ta 2.11.0）
+D:\AI\models-comfy\
+    diffusion_models\  qwen_image_2.1_int8_convrot.safetensors   6.76 GiB
+    text_encoders\     qwen3vl_8b_nvfp4.safetensors              5.87 GiB   ← 现用
+                       qwen3vl_8b_int8_convrot.safetensors       8.71 GiB   ← 备用（官方模板默认指向它）
+                       （qwen3vl_8b_w4a8 已于 2026-10-13 删除）
+    vae\               qwen_image_2.1_vae_bf16.safetensors        0.63 GiB
+    loras\             qwen_image_2.1_turbo_lora_...bf16          0.85 GiB
+D:\AI\启动ComfyUI.bat              一键启动（内部：cd 到 comfyui-master 后起 8188）
+D:\AI\logs\                        启动/运行日志 + pip freeze 备份（回滚依据）
 ```
 
 相关文档：提示词源头 `assets/_PROMPTS.md`、许可登记 `assets/_LICENSES.md`、

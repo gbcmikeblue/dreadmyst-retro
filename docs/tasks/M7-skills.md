@@ -5,7 +5,7 @@
 > **预计出图量**：~30 张（6 技能图标 + 6 特效参考，含废稿）  
 > **预计人工后期**：~6h  
 > **状态**：**代码骨架已完成（2026-10-09）**，剩出图部分待开始  
-> **完成前置**：Forge 已起来 + 至少 1 个"UI/图标"LoRA 已下载并登记
+> **完成前置**：ComfyUI 已起来（Qwen-Image 2.1 三件套就位；Qwen 侧暂无 UI 类 LoRA）
 
 ---
 
@@ -13,7 +13,7 @@
 
 为三个职业（**战 / 法 / 游**）各设计 2 个基础技能（普攻 + 大招），共计 **6 个技能**：
 - 每个技能需要 1 张图标（64×64 PNG，透明背景）
-- 每个技能需要 1 张特效参考图（1024²，SDXL 出图后人工切帧成 4–8 帧粒子）
+- 每个技能需要 1 张特效参考图（1024²，文生图后人工切帧成 4–8 帧粒子）
 
 为 M7 同时给三个职业建立**视觉基线**（后续 M10/M11 的"职业色 + 职业风"都基于这 6 个图标定义）。
 
@@ -52,8 +52,8 @@
 
 | 资源类型 | checkpoint | LoRA 关键词（Civitai 搜） | 引用 |
 | --- | --- | --- | --- |
-| 技能图标 | SD 1.5 | `pixel skill icon`, `rpg ability icon` | 待登记到 `assets/_LICENSES.md` |
-| 技能特效 | SDXL | `fantasy spell effect`, `magic particle` | 待登记到 `assets/_LICENSES.md` |
+| 技能图标 | Qwen-Image 2.1 | `pixel skill icon`, `rpg ability icon` | 待登记到 `assets/_LICENSES.md` |
+| 技能特效 | Qwen-Image 2.1 | `fantasy spell effect`, `magic particle` | 待登记到 `assets/_LICENSES.md` |
 
 > **LoRA 优先选 1 个 UI 类的**（覆盖图标 + 特效），等出图验证风格后再决定要不要加第二个。
 
@@ -103,7 +103,7 @@ dramatic lighting, concept art, detailed, painterly, fantasy RPG skill effect
 pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 ```
 
-**参数**：`1024×1024 · steps 30 · CFG 7 · DPM++ 2M Karras · SDXL`
+**参数**：`1024²（32 的倍数）· steps 25 · CFG 1 · euler · simple`
 
 ---
 
@@ -124,7 +124,7 @@ pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 ### 5.2 技能特效
 
 1. **Aseprite**：
-   - 打开 1024² SDXL 出图
+   - 按 1024² 出图
    - 删除背景
    - **手动切 4–8 个关键帧**（用 Lasso + 移动/旋转，做出动画序列）
    - 每帧导出为 `assets/_wip/effects/<技能>_frame_<N>.png`

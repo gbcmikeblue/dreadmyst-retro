@@ -6,12 +6,11 @@
    它做的事：同一提示词 + 同一参数 + 同一 seed，逐个换 LoRA 出图，并排对比，
    人工评分后把结论落盘成 RESULTS.md —— 用于决定最终保留哪些 LoRA。
 
-   为什么所有请求都走同源的 /forge/*：Forge 启动时未开 CORS
-   （cors_allow_origins 为空），浏览器直连 127.0.0.1:7860 会被拦。
+   后端是 ComfyUI（127.0.0.1:8188）。所有请求都走同源的 /comfy/*，
+   由本目录的 serve.py 反代 —— 浏览器直连 8188 会被同源策略拦。
    ========================================================================== */
 
-const FORGE = '/forge';      // 旧后端（Forge / SD），已弃用但保留调用点兼容
-const COMFY = '/comfy';      // 现用后端：ComfyUI（Qwen-Image 2.1）
+const COMFY = '/comfy';      // 后端：ComfyUI（Qwen-Image 2.1）
 const F_PROMPTS = 'data/prompts.json';
 const F_LORAS = 'data/loras.json';
 const F_RESULTS = 'data/results.json';
@@ -24,7 +23,7 @@ const S = {
   prompts: null,      // prompts.json 内容
   pristine: null,     // 开机时的副本，用于「复位」
   meta: {},           // loras.json 的 loras 字段（按名字索引）
-  disk: [],           // Forge 上真实存在的 LoRA 文件名（无扩展名）
+  disk: [],           // ComfyUI 上真实存在的 LoRA 文件名（无扩展名）
   ckpts: [],          // { title, model_name }
   samplers: [],
   records: [],        // 对比记录
@@ -176,11 +175,8 @@ const setBar = (v) => { $('#bar-fill').style.width = Math.round(Math.max(0, Math
 
 /* ------------------------------- 工具函数 ------------------------------- */
 const plain = (t) => String(t || '').replace(/\s*\[[0-9a-f]{7,}\]\s*$/i, '').trim();
-const baseOf = (t) => {
-  const s = String(t || '');
-  if (/qwen/i.test(s)) return 'Qwen-Image';     // Qwen-Image 2.1 底模（现用）
-  return /xl/i.test(s) ? 'SDXL' : 'SD 1.5';
-};
+// 只有 Qwen 一条线了（SD 系已整体弃用）；非 Qwen 底模一律标 other，用于文件名与筛选兜底
+const baseOf = (t) => (/qwen/i.test(String(t || '')) ? 'Qwen-Image' : 'other');
 const stamp = () => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const slug = (s) => String(s || '').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 60);
 
@@ -201,7 +197,7 @@ function compatible(key) {
 async function boot() {
   loadUiState();               // 单条权重 / 最近使用 / 筛选条件（存 localStorage）
   if (location.protocol === 'file:') {
-    banner('err', '不能直接双击 index.html 打开：这样既无法调用 Forge API（CORS 被拦），也无法把结果写回磁盘。请双击 start.bat，用 http://127.0.0.1:7788/ 访问。');
+    banner('err', '不能直接双击 index.html 打开：这样既调不到本地服务（它负责反代 ComfyUI），也无法把结果写回磁盘。请双击 start.bat，用 http://127.0.0.1:7788/ 访问。');
     return;
   }
   try {
@@ -235,29 +231,30 @@ async function boot() {
   renderResults();
   renderSummary();
   renderReqs();
-  await refreshForge();
+  await refreshComfy();
   $('#lora-search').value = S.filter.q || '';
   $('#lora-base-filter').value = S.filter.base || 'all';
   $('#lora-sort').value = S.filter.sort || 'group';
   renderLoRA();
   await refreshImages();
   bind();
+  bindPages();                 // 页面 A/B 路由 + 项目总览（卡片在 renderProjects 里渲染）
   updatePreview();
   renderInspector();
 }
 
 /* ------------------------------- 读 ComfyUI -------------------------------
-   后端已从 Forge 换成 ComfyUI：可用模型/编码器/VAE/LoRA/采样器
-   统一从 /object_info 的节点输入定义里取（不额外依赖自定义接口）。 */
-async function refreshForge() {
+   可用模型 / 编码器 / VAE / LoRA / 采样器统一从 /object_info 的节点输入定义里取
+   （不依赖任何自定义接口）。 */
+async function refreshComfy() {
   let oi = null;
   try {
     oi = await get(COMFY + '/object_info', 90000);
-    pill('pill-forge', true);
+    pill('pill-comfy', true);
   } catch (e) {
     S.disk = []; S.ckpts = []; S.samplers = [];
-    pill('pill-forge', false);
-    banner('warn', '读不到 ComfyUI：' + e.message + '（先启动它：在 D:\\AI\\ComfyUI\\comfyui-master 下运行 main.py --lowvram --port 8188）');
+    pill('pill-comfy', false);
+    banner('warn', '读不到 ComfyUI（127.0.0.1:8188）：' + e.message + '　→ 先启动它：双击 D:\\AI\\启动ComfyUI.bat');
     renderCkptCards();
     return;
   }
@@ -319,6 +316,7 @@ function loadTplToEditor() {
   renderHistory();
   markDirty(false);
   if ($('#preview')) updatePreview();
+  renderDetailSummary();       // 工作台顶部摘要跟着模板变
 }
 
 function markDirty(d) {
@@ -361,13 +359,17 @@ function renderHistory() {
 /* ------------------------------- 参数 ------------------------------- */
 function applyDefaults(resetSeed) {
   const t = currentTpl();
-  const def = (S.prompts.global.checkpointDefaults[baseOf($('#ckpt').value)]) || {};
-  const sug = (t && S.prompts.global.checkpointDefaults[t.base建议]) || def;
-  $('#w').value = sug.width || def.width || 512;
-  $('#h').value = sug.height || def.height || 512;
-  $('#steps').value = sug.steps || def.steps || 25;
-  $('#cfg').value = sug.cfg || def.cfg || 7;
+  const live = (S.prompts.global.checkpointDefaults[baseOf($('#ckpt').value)]) || {};
+  const sug = (t && S.prompts.global.checkpointDefaults[t.base建议]) || {};
+  // ⚠️ 以**实际在跑的底模**的默认值为准：模板建议与实际底模不一致时听底模的 ——
+  // steps/cfg 配错在 Qwen 上直接出废图（挂 Turbo LoRA 时 cfg>1 会崩）。
+  const def = Object.keys(live).length ? live : sug;
+  $('#w').value = def.width || sug.width || 512;
+  $('#h').value = def.height || sug.height || 512;
+  $('#steps').value = def.steps || sug.steps || 25;
+  $('#cfg').value = def.cfg || sug.cfg || 7;
   if (resetSeed !== false && !$('#seed').value) $('#seed').value = -1;
+  renderDetailSummary();
 }
 
 function readParams() {
@@ -391,12 +393,9 @@ function loraKeys() {
   return keys;
 }
 
-const GROUP_BY_PREFIX = { A: 'A 角色', B: 'B 地砖', C: 'C 装备', D: 'D Boss', E: 'E 技能', F: 'F UI' };
+/** 分组只认 loras.json 里登记的「分组」字段（SD 时代那套按 sd15_/sdxl_ 前缀推断的规则已删除） */
 function groupOf(key) {
-  const m = metaOf(key);
-  if (m.分组) return m.分组;
-  const mm = /^(?:sd15|sdxl)_([A-F])_/.exec(key);
-  return mm ? GROUP_BY_PREFIX[mm[1]] : '其他';
+  return metaOf(key).分组 || '其他';
 }
 
 /** 该 LoRA 现在能不能选：在磁盘上 + base 兼容（或显式允许跨 base） */
@@ -549,6 +548,7 @@ function renderLoRA() {
   $('#lora-sort').value = f.sort;
   renderTray();
   updateLoraCount();
+  renderDetailSummary();       // 勾选/取消 LoRA 后，工作台顶部摘要同步
 }
 
 /* ------------------------------- Checkpoint 卡片 ------------------------------- */
@@ -557,7 +557,7 @@ function renderCkptCards() {
   box.textContent = '';
   const cur = $('#ckpt').value;
   if (!S.ckpts.length) {
-    box.append(h('div', { class: 'hint', text: '（读不到 checkpoint —— Forge 没启动，或启动时没带 --api）' }));
+    box.append(h('div', { class: 'hint', text: '（读不到 unet —— ComfyUI 没启动，或 D:\\AI\\models-comfy\\diffusion_models 是空的）' }));
     $('#ckpt-note').textContent = '';
     return;
   }
@@ -1020,7 +1020,7 @@ async function fetchComfyImage(im) {
 }
 
 /* ------------------------------- 图生图辅助 ------------------------------- */
-/** 从本机服务读一张图，转成裸 base64（Forge 的 init_images 要这个格式） */
+/** 从本机服务读一张图，转成裸 base64（图生图底图 / 上传给 ComfyUI 都用这个格式） */
 async function loadImageB64(url) {
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url);
@@ -1451,6 +1451,177 @@ async function exportReport() {
   }
 }
 
+/* ============================================================================
+   页面结构：页面 A（项目总览）/ 页面 B（工作台）
+
+   页面 A 的条目 = prompts.json 的 templates（即"项目需要出的图"）。
+   点卡片 = 选中该模板（等价于改 #tpl-select 并触发既有 change 绑定）→ 进入页面 B。
+   页面 B 复用旧版全部面板（id 未变），因此生成 / 结果 / 汇总逻辑一行都不用改。
+   ========================================================================== */
+
+const PAGE_LIST = 'page-list';
+const PAGE_DETAIL = 'page-detail';
+
+/** 类别（按模板 id 首字母）—— 决定卡片左侧色条与标签 */
+const CATEGORY = {
+  A: { name: '角色', color: '#8fb0ff' },
+  B: { name: '场景', color: '#4bc98d' },
+  C: { name: '装备', color: '#e2b34a' },
+  D: { name: 'Boss', color: '#e4737f' },
+  E: { name: '技能', color: '#b39cff' },
+  F: { name: 'UI', color: '#38d6e8' },
+};
+
+function categoryOf(tpl) {
+  const c = CATEGORY[String((tpl && tpl.id) || '')[0].toUpperCase()];
+  return c || { name: (tpl && tpl.id) || '其它', color: '#4f7dff' };
+}
+
+/** 单个项目的出图统计（从对比记录里算，纯派生值） */
+function projectStats(id) {
+  const rs = S.records.filter((r) => r.template === id);
+  let best = null;
+  for (const r of rs) {
+    if (typeof r.rating === 'number' && (best === null || r.rating > best)) best = r.rating;
+  }
+  return {
+    count: rs.length,
+    best,
+    last: rs.length ? rs[rs.length - 1].at : '',
+    kept: rs.some((r) => r.verdict === '保留'),
+  };
+}
+
+function showPage(name) {
+  const detail = name === 'detail';
+  const list = $('#page-list'), det = $('#page-detail');
+  if (!list || !det) return;
+  list.hidden = detail;
+  det.hidden = !detail;
+  for (const b of $$('#nav .nav-btn')) b.classList.toggle('active', b.dataset.page === (detail ? 'detail' : 'list'));
+  if (!detail) renderProjects();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/** 选中某个生图项目 → 进工作台（其它逻辑全走既有绑定） */
+function openProject(id) {
+  const sel = $('#tpl-select');
+  sel.value = id;
+  sel.dispatchEvent(new Event('change'));   // → loadTplToEditor() + applyDefaults()
+  showPage('detail');
+}
+
+function fact(k, v) {
+  return h('div', {}, h('dt', { text: k }), h('dd', { text: v, title: String(v) }));
+}
+
+function projectCard(t, st) {
+  const cat = categoryOf(t);
+  const i2i = t.阶段 === 'img2img';
+  const card = h('article', {
+    class: 'proj-card' + (t.id === S.tplId ? ' is-active' : ''),
+    style: '--cat:' + cat.color,
+    title: '点卡片进入工作台',
+  });
+  card.append(
+    h('div', { class: 'proj-head' },
+      h('span', { class: 'proj-id', text: t.id }),
+      h('span', { class: 'tag ' + (i2i ? 'warn' : 'ok'), text: i2i ? '图生图' : '文生图', style: 'margin-left:0' }),
+      h('span', { class: 'tag', text: cat.name })),
+    h('h3', { class: 'proj-title', text: t.name || t.id }),
+    h('p', { class: 'proj-usage', text: t.用途 || '（没写用途）' }),
+    h('dl', { class: 'proj-facts' },
+      fact('建议底模', ((S.prompts.global.checkpointDefaults || {})[t.base建议] || {}).label || t.base建议 || '—'),
+      fact('出图尺寸', t.出图尺寸 || '—'),
+      fact('要求块', (t.套用要求 || []).join(' · ') || '—'),
+      fact('模板提示词', t.positive || '—')));
+  // ⚠️ 别把 null 直接塞进 append（会渲染成字符串 "null"）
+  if (t.备注) card.append(h('p', { class: 'proj-note', text: '⚠️ ' + t.备注 }));
+  card.append(
+    h('div', { class: 'proj-foot' },
+      h('span', { class: 'proj-stat', html: '已出 <b>' + st.count + '</b> 张' }),
+      st.best != null ? h('span', { class: 'proj-stat', html: '最佳 <b>★' + st.best + '</b>' }) : null,
+      st.kept ? h('span', { class: 'tag ok', text: '有保留' }) : null,
+      st.last ? h('span', { class: 'proj-stat', text: '最近 ' + String(st.last).slice(5, 16) }) : null,
+      h('button', {
+        class: 'primary go', text: '进入工作台 →',
+        onclick: (e) => { e.stopPropagation(); openProject(t.id); },
+      })));
+
+  card.addEventListener('click', () => openProject(t.id));
+  return card;
+}
+
+/** 页面 A 渲染 */
+function renderProjects() {
+  if (!S.prompts) return;
+  const box = $('#project-grid');
+  if (!box) return;
+  const tpls = S.prompts.templates || [];
+  const q = (($('#proj-search') || {}).value || '').trim().toLowerCase();
+  const mode = (($('#proj-filter') || {}).value) || 'all';
+
+  let shots = 0;
+  const rows = tpls.map((t) => {
+    const st = projectStats(t.id);
+    shots += st.count;
+    return { t, st };
+  });
+  $('#proj-total').textContent = tpls.length;
+  $('#proj-shots').textContent = shots;
+  $('#proj-hint').textContent = shots ? '' : '· 还没有出过图';
+
+  let list = rows;
+  if (q) {
+    list = list.filter(({ t }) => [t.id, t.name, t.用途, t.备注, (t.套用要求 || []).join(' ')]
+      .join(' ').toLowerCase().includes(q));
+  }
+  if (mode === 'todo') list = list.filter(({ st }) => !st.count);
+  else if (mode === 'done') list = list.filter(({ st }) => st.count > 0);
+  else if (mode === 'keep') list = list.filter(({ st }) => st.kept);
+
+  box.textContent = '';
+  if (!list.length) {
+    box.append(h('div', { class: 'empty', text: '（没有符合筛选条件的项目）' }));
+    return;
+  }
+  for (const { t, st } of list) box.append(projectCard(t, st));
+}
+
+/** 页面 B 顶部摘要：当前用的是哪个模型 / 哪些 LoRA / 尺寸与阶段 */
+function renderDetailSummary() {
+  if (!S.prompts) return;
+  const box = $('#detail-summary');
+  if (!box) return;
+  const t = currentTpl() || {};
+  $('#detail-id').textContent = t.id || '—';
+  $('#detail-name').textContent = t.name || '未选模板';
+  const stage = $('#detail-stage');
+  stage.textContent = t.阶段 === 'img2img' ? '图生图' : '文生图';
+  stage.className = 'tag ' + (t.阶段 === 'img2img' ? 'warn' : 'ok');
+
+  const picked = Array.from(S.sel).filter((k) => k !== NONE);
+  const aux = S.aux || {};
+  const bits = [
+    '模型 ' + (plain($('#ckpt').value) || '—'),
+    '文本编码器 ' + ((aux.clip || [])[0] || '—'),
+    'VAE ' + ((aux.vae || [])[0] || '—'),
+    ($('#w').value || '?') + '×' + ($('#h').value || '?'),
+    '步数 ' + $('#steps').value + ' · CFG ' + $('#cfg').value,
+    '本批对比 ' + (picked.length ? picked.join(' / ') : '仅基线'),
+  ];
+  box.textContent = categoryOf(t).name + '　|　' + bits.join('　|　');
+}
+
+function bindPages() {
+  for (const b of $$('#nav .nav-btn')) b.addEventListener('click', () => showPage(b.dataset.page));
+  $('#btn-back').addEventListener('click', () => showPage('list'));
+  $('#proj-search').addEventListener('input', renderProjects);
+  $('#proj-filter').addEventListener('change', renderProjects);
+  showPage('list');
+  renderDetailSummary();
+}
+
 /* ------------------------------- 事件绑定 ------------------------------- */
 function bind() {
   $('#tpl-select').addEventListener('change', () => { S.tplId = $('#tpl-select').value; loadTplToEditor(); applyDefaults(false); });
@@ -1505,7 +1676,7 @@ function bind() {
     updateLoraCount();
     updatePreview();
   });
-  $('#btn-refresh').addEventListener('click', async () => { await refreshForge(); renderLoRA(); banner(null); });
+  $('#btn-refresh').addEventListener('click', async () => { await refreshComfy(); renderLoRA(); banner(null); });
 
   // —— 模型选择器：搜索 / 筛选 / 排序 ——
   $('#lora-search').addEventListener('input', () => { S.filter.q = $('#lora-search').value; saveUiState(); renderLoRA(); });

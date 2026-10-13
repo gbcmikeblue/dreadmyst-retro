@@ -5,7 +5,7 @@
 > **预计出图量**：~80 张（3 套 tileset × 25 + 5 张 Boss 概念图）  
 > **预计人工后期**：~30h（tileset 切片 + 拼接 + 调整是大头）  
 > **状态**：**代码已完成**（2026-10-10，房间流 + Boss 战，美术仍为程序化占位）；**出图待开始**  
-> **完成前置**：Forge + 至少 1 个"场景 tileset"LoRA  
+> **完成前置**：ComfyUI 已起来（Qwen-Image 2.1 三件套就位；Qwen 侧暂无场景 LoRA）  
 > **代码侧已就位**：地城的房间/墙/门/Boss/传送门都可跑，缺的只是 tileset 贴图。
 > 接入真贴图时改 `DungeonRoom`（把程序化网格地面换成 tileset UV）与
 > `data/enemies.json` 的 `sprite_path`，**玩法代码不用动**。详见
@@ -20,7 +20,7 @@
 
 **验收标准**：
 - [ ] 3 套 tileset（每套 ~100 tile）出图并切片
-- [ ] 1 张 Boss 概念图（SDXL）
+- [ ] 1 张 Boss 概念图（1024²）
 - [ ] 至少 1 个地城能完整铺设 tileset
 - [ ] 玩家/敌人已接入真实 sprite（填 `data/enemies.json` 的 `sprite_path` + `SpriteFactory.actor_texture`），
       渲染路径不变（见 `docs/modules/render3d.md` §接入真实 sprite）
@@ -44,10 +44,10 @@
 
 | 资源类型 | checkpoint | LoRA 关键词 |
 | --- | --- | --- |
-| 场景 tileset | SD 1.5 + **ControlNet tile** | `isometric tileset`, `dungeon tileset seamless`, `2.5D rpg`, `fantasy forest seamless`, `desert tileset pixel` |
-| Boss 概念图 | SDXL | `fantasy boss concept`, `dungeon boss creature` |
+| 场景 tileset | Qwen-Image 2.1（原方案的 SD ControlNet tile 已随 SD 系弃用；视角/无缝的替代路线见 backlog T-24） | `isometric tileset`, `dungeon tileset seamless`, `2.5D rpg`, `fantasy forest seamless`, `desert tileset pixel` |
+| Boss 概念图 | Qwen-Image 2.1 | `fantasy boss concept`, `dungeon boss creature` |
 
-> **必装 ControlNet**：SD 1.5 配套 `control_v11f1e_sd15_tile`，SDXL 配套 `sai_xl_tile`。详见 `assets/_PROMPTS.md` §B 注释。
+> **必装 ControlNet**：（SD 时代方案，已弃用）。详见 `assets/_PROMPTS.md` §B 注释。
 
 ---
 
@@ -70,7 +70,7 @@ pixel art, fantasy medieval, orthographic view, game asset, no characters, no UI
 ```
 
 **参数**：`1024×1024 · steps 30 · CFG 7 · DPM++ 2M Karras`  
-**ControlNet**：上传一张地砖参考（可手画或从已有素材找），Preprocessor = `tile`，Model = `control_v11f1e_sd15_tile`
+**ControlNet**：上传一张地砖参考（可手画或从已有素材找），Preprocessor / Model（SD 时代方案已弃用）
 
 ### 4.2 Boss 概念图
 
@@ -88,7 +88,7 @@ game key art, 2.5D retro MMO style, dungeon overlord
 pixel art, 8-bit, chibi, cute, blurry, low quality, watermark
 ```
 
-**参数**：`1024×1536 · steps 30 · CFG 7 · DPM++ 2M Karras · SDXL`
+**参数**：`1024²（32 的倍数）· steps 25 · CFG 1 · euler · simple`
 
 ---
 

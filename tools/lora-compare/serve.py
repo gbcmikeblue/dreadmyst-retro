@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""LoRA 对比台 · 本地服务（静态文件 + Forge 反向代理 + 结果落盘）
+"""素材出图台 · 本地服务（静态文件 + ComfyUI 反向代理 + 结果落盘）
 
 为什么必须有它
 --------------
-Forge 启动时**没有开 CORS**（`GET /sdapi/v1/cmd-flags` 的 `cors_allow_origins` 为空字符串），
-所以浏览器里的 fetch 无法直连 `http://127.0.0.1:7860` —— 纯静态页调不通 Forge API。
+浏览器直连 ComfyUI（`http://127.0.0.1:8188`）会被同源策略拦，而且前端还要把结果写回磁盘。
 本脚本提供三件事：
 
 1. **静态文件服务** —— 前端就是纯 HTML/CSS/JS，没有构建步骤。
-2. **`/forge/*` 反向代理** —— 把请求转给 Forge API，绕开 CORS；线程池处理，
+2. **`/comfy/*` 反向代理** —— 把请求转给 ComfyUI；线程池处理，
    所以出图期间还能同时轮询进度条。
-3. **`/api/save`、`/api/image`、`/api/delete`** —— 把提示词修改、对比记录与生成图落盘到本目录。
+3. **`/api/save`、`/api/image`、`/api/delete`、`/api/list`** —— 提示词 / 对比记录 /
+   生成图 / 图生图底图列表的落盘与读取。
 
 用法
 ----
-双击 `start.bat`，或：`python serve.py --port 7788`（`--forge` 可改 Forge 地址）
+双击 `start.bat`，或：`python serve.py --port 7788`（`--comfy` 可改 ComfyUI 地址）
 """
 
 from __future__ import annotations
@@ -33,8 +33,7 @@ from urllib import request as urlrequest
 from urllib.parse import parse_qs, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-FORGE = "http://127.0.0.1:7860"      # 旧后端（Forge / SD），仅保留兼容
-COMFY = "http://127.0.0.1:8188"      # 现用后端：ComfyUI + Qwen-Image 2.1
+COMFY = "http://127.0.0.1:8188"      # 后端：ComfyUI + Qwen-Image 2.1
 
 MAX_BODY = 64 * 1024 * 1024   # 64MB：base64 图片够用
 PROXY_TIMEOUT = 3600          # 出图 / 切模型都可能很久，别让代理先超时
@@ -106,21 +105,17 @@ class Handler(SimpleHTTPRequestHandler):
     # ---------------- 路由 ----------------
 
     def do_GET(self):
-        if self.path.startswith("/forge/"):
-            return self._proxy("GET")
         if self.path.startswith("/comfy/"):
-            return self._proxy("GET", COMFY, "/comfy")
+            return self._proxy("GET")
         if self.path == "/api/ping":
-            return self._json(200, {"ok": True, "forge": FORGE, "root": ROOT})
+            return self._json(200, {"ok": True, "comfy": COMFY, "root": ROOT})
         if self.path.startswith("/api/list"):
             return self._list_dir()
         return super().do_GET()
 
     def do_POST(self):
-        if self.path.startswith("/forge/"):
-            return self._proxy("POST")
         if self.path.startswith("/comfy/"):
-            return self._proxy("POST", COMFY, "/comfy")
+            return self._proxy("POST")
         if self.path == "/api/save":
             return self._save_text()
         if self.path == "/api/image":
@@ -173,11 +168,11 @@ class Handler(SimpleHTTPRequestHandler):
         files.sort(key=lambda x: -x["mtime"])
         return self._json(200, {"ok": True, "dir": rel, "files": files})
 
-    # ---------------- 后端反代（/forge = 旧 Forge；/comfy = ComfyUI） ----------------
+    # ---------------- 后端反代（/comfy/* → ComfyUI） ----------------
 
-    def _proxy(self, method, base=None, prefix="/forge"):
-        base = base or FORGE
-        upstream = base + self.path[len(prefix):]
+    def _proxy(self, method):
+        prefix = "/comfy"
+        upstream = COMFY + self.path[len(prefix):]
         try:
             body = self._body()
         except ValueError as exc:
@@ -194,7 +189,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self._relay(exc.code, exc.headers.get("Content-Type"), exc.read())
         except Exception as exc:
             return self._json(502, {"ok": False,
-                                    "error": "后端不可达（%s）：%s" % (base, exc)})
+                                    "error": "后端不可达（%s）：%s" % (COMFY, exc)})
 
     def _relay(self, code, ctype, data):
         self.send_response(code)
@@ -245,14 +240,12 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main():
-    global FORGE, COMFY
-    ap = argparse.ArgumentParser(description="LoRA 对比台 · 本地服务")
+    global COMFY
+    ap = argparse.ArgumentParser(description="素材出图台 · 本地服务")
     ap.add_argument("--port", type=int, default=7788, help="监听端口（默认 7788）")
-    ap.add_argument("--forge", default="http://127.0.0.1:7860", help="旧 Forge API 地址")
     ap.add_argument("--comfy", default="http://127.0.0.1:8188", help="ComfyUI 地址")
     ap.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
     args = ap.parse_args()
-    FORGE = args.forge.rstrip("/")
     COMFY = args.comfy.rstrip("/")
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
@@ -260,10 +253,9 @@ def main():
 
     url = "http://127.0.0.1:%d/" % args.port
     print("=" * 62)
-    print("  LoRA 对比台")
+    print("  素材出图台")
     print("  界面   : %s" % url)
     print("  ComfyUI: %s" % COMFY)
-    print("  Forge  : %s（旧后端，可不用）" % FORGE)
     print("  目录   : %s" % ROOT)
     print("  Ctrl+C 退出")
     print("=" * 62)

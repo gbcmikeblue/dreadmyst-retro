@@ -12,9 +12,10 @@
 | --- | --- |
 | **许可** | 本项目**非商用** → 第三方模型的 `allowCommercialUse` **不再作为筛选硬条件**（含 `RentCivit` / `Rent` / `Sell` / 空值都可用），只排除「明确禁止任何使用」的条目；**署名义务不受影响**（`allowNoCredit = False` 必须署名）。⚠️ **转商用前必须回头复核 `assets/_LICENSES.md` 全部条目** |
 | **风格** | **不做像素风**（见 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)）→ 走「低分辨率 + 复古观感」平滑手绘路线；即上轮三选一里的 **C 路线**（不引第三方图，纯 AI 出图）。**CC0 像素素材全部出局** |
-| **调用方式** | 网页工具**必须自带本地代理**（浏览器不能直连后端再写回磁盘）。原 Forge 是因为没开 CORS；现 `serve.py` 用 `/comfy/*` 反代 ComfyUI |
-| **生图后端** | **ComfyUI 0.39 + Qwen-Image 2.1**（2026-10-12 换）。SD 1.5 / SDXL / 国风3 与全部 SD LoRA **弃用**（架构不通、LoRA 不可复用）。⚠️ 许可换成 **Qwen Research License（研究用途）** → 非商用可用，**转商用需申请**（已登记 `_LICENSES.md`） |
+| **调用方式** | 网页工具**必须自带本地代理**（浏览器直连 ComfyUI `127.0.0.1:8188` 会被同源策略拦，且要能把结果写回磁盘）。`serve.py` 用 `/comfy/*` 反向代理 + `/api/*` 落盘 |
+| **生图后端** | **ComfyUI 0.39 + Qwen-Image 2.1**（2026-10-12 换后端、**2026-10-13 SD 系整体删除**）：SD 1.5 / SDXL / 国风3 三个底模、45 个 SD LoRA、ControlNet 与整棵 `D:\AI\models\` **均已移除**（架构不通、LoRA 不可复用）。⚠️ 许可为 **Qwen Research License（研究用途）** → 非商用可用，**转商用需申请**（已登记 `_LICENSES.md`） |
 | **题材** | **不转题材，只借风格**（2026-10-12 决定）：内容仍是**中世纪奇幻**，只借梦幻西游方向的**渲染风格（2.5D 高饱和手绘）+ 投影语言（`isometric / orthographic / no perspective`）+ 中式装饰符号**。模板里的 `fantasy medieval dungeon` / `dark fantasy creature` 等题材词**不动**；`guofeng` 块只含装饰 / 工艺词 |
+| **运行环境**（2026-10-13 大改） | **torch 2.7.0+cu128 → 2.11.0+cu130**（+ torchvision 0.26.0 / torchaudio 2.11.0），连带：① **comfy-kitchen CUDA 内核已启用**（`disabled: False`，含 `int8_linear` / `dequantize_int8_convrot_weight` / `scaled_mm_nvfp4`）② **DynamicVRAM 已接管**。⚠️ **`--lowvram` 现在是 no-op**（`enables_dynamic_vram()` 的排除列表里没有它）→ 以后调显存要用 `--vram-headroom` / `--reserve-vram`。文本编码器定为 **`qwen3vl_8b_nvfp4.safetensors`（5.87 GiB）**，实测见 §4 |
 
 ---
 
@@ -25,23 +26,27 @@
 | ID | 事项 | 依赖 | 优先级 |
 | --- | --- | --- | --- |
 | **T-03** | 用对比台跑一轮 **基线（无 LoRA）vs 各 LoRA** 体检（每个 LoRA 至少 1 组），产出 `RESULTS.md`，据此决定保留哪些（**这一步只有你能做：需要人眼判断风格**） | T-01 ✅ | **P0** |
-| **T-15** | 启动方式固化：Forge **必须用 `webui-user.bat`（带 `--api`）**，用 `webui.bat` 会导致出图接口 `{"detail":"Not Found"}` —— 已在工具 README 记下，可考虑加个启动检查脚本 | — | P3 |
-| **T-16** | 把 2026-10-12 新下的 **8 个 LoRA + 国风3 底模**同步进对比台的 `data/loras.json` / checkpoint 预设（否则工具里的用途 / 触发词 / 署名提示缺失），并把「国风3」加进 checkpoint 下拉 | — | P2 |
+| ~~**T-15**~~ | **作废**：Forge 已随 SD 系整体删除（2026-10-13 复核磁盘无残留），启动方式问题不存在了 | — | 作废 |
+| ~~**T-16**~~ | **作废**：那 8 个 LoRA 与国风3 底模已随 SD 系整体删除；对比台的 `data/loras.json` 已重写为 Qwen 时代（只留 Turbo LoRA） | — | 作废 |
 
 
 ### 1.2 许可与模型库
 
 | ID | 事项 | 依赖 | 优先级 |
 | --- | --- | --- | --- |
-| **T-18** | **执行本地 SD 清理（≈22.5 GB）**：`stable-diffusion-webui-forge`(1.45G) + `models`(20.94G) + `ComfyUI` 里除 `comfyui-master` 外的旧文件 + `installers`。⚠️ **删前先关掉 Forge**（还占着 7860）。清单见工具 README 与会话记录 | — | **P1** |
-| ~~**T-19**~~ ✅ | **已测完并否决**：w4a8（5.88 GB）热态 **618 s**，反而比 int8（8.71 GB）的 **395 s** 慢 —— **4bit 每步反量化的开销 > 省下的 2.83 GB 搬运**（官方亦提 int8_convrot 比 4bit 快约 2.28×）。**结论：保持 int8；w4a8 可删（省 5.88 GB）**。⚠️ 顺带发现**耗时波动极大**（同配置两次差 200 s+）→ 以后测速要 A/B 交替多轮 | — | 已决 |
-| **T-20** | **给对比台接 Qwen 图生图**：模板 A2（视角转换）目前只按文生图跑；要接需另做 Qwen-Edit 图结构 | — | P2 |
-| **T-21** | **测 cfg=4 + 不挂 Turbo（30~40 步）**：验证"负向生效时等距视角能否被遵从"（挂 Turbo 时 cfg=1，负向完全失效） | — | P1 |
+| ~~**T-18**~~ ✅ | **已完成（2026-10-13 复核）**：`D:\AI\models`、`stable-diffusion-webui-forge` **均已不存在**，全盘（`D:\AI` + `D:\download`）**无任何 SD 权重残留**；`models-comfy` 只剩 Qwen 三件套 + Turbo LoRA。仓库侧同步清完：删 `_import_results.py` / `data/results.json` / 10 张 SD 测试图，`loras.json`（45 条 SD LoRA）重写，`serve.py` 移除 `/forge` 代理，`app.js` / `index.html` / `prompts.json` 的 SD 口径全部迁到 Qwen | — | 已决 |
+| ~~**T-19**~~ ⚠️ **前提已失效（2026-10-13 改判）** | 原结论「w4a8 618 s > int8 395 s，4bit 反量化开销 > 省下的 2.83 GB 搬运」**建立在"文本编码器跑在 CPU"之上**（当时日志：`CLIP/text encoder model load device: cpu`），而 4bit/FP4 的收益本来就在 GPU 张量核上 —— 该前提已被 cu130 升级推翻。**重测（编码器已回 GPU，热态）**：**nvfp4 12 s vs int8 12 s 完全打平**，峰值显存 ~7160 vs ~7280 MiB（噪声内）→ **选 nvfp4 的唯一理由是体积小 2.84 GiB，不是更快**。**w4a8 文件已删**（省 5.88 GiB）。基准脚本保留：`D:\AI\tmp\enc_bench.py` / `nvfp4_vs_int8.py` | — | 已改判 |
+| **T-20** | **给对比台接 Qwen 图生图**：模板 A2（视角转换）目前只按文生图跑；要接需另做 Qwen-Edit 图结构。⚡ 2026-10-13：ComfyUI 已有官方 `image_qwen_image_2_1_image_edit.json`（与本机三件套通用，无需另下模型） | — | P2 |
+| **T-21** | **测 cfg=4 + 不挂 Turbo（30~40 步）**：验证"负向生效时等距视角能否被遵从"（挂 Turbo 时 cfg=1，负向完全失效）。⚡ **2026-10-13 更新：单张已降到 12~37 s**（原 3~12 分钟）→ **成本几乎为零，应立即跑**；官方 2.1 模板默认 **steps 25 / cfg 1**，Edit-2511 模板的参考表给的是 **steps 40(官方)/20(Comfy)、cfg 4.0** | — | **P0** |
+| **T-22** | **把「nvfp4 版 2.1 工作流」另存为个人工作流**：官方模板 JSON 写死 `qwen3vl_8b_int8_convrot`，对比台 `app.js` 又取 `S.aux.clip[0]`（字母序第一个 = int8）→ **两处默认都没指向 nvfp4**。另：官方 `image_qwen_image_2_1_t2i.json` 引用的 **9B 提示词增强编码器**（`qwen3.5_9b_qwen_image_2.1_pe_t2i.int8_convrot`，≈8.8 GiB）本机没有 → 打开后需禁用该节点（`refine_prompt` 默认 off）。⚠️ **别改 `site-packages` 里的模板**（升级会被覆盖） | — | **P1** |
+| **T-23** | **`QwenImage21Cache` 调优**：官方 2.1 模板默认已开（`device=auto, dtype=default`）→ 试 `device=cpu` / `dtype=int8`，看本机（编码器已回 GPU）是省显存还是白加开销 | — | P2 |
+| **T-24** | **ControlNet-Union 解视角**（§2「P0 卡住 T-09」的候选路线 (b) 落地）：官方 `qwen_image_2.1_fun_controlnet_union_int8_convrot.safetensors`（**3.5 GiB**，bf16 版 7.0 GiB），本机节点 `QwenImage21FunControlPatch` / `...BlockPatch` 已具备 | — | **P1** |
+| ~~**T-25**~~ ✅ | **已完成 2026-10-13**：`tools/lora-compare/README.md` 的「显存 / 速度」章节按实测重写（`--lowvram` 已失效、nvfp4 vs int8 打平 12 s、611 s → 12 s、395 / 618 s 旧数字作废）；「快速开始」补上必须先 `cd` 的说明；目录结构更新为 cu130 + nvfp4 | — | 已决 |
 | ~~**T-07**~~ | ~~Dark and Darker 去留~~ —— **已作废**：SD 系整体弃用，全部 LoRA 都要删 | — | 作废 |
 
-> ✅ **T-05 / T-06 / T-14 已于 2026-10-12 完成并删除**：登录墙挡住的 **20 个全部补齐**，
-> 三个类别缺口（SD 1.5 地砖 / SDXL 技能特效 / SDXL UI）也都有对应 LoRA 了。
-> 磁盘现 **45 个 / 5.90 GB**（`sd15_*` ×15 / `sdxl_*` ×18 / 早期命名 ×12），登记表行数与 Forge 识别数一致。
+> ~~✅ **T-05 / T-06 / T-14 已于 2026-10-12 完成并删除**（当时补齐了 45 个 SD LoRA）~~
+> → **整条作废**：SD 系已于 2026-10-13 全部删除，这批 LoRA 与相关缺口都不存在了。
+> 现在 LoRA 只有 1 个（Qwen 的 Turbo 加速），登记在 `tools/lora-compare/data/loras.json`。
 
 ### 1.3 M15 素材接入（主线）
 
@@ -49,7 +54,7 @@
 | --- | --- | --- | --- |
 | **T-09** | **M15 素材接入本体**（真实 sprite + 中文字体 + 音频）：代码侧管线已就绪（`data/*.json` 的 `sprite_path` / `icon` + `SpriteFactory` 加载分支），**卡在没有图** | T-03 | **P0** |
 | **T-10** | **中文字体选型**：非像素风 → 像素字体出局，改常规 OFL 字体（思源黑体 / 霞鹜文楷 / LXGW），字号不再受 8/10/12px 限制 | — | P1 |
-| **T-11** | **出图规模与后期成本重估**：`ai-asset-generation.md` §7 的 ~315 张 / ~64h 是按像素风估的；非像素风要 1024²+ 出图 + 去背 / 羽化 → 人工后期明显上涨，且 8GB 显存下 SDXL 1024² 已是上限 | — | P1 |
+| **T-11** | **出图规模与后期成本重估**：`ai-asset-generation.md` §7 的 ~300 张 / ~60h 是最初按不存在的旧管线估的。**2026-10-13 更新**：出图已不是瓶颈（Qwen 1024² 热态 **12 s/张** → 300 张约 1 小时），**人工后期（平滑降采样 + 对齐 + 调色板收敛）才是**；且 2.1 原生透明底**省掉了抠图**。建议先跑通"1 敌人 + 1 物品"完整链路再修正该表 | — | P1 |
 | **T-12** | **代码侧风格切换**（4 处，待 T-03 看实际观感后再定）：`scripts/world/sprite_factory.gd` 的 `TEXTURE_FILTER_NEAREST` → `Linear + Mipmaps`、`ALPHA_CUT_DISCARD` → `ALPHA_CUT_DISABLED`、占位贴图分辨率（`player.gd` / `enemy.gd` 64、`gear_pickup.gd` 32）、`_make_disc` / `_make_gem` 的逐像素硬描边 | T-03 | P2 |
 | **T-13** | `alpha_cut` 改成 alpha 混合后，**半透明精灵的深度排序**问题需实测（多个羽化边精灵互遮会闪） | T-12 | P2 |
 
@@ -59,7 +64,7 @@
 
 | 事项 | 现状 | 选项 |
 | --- | --- | --- |
-| **生图方案换代的结论**（2026-10-12） | **已定：ComfyUI + Qwen-Image 2.1**。实测：① **风格与画质大幅胜出**（完整中世纪骑士、华丽板甲，远超 SD 1.5 / 国风3）；② **原生 RGBA 透明底成功**（32.8% 全透明像素，**去背问题彻底消失**）；③ **等距 3/4 视角仍未出**（又是正面）；④ 单张 3~12 分钟（8GB 显存要来回搬 15.5 GB 权重）。⚠️ 注意 ③ 是在 **cfg=1 + Turbo LoRA**（负向完全失效）下测的 → 见 T-21 | ① 先用 **全向 billboard** 的话，正面图可能已经够用（**先查 `sprite_factory.gd`**）② 测 T-21（cfg4 无 Turbo）③ 仍不行 → ControlNet / 3D 渲染 |
+| **生图方案换代的结论**（2026-10-12） | **已定：ComfyUI + Qwen-Image 2.1**。实测：① **风格与画质大幅胜出**（完整中世纪骑士、华丽板甲，远超 SD 1.5 / 国风3）；② **原生 RGBA 透明底成功**（32.8% 全透明像素，**去背问题彻底消失**）；③ **等距 3/4 视角仍未出**（又是正面）；④ ~~单张 3~12 分钟（8GB 显存要来回搬 15.5 GB 权重）~~ → **2026-10-13 已作废**：cu130 升级后单张 **12~37 s**（同一提示词 / 同 8 步 / 同 1024²），详见 §4。⚠️ 注意 ③ 是在 **cfg=1 + Turbo LoRA**（负向完全失效）下测的 → 见 T-21 | ① 先用 **全向 billboard** 的话，正面图可能已经够用（**先查 `sprite_factory.gd`**）② 测 T-21（cfg4 无 Turbo；**现在成本已降到秒级，可立即跑**）③ 仍不行 → **T-24 ControlNet-Union**（官方补丁仅 3.5 GiB，本机节点已具备）/ 3D 渲染 |
 | **M7 是否仍是"风格基线"** | `docs/tasks/README.md` 写着"M7 是后续所有玩法素材的风格基线"，但 M7 的图还没出，而风格基线已改为非像素 | 保持 M7 打样 / 改用对比台先定风格 |
 | **3/4 俯视角色怎么出**（**P0，卡住 T-09**） | **实测 2026-10-12：提示词不是主因**。修好要求块后（上色 ✓ / 不裁 ✓）仍拿不到 3/4 俯视：① img2img 转视角 `denoise` 0.80/0.85/0.90 **三档都没转成**，0.85 以上反而把角色**糊成色块剪影**；② 文生图直接带视角要求 + 抽卡 4 张，抽看的 2 张仍**正面 / 略仰视**。**本机只有原始 SD 1.5 base 与 SDXL base，无任何社区微调底模** → 怀疑是**底模能力**而非模板问题。<br>**③ 改用投影词后（联网查证的事实）**：把相机术语换成 `isometric / no perspective / orthographic` + 负向压 `perspective, vanishing point`，在**原始 base** 上抽 2 张 → 一张正面平视海报、一张俯瞰场景；**再看国风3 底模** → **风格方向解决了**（东方玄幻/高饱和/华丽，A1 立绘质量大幅提升），**但等距视角仍出不来**（仍正面立绘视角） | ① ~~先用 SDXL 重跑同组~~ ② ~~下社区微调底模~~ → **已用国风3 验证：风格 ✓ / 视角 ✗** ③ 视角候选收窄：**(a) 用 isometric 专用 LoRA 或换投影词再试**；**(b) 上 ControlNet（depth/openpose）锁形体**；**(c) 改走 3D 渲染 sprite**（工程本就是 3D + billboard，视角严格可控）。⚠️ 注意：billboard 始终面向相机，所以 sprite 到底要「正面」还是「3/4 俯视」取决于 billboard 模式（Y 轴 billboard 需俯视；全向 billboard 则可直接用正面）—— **动工前先确认 T-12 的实现** |
 
@@ -84,32 +89,43 @@
 | 项 | 结果 |
 | --- | --- |
 | 开源游戏清单筛选 | 结论已登记 `AGENTS.md` §1（约 145 个 → 同构 8 个） |
-| SD 1.5 checkpoint | `_LICENSES.md` 状态改为**已部署**（3.97 GB） |
+| ~~SD 1.5 checkpoint~~ | ~~`_LICENSES.md` 状态改为已部署（3.97 GB）~~ → **已从磁盘与登记表删除（2026-10-13）** |
 | LoRA 下载（首轮） | 10 个：7 成功 / 3 被登录墙挡住（**后续已全部补齐**，见下行） |
 | 风格基线 | 像素风口径已从 `_PROMPTS.md` / `ai-asset-generation.md` / `tasks/README.md` 移除 |
 | 许可口径 | `AGENTS.md` §1 新增"非商用 → 放开模型许可门槛 + 保留署名义务" |
 | **LoRA 对比台** | [`tools/lora-compare/`](../../tools/lora-compare/README.md) 落地：静态前端 + 本地代理服务 + 提示词库（含历史回退）+ 评分 / 结论 + 一键导出 `RESULTS.md`；端到端验证通过 |
-| **LoRA 池** | 两轮扩张后磁盘共 **45 个 / 5.90 GB**（`sd15_*` ×15 / `sdxl_*` ×18 / 早期命名 ×12）；**登录墙的 20 个全部补齐**；Forge 识别数、登记表行数、磁盘文件数三方一致 |
-| **许可筛选口径** | `_LICENSES.md` 改为「非商用 → `allowCommercialUse` 不硬过滤，但逐条记录供转商用复核」；LoRA 命名统一为 `sd15_`/`sdxl_` + 用途 + 描述，平铺不再分子目录 |
+| ~~**LoRA 池**~~ | ~~两轮扩张后磁盘共 45 个 / 5.90 GB~~ → **随 SD 系整体删除（2026-10-13）**，现只剩 1 个 Qwen Turbo LoRA |
+| ~~**许可筛选口径**~~ | ~~非商用放过 `allowCommercialUse`~~ → SD LoRA 全部删除后不再适用；现行口径见 `AGENTS.md` §1（非商用 + 署名义务 + 转商用复核） |
 | **要求块修正（有效）** | 实测发现"灰阶线稿 + 头顶裁切"**确由提示词造成**并已修：`portrait` 补"不许裁"、`style` 补显式上色词、`commonneg` 压 `monochrome`/`line art`/`sketch` 等 → A1 立绘由**灰阶线稿变上色插画**、裁切消失（提交 `8de0800`）。副作用：风格偏向"可爱卡通"，待调 |
-| **ControlNet 可用** | `control_v11f1e_sd15_tile`（1.35 GB）已下载并由 Forge 识别 → **`/controlnet/model_list?update=true` 只在启动时重扫**，运行时新增模型必须**重启 Forge**（重启仅 25s） |
+| ~~**ControlNet 可用**~~ | ~~`control_v11f1e_sd15_tile` 已下载~~ → **随 SD 系删除（2026-10-13）**。Qwen 侧的替代是官方 ControlNet-Union 补丁（3.52 GiB，本机节点已具备，见 **T-24**） |
 | **实测记录方式** | 出图验证脚本全部走 `tools/lora-compare` 的本地代理（7788 → 7860），并把测试图落在 `images/_*.png`（已 gitignore）；**结论只入文档与提交信息，图不入库** |
+| **torch 升 cu130（一石三鸟）** | `torch 2.7.0+cu128 → 2.11.0+cu130`（配 torchvision 0.26.0 / torchaudio 2.11.0，本地 wheel 装入）。**收益不是一档，是数量级**：<br>① `Found comfy_kitchen backend cuda: {... 'disabled': False}`（原来 `True`）→ int8_convrot / nvfp4 的硬件内核启用<br>② `DynamicVRAM support detected and enabled`（原来 `Unsupported Pytorch detected ... Falling back to legacy ModelPatcher`）<br>③ **文本编码器从 CPU 回到 GPU**（`text_encoder_device()` 在 aimdo 启用时返回 GPU）<br>④ **单张 611 s → 12 s（8 步 / 1024² / Turbo LoRA）≈ 50×**<br>⚠️ 代价：`--lowvram` 变 no-op，显存策略改由 DynamicVRAM 管。**备份**：`D:\AI\logs\pip-freeze-20261013-before-cu130.txt`；**回滚**：`pip install --index-url https://download.pytorch.org/whl/cu128 torch==2.7.0+cu128 torchvision==0.22.0+cu128 torchaudio==2.7.0+cu128` |
+| **文本编码器选型（nvfp4）** | `qwen3vl_8b_nvfp4.safetensors`（5.87 GiB，252 层 nvfp4 + 2 层 fp8，`QUANT_ALGOS["nvfp4"]` 原生格式）vs `int8_convrot`（8.71 GiB）：**热态 12 s vs 12 s 打平**，峰值显存 ~7160 vs ~7280 MiB。→ **选 nvfp4（省 2.84 GiB 磁盘/内存），速度不亏**。w4a8 已删 |
+| **ComfyUI 模板/前端升到官方最新** | `comfyui-workflow-templates 0.11.78` / `-json 0.1.104` / `-core 0.3.369` / `frontend 1.55.14` / `embedded-docs 0.5.13` → 启动日志里那三条「版本低于推荐值」警告消失。**Qwen-Image 2.1 的三个官方模板到位**：`image_qwen_image_2_1_t2i` / `_image_edit` / `_background_removal`。⚠️ 坑：清华镜像**缺** `comfyui-workflow-templates-media-assets-02==0.1.11`（新包未同步），首次 pip 原子回滚 → 需 `--extra-index-url https://pypi.org/simple` 兜底。**备份**：`D:\AI\logs\pip-freeze-20261013-before-templates.txt` |
+| **SD 内容整体清除（2026-10-13）** | 用户在"把关于SD的都删除"的口径下要求全清。**磁盘侧复核**：`D:\AI\models`、`stable-diffusion-webui-forge` 均已不存在，全盘无 SD 权重 → **T-18 结案**。**仓库侧**：删 `tools/lora-compare/_import_results.py` + `data/results.json` + 10 张 SD 测试图；`data/loras.json` 45 条 SD LoRA 元数据 → 重写为 Qwen 时代（只留 Turbo LoRA）；`serve.py` 移除 `FORGE` 常量 / `/forge` 反代 / `--forge` 参数；`app.js` 移除 `FORGE`、`baseOf()` 的 SD 分支、`GROUP_BY_PREFIX`（sd15_/sdxl_ 前缀推断）、SD 版错误提示，`refreshForge` 更名 `refreshComfy`；`index.html` 删 SD base 筛选项；`prompts.json` 8 个模板 + 要求块 + 规范整体迁到 Qwen 口径；`assets/_LICENSES.md` 重写（删 56 行 SD 登记 + Civitai 下载口径）；`assets/_PROMPTS.md` 整篇重写为 Qwen 速查 |
+| **2.1 官方模板的实际配置（已读出）** | 子图 `Text to Image (Qwen Image 2.1)`：`UNETLoader=qwen_image_2.1_int8_convrot` / `CLIPLoader=qwen3vl_8b_int8_convrot(type=qwen_image)` / `VAELoader=qwen_image_2.1_vae_bf16`（**三件套本机全有**）+ `TextEncodeQwenImage21` + `QwenImage21Cache(device=auto, dtype=default，默认开)` + 第二个 `CLIPLoader` 指向 **9B PE 编码器**（`qwen3.5_9b_qwen_image_2.1_pe_t2i.int8_convrot`，**本机缺** → 需禁用该节点）；`KSampler = steps 25 / cfg 1 / euler / simple`；顶层另有 `ResolutionSelector`（按宽高比 + 百万像素定尺寸） |
 
 ---
 
-## 附：已探明的接口事实（做 T-01 / T-02 直接用，别再重查）
+## 附：已探明的接口事实（做对比台 / 脚本时直接用，别再重查）
+
+> 2026-10-13 更新：下表已从 Forge（SD）换成 **ComfyUI**。
 
 | 项 | 值 |
 | --- | --- |
-| Forge API | `http://127.0.0.1:7860`（`api=True`；`cors_allow_origins` **为空**） |
-| checkpoint 标识（`sd_model_checkpoint`） | SD 1.5：`_D_AI_ckpt\v1-5-pruned-emaonly.safetensors [6ce0161689]`；SDXL：`_D_AI_ckpt\sd_xl_base_1.0.safetensors` |
-| 切模型方式 | `POST /sdapi/v1/options` 设 `sd_model_checkpoint`，再轮询 `/sdapi/v1/options` 确认（8GB 下切换需数十秒） |
-| LoRA 名（用于 `<lora:名字:权重>`） | 即文件名去扩展名，如 `bg3_item_icons_v1`（列表见 `GET /sdapi/v1/loras`） |
-| 采样器 | 含 `DPM++ 2M`（推荐起步）、`Euler a`、`DPM++ 2M SDE` 等 |
-| 当前 CLIP skip | `CLIP_stop_at_last_layers = 1.0` |
-| 本机 python | `D:\AI\python-full\python.exe`（3.10.11，含 `http.server`）；`D:\AI\python\`、`D:\AI\stable-diffusion-webui-forge\venv\Scripts\python.exe` 同样可用 |
+| ComfyUI API | `http://127.0.0.1:8188`（对比台经 `serve.py` 的 `/comfy/*` **同源反代**，避免同源策略） |
+| 取可用模型 / 编码器 / VAE / LoRA / 采样器 | `GET /object_info` 的节点输入枚举：`UNETLoader.unet_name` / `CLIPLoader.clip_name` / `VAELoader.vae_name` / `LoraLoader.lora_name` / `KSampler.sampler_name` |
+| 提交出图 | `POST /prompt`，body `{"prompt": <图结构>}` → 返回 `prompt_id` |
+| 查询进度 / 结果 | `GET /queue`（队列）/ `GET /history/<prompt_id>`（含 `status_str`，`error` 时带报错） |
+| 取图 | `GET /view?filename=…&subfolder=…&type=output` |
+| 上传底图（图生图用） | `POST /upload/image`（multipart）→ 拿回 name，填进 `LoadImage.image` |
+| unet / 编码器 / VAE | 文件名即标识；**没有"切换模型"这一步** —— 每次提交的图里指定 |
+| LoRA 名（`LoraLoaderModelOnly.lora_name`） | 文件名去扩展名，如 `qwen_image_2.1_turbo_lora_avg_rank_178_bf16` |
+| 文本编码器落在哪个设备 | 日志看 `CLIP/text encoder model load device:`（cu130 + DynamicVRAM 下应为 `cuda:0`） |
+| 优化内核是否启用 | 日志看 `Found comfy_kitchen backend cuda: {'disabled': …}`（需 **cu130+** 才为 `False`） |
+| 出图存放约定 | 对比台落 `tools/lora-compare/images/`（已 gitignore）；ComfyUI 自身落 `D:\AI\ComfyUI\output\`；归档到 `assets/_wip/<类别>/`（见 [README.md](README.md) 全局规则） |
+| 本机 python | 能跑 ComfyUI 的只有 **`D:\AI\venv-comfy\Scripts\python.exe`**（装了 torch）；`D:\AI\python-full\python.exe` 是 base、**没有 torch**，只适合跑纯脚本（如 `serve.py`） |
 | 本机 PowerShell | **5.1**（`HttpListener` 异步回调缺 runspace）→ 本地服务**用 python 写**，不要用 PowerShell 起 HTTP 服务 |
-| 出图存放约定 | 先落 `D:\AI\outputs\YYYY-MM-DD\`，再归档 `assets/_wip/<类别>/`（见 [README.md](README.md) 全局规则） |
 
 ---
 
@@ -125,3 +141,9 @@
 | 2026-10-12 | **风格基线改为「东方玄幻（梦幻西游向）· 非 Q 版」**：联网查证后把**相机术语换成投影词**（`isometric / no perspective / orthographic`，负向压 `perspective, vanishing point`）；新增 **`guofeng` 国风符号块**；通用负向固定压 `chibi, big head`。落地「国风 / 西游 / 等距」批次（**国风3 底模** + 8 个 LoRA）。**实测结论：国风3 解决了「风格」、没解决「等距视角」** → 更新 §2 该项候选路线，新增 **T-16**（新模型同步进对比台元数据）/ **T-17**（主题材是否转东方玄幻，需拍板） |
 | 2026-10-12 | **题材决策落定（T-17 已决）**：**不转题材，只借风格** → 内容仍是中世纪，只借渲染风格 + 投影词 + 中式装饰符号。为此把 `guofeng` 块里的**题材词**（`xianxia immortal aesthetics` / `chinese oriental fantasy theme`）换成**装饰 / 工艺词**（`chinese decorative motifs` / `brocade texture` / `paper lantern glow`）。该决策升为 §0 第 4 条口径；T-17 从 §1 删除 |
 | 2026-10-12 | **生图后端换代：SD → Qwen-Image 2.1 + ComfyUI**。§0 新增「生图后端」口径（含 Qwen Research License 提醒）；**SD 系整体弃用**（3 个底模 + 54 个 LoRA + ControlNet，与 Qwen 不通）；对比台后端从 Forge 换到 ComfyUI（提交 `42d9a90`，端到端验证通过），README 重写并写入 **cfg / 步数 / 8GB 显存优化**说明；新增 **T-18**（执行清理 ≈22.5 GB）/ **T-19**（换 w4a8 文本编码器）/ **T-20**（接图生图）/ **T-21**（测 cfg4 无 Turbo 的视角）；**T-07 作废**；§2 记录换代实测结论 |
+| 2026-10-13 | **生图环境大升级：torch cu128 → cu130**（2.7.0 → 2.11.0，配 tv 0.26.0 / ta 2.11.0）。§0 新增「运行环境」口径（**`--lowvram` 已失效**，改 DynamicVRAM）。四项验证：kitchen `disabled: False`、DynamicVRAM enabled、编码器回 GPU、**单张 611 s → 12 s（≈50×）**。§4 记录三项收益与回滚命令；**T-25** 记录对比台 README 那节已过期 |
+| 2026-10-13 | **文本编码器定为 nvfp4**：`qwen3vl_8b_nvfp4.safetensors`（5.87 GiB）热态 **12 s vs int8 12 s 打平**，峰值显存几乎相同 → 选它的理由是体积小 2.84 GiB。**T-19 改判**（原「w4a8 更慢」的结论建立在"编码器在 CPU"之上，前提已失效）；**w4a8 已删**（5.88 GiB）+ `D:\download` 重复源文件 + cu130 wheel 共回收 ≈13.5 GiB |
+| 2026-10-13 | **ComfyUI 模板/前端升到官方最新**（0.11.62→**0.11.78** / 1.53.6→**1.55.14** / 0.5.11→**0.5.13**）→ **Qwen-Image 2.1 三个官方模板到位**（t2i / image_edit / background_removal），2.1 需要的节点（`TextEncodeQwenImage21` / `QwenImage21Cache`）本机 0.39.0 本来就有。记下镜像缺新包的坑；新增 **T-22**（nvfp4 版工作流另存 + 9B PE 编码器缺失）/ **T-23**（Cache 节点调优）/ **T-24**（ControlNet-Union 解视角）；**T-20 / T-21 更新**（编辑模板现成 / 视角实验成本降到秒级） |
+| 2026-10-13 | 清理：删 `D:\AI\tmp` 下旧 wheel 与测试脚本以外的过程文件；**基准脚本保留** `D:\AI\tmp\enc_bench.py`（int8 vs w4a8，含冷/热设计）与 `nvfp4_vs_int8.py`（同场 A/B，可加第三档） |
+| 2026-10-13 | **对比台前端重构：单页五步 → 两页结构**。页面 A「项目总览」= `prompts.json` 的 8 个生成项目卡片（类别色条 + 阶段徽章 + 建议底模/尺寸/要求块/备注摘要 + 已出图数与最佳评分），点卡片进入页面 B「工作台」（面包屑显示**实际使用的模型 / 编码器 / VAE / 尺寸 / 步数 CFG / 本批对比的 LoRA**，下方完整复用旧 7 个面板）。**所有旧元素 id 原样保留 → 生成/结果/汇总逻辑零改动**；卡片点击走既有的 `#tpl-select` change 绑定。CSS 全量重写为现代深色主题（玻璃拟态顶栏、分段式导航、卡片悬浮、focus 光环、响应式）。顺手修掉一个会"炸图"的坑：`applyDefaults()` 原本让模板的 SD 时代 `base建议` 优先 → Qwen 会被填成 `512²/steps 25/cfg 7`（配 Turbo LoRA 必崩），已改为**现用底模优先** |
+| 2026-10-13 | **SD 内容整体清除**（用户要求）：磁盘侧复核无残留 → **T-18 / T-15 / T-16 结案作废**；仓库侧删除 SD 数据与工具、`serve.py` 去掉 Forge 反代、`app.js` / `index.html` / `prompts.json` 迁到 Qwen 口径、`_LICENSES.md` 与 `_PROMPTS.md` 重写。详见 §4 同名条目 |

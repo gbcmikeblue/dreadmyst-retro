@@ -30,8 +30,8 @@ _用 1–2 句话说明本里程碑的玩法目标，以及"为什么需要这�
 
 | 资源类型 | checkpoint | LoRA | 引用 |
 | --- | --- | --- | --- |
-| _例：技能图标_ | SD 1.5 | _Civitai 关键词：`pixel skill icon`_ | `assets/_LICENSES.md` 待填 |
-| _例：技能特效_ | SDXL | _Civitai 关键词：`fantasy spell effect`_ | `assets/_LICENSES.md` 待填 |
+| _例：技能图标_ | Qwen-Image 2.1 | _Civitai 关键词：`pixel skill icon`_ | `assets/_LICENSES.md` 待填 |
+| _例：技能特效_ | Qwen-Image 2.1 | _Civitai 关键词：`fantasy spell effect`_ | `assets/_LICENSES.md` 待填 |
 
 > **下载后必填**：把 LoRA 实际名、来源 URL、License 写到 `_LICENSES.md`。
 
@@ -44,7 +44,7 @@ _用 1–2 句话说明本里程碑的玩法目标，以及"为什么需要这�
 | 资源 | 模板（_PROMPTS.md） | 自定义部分（附加 prompt） |
 | --- | --- | --- |
 | _资源 1_ | E. 技能图标 | `[fireball/heal/dash/shield/slash/burst]` 按技能类型选 |
-| _资源 2_ | _无（直接 SDXL 出图）_ | _后期切帧_ |
+| _资源 2_ | _无（直接文生图）_ | _后期切帧_ |
 
 ---
 

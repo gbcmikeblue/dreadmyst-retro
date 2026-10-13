@@ -42,9 +42,9 @@
 
 | 资源类型 | checkpoint | LoRA 关键词（Civitai 搜） |
 | --- | --- | --- |
-| 装备图标 | SD 1.5 | `pixel item icon`, `rpg inventory icon` |
-| 品质边框 | SD 1.5 | `pixel frame`, `ui border fantasy` |
-| 商店 UI | SD 1.5 | `rpg ui pixel`, `fantasy shop interface` |
+| 装备图标 | Qwen-Image 2.1 | `pixel item icon`, `rpg inventory icon` |
+| 品质边框 | Qwen-Image 2.1 | `pixel frame`, `ui border fantasy` |
+| 商店 UI | Qwen-Image 2.1 | `rpg ui pixel`, `fantasy shop interface` |
 
 > 全部待登记到 `assets/_LICENSES.md`。
 

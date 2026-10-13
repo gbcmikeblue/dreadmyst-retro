@@ -20,7 +20,7 @@
 | [modules/world.md](modules/world.md) | 竞技场（3D 地面/矮墙/岩石）、掉落物拾取 |
 | [modules/ui.md](modules/ui.md) | HUD、`Label3D` 伤害数字、Toast |
 | [roadmap.md](roadmap.md) | Roadmap、待补信息、里程碑、M9 迁移记录、变更记录 |
-| [reference/ai-asset-generation.md](reference/ai-asset-generation.md) | **AI 资产生图方案**：Forge + SD 1.5/SDXL + 8GB 显存纪律 + 版权登记 |
+| [reference/ai-asset-generation.md](reference/ai-asset-generation.md) | **AI 资产生图方案**：ComfyUI + Qwen-Image 2.1 + 8GB 显存纪律 + 许可登记 |
 | [reference/mmo-opensource/](reference/mmo-opensource/) | 开源 MMO 参考研究：Kaetram-Open / Stendhal / Intersect Engine 的结构与素材分析 |
 | [tasks/](tasks/) | **出图任务卡片**（M7 / M8 / M10 / M11 / M14）：每个里程碑的可执行出图清单 + Prompt + 验收 |
 

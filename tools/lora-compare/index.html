@@ -3,21 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LoRA 对比台 · Dreadmyst 原型美术</title>
+<title>素材出图台 · Dreadmyst 原型</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
 <header class="hd">
   <div class="brand">
-    <h1>LoRA 对比台</h1>
-    <span class="sub">同一提示词 · 逐个换 LoRA · 结果可决策</span>
+    <span class="logo">D</span>
+    <div class="brand-txt">
+      <h1>素材出图台</h1>
+      <span class="sub">Dreadmyst 原型 · Qwen-Image 2.1</span>
+    </div>
   </div>
+
+  <nav class="nav" id="nav">
+    <button type="button" class="nav-btn active" data-page="list">项目总览</button>
+    <button type="button" class="nav-btn" data-page="detail">工作台</button>
+  </nav>
+
   <div class="pills">
     <span class="pill" id="pill-server"><i></i>本地服务</span>
-    <span class="pill" id="pill-forge"><i></i>Forge</span>
+    <span class="pill" id="pill-comfy"><i></i>ComfyUI</span>
     <span class="pill plain" id="pill-model">—</span>
   </div>
+
   <div class="hd-actions">
     <button id="btn-save" class="ghost">保存记录</button>
     <button id="btn-export" class="primary">导出 RESULTS.md</button>
@@ -26,240 +36,284 @@
 
 <div id="banner" class="banner" hidden></div>
 
-<main class="main">
+<!-- ==================================================================
+     页面 A · 项目总览：项目需要出的图（卡片由 app.js 渲染）
+     点某张卡片 → 进入页面 B，并把该项目的模板/提示词/要求带过去
+     ================================================================== -->
+<main id="page-list" class="page">
+  <section class="hero">
+    <div class="hero-txt">
+      <h2>项目需要出的图</h2>
+      <p class="hero-sub">
+        共 <b id="proj-total">0</b> 个生成项目 · 已出 <b id="proj-shots">0</b> 张
+        <span id="proj-hint" class="hero-note"></span>
+      </p>
+    </div>
+    <div class="hero-tools">
+      <input id="proj-search" type="text" placeholder="筛选：名称 / 用途 / 备注…" autocomplete="off">
+      <select id="proj-filter">
+        <option value="all">全部项目</option>
+        <option value="todo">未出图</option>
+        <option value="done">已出图</option>
+        <option value="keep">有「保留」结论</option>
+      </select>
+    </div>
+  </section>
 
-  <!-- ==================== 左栏 ①②③ ==================== -->
-  <aside class="col-left">
+  <div id="project-grid" class="proj-grid"></div>
+</main>
 
-    <!-- ① 模型 -->
-    <section class="panel">
-      <h2><span class="num">1</span>模型</h2>
+<!-- ==================================================================
+     页面 B · 工作台：模型 / LoRA / 提示词 / 要求 / 参数 / 生成 / 结果
+     （面板 id 与旧版完全一致，app.js 的既有逻辑不用改）
+     ================================================================== -->
+<main id="page-detail" class="page" hidden>
 
-      <div class="field">
-        <span class="lbl-row">Checkpoint<span class="spacer"></span><span class="hint" id="ckpt-note"></span></span>
-        <div class="ckpt-cards" id="ckpt-cards"></div>
-        <select id="ckpt" hidden></select>
+  <div class="crumb">
+    <button type="button" id="btn-back" class="ghost back">← 返回项目</button>
+    <div class="crumb-main">
+      <div class="crumb-title">
+        <span class="crumb-id" id="detail-id">—</span>
+        <h2 id="detail-name">—</h2>
+        <span class="tag" id="detail-stage">—</span>
       </div>
+      <div class="crumb-sub" id="detail-summary">—</div>
+    </div>
+  </div>
 
-      <div class="field">
-        <span class="lbl-row">本批对比对象<span class="spacer"></span><span class="hint" id="lora-count"></span></span>
-        <ul class="tray" id="lora-tray"></ul>
-      </div>
+  <div class="main">
 
-      <div class="picker">
-        <div class="row">
-          <input id="lora-search" type="text" placeholder="搜索：名字 / 用途 / 触发词…" autocomplete="off">
-          <button type="button" class="ghost" id="btn-refresh" title="从 Forge 重新读取 LoRA 列表">重读</button>
-        </div>
-        <div class="row picker-filters">
-          <select id="lora-base-filter">
-            <option value="all">base: 全部</option>
-            <option value="ok">base: 当前兼容</option>
-            <option value="SD 1.5">base: SD 1.5</option>
-            <option value="SDXL 1.0">base: SDXL</option>
-          </select>
-          <select id="lora-group-filter"><option value="all">分组: 全部</option></select>
-          <select id="lora-sort">
-            <option value="group">排序: 分组</option>
-            <option value="name">排序: 名字</option>
-            <option value="base">排序: base</option>
-            <option value="recent">排序: 最近使用</option>
-          </select>
-        </div>
-        <div class="row">
-          <button type="button" class="ghost" id="btn-all">全选筛选结果</button>
-          <button type="button" class="ghost" id="btn-none">清空</button>
-          <span class="hint" id="picker-count"></span>
-        </div>
-        <ul class="lora-list" id="lora-list"></ul>
-      </div>
-    </section>
+    <!-- ==================== 左栏 ①②③ ==================== -->
+    <aside class="col-left">
 
-    <!-- ② 参数 -->
-    <section class="panel">
-      <h2><span class="num">2</span>参数</h2>
-
-      <div class="grid2">
-        <label class="field"><span>宽</span><input id="w" type="number" step="64"></label>
-        <label class="field"><span>高</span><input id="h" type="number" step="64"></label>
-        <label class="field"><span>步数</span><input id="steps" type="number"></label>
-        <label class="field"><span>CFG</span><input id="cfg" type="number" step="0.5"></label>
-        <label class="field"><span>采样器</span><select id="sampler"></select></label>
-        <label class="field"><span>Seed</span><input id="seed" type="number" title="-1 = 本批随机取一次，然后全批锁定同一个 seed 家族"></label>
-      </div>
-
-      <label class="field">
-        <span class="lbl-row">默认 LoRA 权重（没单独设的都跟随它）<output id="lw-out">0.80</output></span>
-        <input id="lw" type="range" min="0" max="1.2" step="0.05" value="0.8">
-      </label>
-
-      <label class="field">
-        <span class="lbl-row">每项出<output id="repeat-out">1</output>张（抽卡：同提示词换 seed，一次多看几张再挑）</span>
-        <input id="repeat" type="range" min="1" max="6" step="1" value="1">
-      </label>
-
-      <div class="field" id="init-wrap">
-        <span class="lbl-row">图生图底图（模板阶段 = img2img 时必选）<span class="spacer"></span>
-          <button type="button" class="mini" id="btn-init-refresh">刷新</button>
-        </span>
-        <select id="init-img"><option value="">（未选）</option></select>
-        <div class="row" style="margin-top:6px">
-          <input type="file" id="init-upload" accept="image/png,image/jpeg,image/webp">
-        </div>
-        <p class="hint">也可以直接在结果卡片上点「设为底图」。底图尺寸会自动填进上面的宽 / 高。</p>
-      </div>
-
-      <label class="check"><input type="checkbox" id="inject-trigger" checked> 自动注入注册表里的触发词</label>
-      <label class="check"><input type="checkbox" id="force-base"> 允许跨 base 测试（不推荐，结果无意义）</label>
-    </section>
-
-    <!-- ③ 提示词 -->
-    <section class="panel">
-      <h2><span class="num">3</span>提示词</h2>
-
-      <div class="tabs">
-        <button type="button" class="tab active" data-pane="tpl">模板</button>
-        <button type="button" class="tab" data-pane="req">要求 / 规范</button>
-      </div>
-
-      <!-- 页签 A：模板 -->
-      <div id="pane-tpl">
-        <label class="field">
-          <span>模板</span>
-          <select id="tpl-select"></select>
-        </label>
-        <p class="meta" id="tpl-meta"></p>
-        <p class="meta">阶段：<b id="tpl-stage">—</b></p>
-
-        <label class="field" id="denoise-field" hidden>
-          <span class="lbl-row">denoise（图生图强度）<output id="denoise-out">0.70</output></span>
-          <input id="denoise" type="range" min="0.2" max="0.95" step="0.05" value="0.7">
-        </label>
-
-        <label class="field">
-          <span class="lbl-row">正向（内容描述）<span class="spacer"></span>
-            <button type="button" class="mini" id="btn-pos-reset">复位</button>
-            <button type="button" class="mini" data-copy="pos">复制</button>
-          </span>
-          <textarea id="pos" rows="4" spellcheck="false"></textarea>
-        </label>
-
-        <label class="field">
-          <span class="lbl-row">本模板额外要求（会拼进正向）<span class="spacer"></span>
-            <button type="button" class="mini" data-copy="tpl-req">复制</button>
-          </span>
-          <textarea id="tpl-req" rows="3" spellcheck="false"></textarea>
-        </label>
-
-        <label class="field">
-          <span class="lbl-row">负向（本模板特有）<span class="spacer"></span>
-            <button type="button" class="mini" data-copy="neg">复制</button>
-          </span>
-          <textarea id="neg" rows="3" spellcheck="false"></textarea>
-        </label>
+      <!-- ① 模型 -->
+      <section class="panel">
+        <h2><span class="num">1</span>模型</h2>
 
         <div class="field">
-          <span>套用哪些要求块（正向块进正向、负向块进负向）</span>
-          <div class="blocks-pick" id="blocks-pick"></div>
+          <span class="lbl-row">Checkpoint<span class="spacer"></span><span class="hint" id="ckpt-note"></span></span>
+          <div class="ckpt-cards" id="ckpt-cards"></div>
+          <select id="ckpt" hidden></select>
         </div>
 
-        <div class="row">
-          <button id="btn-prompt-save" class="primary">保存本模板</button>
-          <span class="hint" id="prompt-state"></span>
+        <div class="field">
+          <span class="lbl-row">本批对比对象<span class="spacer"></span><span class="hint" id="lora-count"></span></span>
+          <ul class="tray" id="lora-tray"></ul>
         </div>
 
-        <details class="fold" id="hist-box">
-          <summary>本模板修改历史（<span id="hist-count">0</span> 版）</summary>
-          <ul class="history" id="prompt-history"></ul>
-        </details>
-      </div>
+        <div class="picker">
+          <div class="row">
+            <input id="lora-search" type="text" placeholder="搜索：名字 / 用途 / 触发词…" autocomplete="off">
+            <button type="button" class="ghost" id="btn-refresh" title="从 ComfyUI 重新读取 LoRA 列表">重读</button>
+          </div>
+          <div class="row picker-filters">
+            <select id="lora-base-filter">
+              <option value="all">base: 全部</option>
+              <option value="ok">base: 当前兼容</option>
+            </select>
+            <select id="lora-group-filter"><option value="all">分组: 全部</option></select>
+            <select id="lora-sort">
+              <option value="group">排序: 分组</option>
+              <option value="name">排序: 名字</option>
+              <option value="base">排序: base</option>
+              <option value="recent">排序: 最近使用</option>
+            </select>
+          </div>
+          <div class="row">
+            <button type="button" class="ghost" id="btn-all">全选筛选结果</button>
+            <button type="button" class="ghost" id="btn-none">清空</button>
+            <span class="hint" id="picker-count"></span>
+          </div>
+          <ul class="lora-list" id="lora-list"></ul>
+        </div>
+      </section>
 
-      <!-- 页签 B：要求 / 规范 -->
-      <div id="pane-req" hidden>
-        <p class="meta">全局要求块：改一处，所有勾了它的模板一起变（哪些模板用哪块在【模板】页勾）。角色 sprite 走两阶段 —— 阶段1 用「立绘要求」，阶段2 用「视角转换要求」。</p>
+      <!-- ② 参数 -->
+      <section class="panel">
+        <h2><span class="num">2</span>参数</h2>
 
-        <div id="blocks-edit"></div>
+        <div class="grid2">
+          <label class="field"><span>宽</span><input id="w" type="number" step="64"></label>
+          <label class="field"><span>高</span><input id="h" type="number" step="64"></label>
+          <label class="field"><span>步数</span><input id="steps" type="number"></label>
+          <label class="field"><span>CFG</span><input id="cfg" type="number" step="0.5"></label>
+          <label class="field"><span>采样器</span><select id="sampler"></select></label>
+          <label class="field"><span>Seed</span><input id="seed" type="number" title="-1 = 本批随机取一次，然后全批锁定同一个 seed 家族"></label>
+        </div>
 
         <label class="field">
-          <span class="lbl-row">其他规范（只作文档、不参与出图，一行一条）<span class="spacer"></span>
-            <button type="button" class="mini" data-copy="g-rules">复制</button>
-          </span>
-          <textarea id="g-rules" rows="6" spellcheck="false"></textarea>
+          <span class="lbl-row">默认 LoRA 权重（没单独设的都跟随它）<output id="lw-out">0.80</output></span>
+          <input id="lw" type="range" min="0" max="1.2" step="0.05" value="0.8">
         </label>
 
-        <div class="row">
-          <button id="btn-req-save" class="primary">保存要求</button>
-          <button id="btn-req-reset" class="ghost">复位到上次保存</button>
-          <span class="hint" id="req-state"></span>
+        <label class="field">
+          <span class="lbl-row">每项出<output id="repeat-out">1</output>张（抽卡：同提示词换 seed，一次多看几张再挑）</span>
+          <input id="repeat" type="range" min="1" max="6" step="1" value="1">
+        </label>
+
+        <div class="field" id="init-wrap">
+          <span class="lbl-row">图生图底图（模板阶段 = img2img 时必选）<span class="spacer"></span>
+            <button type="button" class="mini" id="btn-init-refresh">刷新</button>
+          </span>
+          <select id="init-img"><option value="">（未选）</option></select>
+          <div class="row" style="margin-top:6px">
+            <input type="file" id="init-upload" accept="image/png,image/jpeg,image/webp">
+          </div>
+          <p class="hint">也可以直接在结果卡片上点「设为底图」。底图尺寸会自动填进上面的宽 / 高。</p>
         </div>
 
-        <details class="fold">
-          <summary>要求修改历史（<span id="req-hist-count">0</span> 版）</summary>
-          <ul class="history" id="req-history"></ul>
+        <label class="check"><input type="checkbox" id="inject-trigger" checked> 自动注入注册表里的触发词</label>
+        <label class="check"><input type="checkbox" id="force-base"> 允许跨 base 测试（不推荐，结果无意义）</label>
+      </section>
+
+      <!-- ③ 提示词 -->
+      <section class="panel">
+        <h2><span class="num">3</span>提示词</h2>
+
+        <div class="tabs">
+          <button type="button" class="tab active" data-pane="tpl">模板</button>
+          <button type="button" class="tab" data-pane="req">要求 / 规范</button>
+        </div>
+
+        <!-- 页签 A：模板 -->
+        <div id="pane-tpl">
+          <label class="field">
+            <span>模板</span>
+            <select id="tpl-select"></select>
+          </label>
+          <p class="meta" id="tpl-meta"></p>
+          <p class="meta">阶段：<b id="tpl-stage">—</b></p>
+
+          <label class="field" id="denoise-field" hidden>
+            <span class="lbl-row">denoise（图生图强度）<output id="denoise-out">0.70</output></span>
+            <input id="denoise" type="range" min="0.2" max="0.95" step="0.05" value="0.7">
+          </label>
+
+          <label class="field">
+            <span class="lbl-row">正向（内容描述）<span class="spacer"></span>
+              <button type="button" class="mini" id="btn-pos-reset">复位</button>
+              <button type="button" class="mini" data-copy="pos">复制</button>
+            </span>
+            <textarea id="pos" rows="4" spellcheck="false"></textarea>
+          </label>
+
+          <label class="field">
+            <span class="lbl-row">本模板额外要求（会拼进正向）<span class="spacer"></span>
+              <button type="button" class="mini" data-copy="tpl-req">复制</button>
+            </span>
+            <textarea id="tpl-req" rows="3" spellcheck="false"></textarea>
+          </label>
+
+          <label class="field">
+            <span class="lbl-row">负向（本模板特有）<span class="spacer"></span>
+              <button type="button" class="mini" data-copy="neg">复制</button>
+            </span>
+            <textarea id="neg" rows="3" spellcheck="false"></textarea>
+          </label>
+
+          <div class="field">
+            <span>套用哪些要求块（正向块进正向、负向块进负向）</span>
+            <div class="blocks-pick" id="blocks-pick"></div>
+          </div>
+
+          <div class="row">
+            <button id="btn-prompt-save" class="primary">保存本模板</button>
+            <span class="hint" id="prompt-state"></span>
+          </div>
+
+          <details class="fold" id="hist-box">
+            <summary>本模板修改历史（<span id="hist-count">0</span> 版）</summary>
+            <ul class="history" id="prompt-history"></ul>
+          </details>
+        </div>
+
+        <!-- 页签 B：要求 / 规范 -->
+        <div id="pane-req" hidden>
+          <p class="meta">全局要求块：改一处，所有勾了它的模板一起变（哪些模板用哪块在【模板】页勾）。角色 sprite 走两阶段 —— 阶段1 用「立绘要求」，阶段2 用「视角转换要求」。</p>
+
+          <div id="blocks-edit"></div>
+
+          <label class="field">
+            <span class="lbl-row">其他规范（只作文档、不参与出图，一行一条）<span class="spacer"></span>
+              <button type="button" class="mini" data-copy="g-rules">复制</button>
+            </span>
+            <textarea id="g-rules" rows="6" spellcheck="false"></textarea>
+          </label>
+
+          <div class="row">
+            <button id="btn-req-save" class="primary">保存要求</button>
+            <button id="btn-req-reset" class="ghost">复位到上次保存</button>
+            <span class="hint" id="req-state"></span>
+          </div>
+
+          <details class="fold">
+            <summary>要求修改历史（<span id="req-hist-count">0</span> 版）</summary>
+            <ul class="history" id="req-history"></ul>
+          </details>
+        </div>
+
+        <!-- 拼装预览 -->
+        <details class="fold" id="preview-box" open>
+          <summary>拼装预览（改上面任何一处，这里立刻变）</summary>
+          <div class="row" style="margin:7px 0 0">
+            <span class="chip-label">正向</span>
+            <button type="button" class="mini" id="copy-preview-pos">复制</button>
+            <span class="chip-label">负向</span>
+            <button type="button" class="mini" id="copy-preview-neg">复制</button>
+          </div>
+          <pre id="preview" class="preview"></pre>
         </details>
-      </div>
+      </section>
 
-      <!-- 拼装预览 -->
-      <details class="fold" id="preview-box" open>
-        <summary>拼装预览（改上面任何一处，这里立刻变）</summary>
-        <div class="row" style="margin:7px 0 0">
-          <span class="chip-label">正向</span>
-          <button type="button" class="mini" id="copy-preview-pos">复制</button>
-          <span class="chip-label">负向</span>
-          <button type="button" class="mini" id="copy-preview-neg">复制</button>
+    </aside>
+
+    <!-- ==================== 右栏 ④⑤⑥⑦ ==================== -->
+    <section class="col-right">
+
+      <!-- ④ 生成 -->
+      <section class="panel">
+        <h2><span class="num">4</span>生成</h2>
+        <div class="row gen-row">
+          <button id="btn-gen" class="primary big">开始生成</button>
+          <span class="hint" id="gen-status"></span>
         </div>
-        <pre id="preview" class="preview"></pre>
-      </details>
+        <div class="bar"><div id="bar-fill"></div></div>
+      </section>
+
+      <!-- ⑤ 提示词检查 -->
+      <section class="panel">
+        <h2><span class="num">5</span>提示词检查 <span class="hint" id="inspect-stat"></span></h2>
+
+        <div class="row">
+          <span class="chip-label">正向</span>
+          <button type="button" class="mini" id="copy-inspect-pos">复制整段</button>
+          <span class="hint">点单个词可复制；词上的颜色 = 它来自哪个块</span>
+        </div>
+        <div class="chips" id="inspect-pos"></div>
+
+        <div class="row" style="margin-top:9px">
+          <span class="chip-label">负向</span>
+          <button type="button" class="mini" id="copy-inspect-neg">复制整段</button>
+        </div>
+        <div class="chips" id="inspect-neg"></div>
+
+        <div class="conflicts" id="inspect-conflict" hidden></div>
+      </section>
+
+      <!-- ⑥ 结果 -->
+      <section class="panel">
+        <h2><span class="num">6</span>对比结果 <span class="hint" id="rec-count"></span></h2>
+        <div class="results" id="results"></div>
+      </section>
+
+      <!-- ⑦ 结论汇总 -->
+      <section class="panel">
+        <h2><span class="num">7</span>结论汇总</h2>
+        <div id="summary" class="summary"></div>
+      </section>
+
     </section>
-
-  </aside>
-
-  <!-- ==================== 右栏 ④⑤⑥⑦ ==================== -->
-  <section class="col-right">
-
-    <!-- ④ 生成 -->
-    <section class="panel">
-      <h2><span class="num">4</span>生成</h2>
-      <div class="row gen-row">
-        <button id="btn-gen" class="primary big">开始生成</button>
-        <span class="hint" id="gen-status"></span>
-      </div>
-      <div class="bar"><div id="bar-fill"></div></div>
-    </section>
-
-    <!-- ⑤ 提示词检查 -->
-    <section class="panel">
-      <h2><span class="num">5</span>提示词检查 <span class="hint" id="inspect-stat"></span></h2>
-
-      <div class="row">
-        <span class="chip-label">正向</span>
-        <button type="button" class="mini" id="copy-inspect-pos">复制整段</button>
-        <span class="hint">点单个词可复制；词上的颜色 = 它来自哪个块</span>
-      </div>
-      <div class="chips" id="inspect-pos"></div>
-
-      <div class="row" style="margin-top:9px">
-        <span class="chip-label">负向</span>
-        <button type="button" class="mini" id="copy-inspect-neg">复制整段</button>
-      </div>
-      <div class="chips" id="inspect-neg"></div>
-
-      <div class="conflicts" id="inspect-conflict" hidden></div>
-    </section>
-
-    <!-- ⑥ 结果 -->
-    <section class="panel">
-      <h2><span class="num">6</span>对比结果 <span class="hint" id="rec-count"></span></h2>
-      <div class="results" id="results"></div>
-    </section>
-
-    <!-- ⑦ 结论汇总 -->
-    <section class="panel">
-      <h2><span class="num">7</span>结论汇总</h2>
-      <div id="summary" class="summary"></div>
-    </section>
-
-  </section>
+  </div>
 </main>
 
 <div class="lightbox" id="lightbox" hidden>

@@ -36,7 +36,7 @@
 
 | 资源类型 | checkpoint | LoRA 关键词 |
 | --- | --- | --- |
-| 属性 UI | SD 1.5 | `rpg ui pixel`, `fantasy attribute icon` |
+| 属性 UI | Qwen-Image 2.1 | `rpg ui pixel`, `fantasy attribute icon` |
 
 > 复用 M11 的"商店 UI LoRA"即可（同一视觉族），不需新增。
 

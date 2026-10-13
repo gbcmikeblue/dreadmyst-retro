@@ -37,7 +37,7 @@
 
 | 资源类型 | checkpoint | LoRA 关键词 |
 | --- | --- | --- |
-| 联机 UI | SD 1.5 | `rpg ui pixel`, `fantasy avatar frame`, `mmorpg faction icon` |
+| 联机 UI | Qwen-Image 2.1 | `rpg ui pixel`, `fantasy avatar frame`, `mmorpg faction icon` |
 
 > 复用 M11（商店 UI）/ M8（属性 UI）的 LoRA，不需新增。
 
