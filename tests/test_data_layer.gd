@@ -126,6 +126,18 @@ func _initialize() -> void:
 			"  mult=", s.damage_mult,
 			"  range=", s.cast_range,
 			"  half_angle=", int(round(rad_to_deg(s.half_angle))), "°")
+		# 真素材（M15）：技能图标填了就必须能加载（SkillBar 用它替掉「技能名首字」占位）
+		var icon_path := String(s.icon)
+		if not icon_path.is_empty():
+			if not ResourceLoader.exists(icon_path):
+				print("FAIL: 技能 ", s.id, " 的 icon 不存在或未被导入：", icon_path)
+				failed = true
+			elif not (load(icon_path) is Texture2D):
+				print("FAIL: 技能 ", s.id, " 的 icon 不是纹理资源：", icon_path)
+				failed = true
+			else:
+				var itex: Texture2D = load(icon_path)
+				print("       ↳ 图标 ", icon_path, "  ", itex.get_width(), "×", itex.get_height())
 
 	# ---------- 属性（M8）----------
 	var attrs: Array = AttributeRegistry.load_default()

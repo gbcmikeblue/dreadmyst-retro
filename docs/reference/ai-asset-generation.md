@@ -193,10 +193,12 @@ D:\AI\venv-comfy\Scripts\python.exe tools\lora-compare\crop_sheet.py <设定图.
 ### 5.2 与现有代码的衔接
 
 > ⚠️ 现在是**真 3D + billboard**（见 [`../modules/render3d.md`](../modules/render3d.md)），不是 2D 绘制。
-> 真实接入点只有三处：
-> 1. `data/enemies.json` 的 `sprite_path`（`SpriteFactory` 会优先加载它，填了即生效）
-> 2. `data/loot.json` 的 `icon`
-> 3. 地砖：替换 `DungeonRoom` 的程序化地面网格
+> 真实接入点只有四处（2026-10-13 更新）：
+> 1. ✅ `data/enemies.json` 的 `sprite_path`（`SpriteFactory` 会优先加载它，填了即生效）
+> 2. ✅ `data/professions.json` 的 `sprite_path`（主角随职业切换，`Player._refresh_sprite()`）
+> 3. ✅ `data/skills.json` 的 `icon`（技能栏图标，`SkillBar._set_icon()`；留空退回「技能名首字」占位）
+> 4. ⏳ `data/loot.json` 的 `icon`（装备 / 物品图标，尚未接，需先给 `ItemDef` 加字段 + 改三处 UI）
+>    + 地砖：替换 `DungeonRoom` 的程序化地面网格
 >
 > 替换原则：**先 1 个敌人 + 1 个物品跑通完整链路**，再批量替换。
 
@@ -259,6 +261,7 @@ D:\AI\venv-comfy\Scripts\python.exe tools\lora-compare\crop_sheet.py <设定图.
 | 2026-10-13 | **提示词全量规范化（8 模板 + 8 块）**：确立「**正向自足**」第一原则（Turbo/cfg1 下负向全失效）；新增 `transparency` 块（官方 RGBA 句式）并清除所有 `plain background` 冲突；修 `viewshift` 的 `facing the viewer` 自相矛盾；`composition` 去掉背景词、B/D 不再勾；8 个模板中文短语清零改具象材质；A2 改官方祈使句 + `<image1>`；`commonneg` 按三类护栏重排；语言统一英文 + 专有名词加引号 |
 | 2026-10-13 | **新增 A4「角色多视角设定图（一图流）」+ 分辨率上限实测**：联网核实两套社区范式（GitHub `Pyrolistical/qwen-image-2.1-workflows` 的**版式锁定法** / Wikiprompt 收录 `@junwatu` 的**单次提示词式**）并落地为 A4 = 2×2 格（正面 / **3-4 俯视** / 侧面 / 背面）；实测 **1024² / 1536² / 2048² 都能稳定出满 4 格**（16 / 24 / 57 s），**2048²（2.1 原生上限）在 8GB 上可行** → 作废旧「1536² 会 OOM」结论；动机：i2i 转视角实测剪影 IoU 0.97 ≈ 几乎不动 → 改为「让模型直接多画几个视角」 |
 | 2026-10-13 | **新增 `tools/lora-compare/crop_sheet.py`（A4 设定图 → sprite 裁切）**：2×2 切格 + 每格 alpha 收紧 + **四格共用缩放 + 底对齐** + 保留 alpha，输出 128²；只依赖 Pillow。实测 1024²/1536²/2048² 的设定图都能正确裁出 4 张（`--mode auto` 用格内连通域定位，认不到 4 个主体会自动退回 grid）。§5.1 流程总览改为「单视角 1024² / A4 设定图 1536²→裁切」两条支线 |
+| 2026-10-13 | **E 模板落地：技能图标 6 张（128²）**。新增 `tools/lora-compare/gen_icons.py`（提示词拼装与网页端同源 —— 直接读 `prompts.json` 的 E 模板与要求块；1024² 透明底 → 去 alpha 噪声地板 → 抠边 → LANCZOS 128²）；`SkillBar` 支持真图标（无图退回「技能名首字」占位）；§5.2 接入点清单更新为**四处**（敌人 sprite ✅ / 主角 sprite ✅ / 技能 icon ✅ / 物品 icon + 地砖 ⏳）；§5.3 尺寸口径 **图标 64² → 128²**（UI 槽位 56px 留 2× 余量），导入设置补「Fix Alpha Border = on」。⚠️ **关键坑：2.1 的 VAE 在透明区会留 alpha 1~2 的噪声地板**（占画幅 45~66%）→ 抠边前必须先掐掉，否则包围盒永远等于整幅 |
 
 ---
 

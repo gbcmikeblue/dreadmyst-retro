@@ -45,7 +45,10 @@
 
 - `half_angle_deg` 写角度（易读），`SkillDef.from_dict` 转成弧度；**180° 视为全方位命中**（`is_full_circle()`）。
 - `color` 决定弧光与技能栏边框配色；`icon` 留空则用**程序化占位图标**（技能名首字）；
-  接入真图标时填 `res://assets/icons/skills/xxx.png` 即可，无需改代码。
+  接入真图标时填 `res://assets/icons/skill_<id>_icon.png` 即可 —— `SkillBar._set_icon()` 会自动用图标替掉首字占位
+  （**不需要改代码**；路径不存在会 `push_warning` 并退回占位，不会白屏）。
+- ✅ **2026-10-13：6 个技能的真图标已接入**（各 128²）。出图管线：E 模板 → 1024² 透明底 → 去 alpha 噪声地板 +
+  抠边 → LANCZOS 降到 128²，脚本见 `tools/lora-compare/gen_icons.py`；导入设置 = mipmaps 开 + fix alpha border 开。
 
 ## 4. 施放流程（`Player`）
 
@@ -113,7 +116,8 @@ godot --headless --path . --script res://tests/test_skills.gd
 ## 7. TODO
 
 - [ ] **数值校准**：等原作职业/技能数据（当前全部自设）
-- [ ] 技能图标：`data/skills.json` 的 `icon` 字段填真图（出图任务见 `docs/tasks/M7-skills.md`）
+- [x] ~~技能图标~~：**2026-10-13 已接 6 张 128²**（`data/skills.json` 的 `icon` 全填，`SkillBar` 渲染；
+      生成脚本 `tools/lora-compare/gen_icons.py`，出图任务见 `docs/tasks/M7-skills.md`）
 - [ ] 技能特效：目前只有扇形弧光，没有粒子/投射物（法师火球仍是近身扇形判定，不是弹道）
 - [ ] 职业选择 UI：当前是原型期 F1/F2/F3 硬切，应改为角色创建流程
 - [ ] 更多技能 / 技能树：当前每职业固定 2 个技能

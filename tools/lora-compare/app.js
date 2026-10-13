@@ -267,6 +267,10 @@ async function refreshComfy() {
   S.ckpts = list('UNETLoader', 'unet_name').map((n) => ({ title: n, model_name: n }));
   S.disk = list('LoraLoader', 'lora_name');
   S.aux = { clip: list('CLIPLoader', 'clip_name'), vae: list('VAELoader', 'vae_name') };
+  // T-22：/object_info 按字母序把 int8_convrot 排在前，但本机已定 nvfp4（backlog T-19：热态打平、
+  // 体积小 2.84 GiB）→ 把 nvfp4 提到首位，下面提交图与面包屑用的 `S.aux.clip[0]` 就自动指向它。
+  // 找不到 nvfp4 时保持原顺序（退回 int8，不会炸）。
+  S.aux.clip.sort((a, b) => Number(String(b).includes('nvfp4')) - Number(String(a).includes('nvfp4')));
   S.samplers = list('KSampler', 'sampler_name');
   const sched = list('KSampler', 'scheduler');
   S.scheduler = sched.includes('simple') ? 'simple' : (sched[0] || 'simple');

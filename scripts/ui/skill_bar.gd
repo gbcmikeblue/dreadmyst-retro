@@ -67,6 +67,17 @@ func _build_layout() -> void:
 		label.add_theme_constant_override("shadow_offset_y", 1)
 		root.add_child(label)
 
+		# 真图标（`data/skills.json` 的 icon）——为空则退回上面的首字占位。
+		# 必须在 cd_overlay 之前 add_child，否则冷却遮罩会被图标盖住。
+		var icon := TextureRect.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.position = Vector2(3.0, 3.0)
+		icon.size = Vector2(SLOT_SIZE - 6.0, SLOT_SIZE - 6.0)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.visible = false
+		root.add_child(icon)
+
 		# 冷却遮罩：从顶部向下退去，剩余比例 = 高度比例
 		var cd_overlay := ColorRect.new()
 		cd_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -117,6 +128,7 @@ func _build_layout() -> void:
 		_slots.append({
 			"panel": panel,
 			"label": label,
+			"icon": icon,
 			"cd_overlay": cd_overlay,
 			"cd_label": cd_label,
 			"name_label": name_label,
@@ -202,19 +214,37 @@ func _refresh_affordable() -> void:
 		panel.add_theme_stylebox_override("panel", _slot_style(accent, dim))
 		var label: Label = slot["label"]
 		label.add_theme_color_override("font_color", skill.color if not dim else Color(0.55, 0.55, 0.62))
+		var icon: TextureRect = slot["icon"]
+		icon.modulate = Color(1.0, 1.0, 1.0, 1.0 if not dim else 0.45)
 
 
 func _apply_slot_style(index: int, skill: SkillDef) -> void:
 	var slot: Dictionary = _slots[index]
 	var panel: Panel = slot["panel"]
 	var label: Label = slot["label"]
+	var icon: TextureRect = slot["icon"]
 	var name_label: Label = slot["name_label"]
 	if skill == null:
 		panel.add_theme_stylebox_override("panel", _slot_style(Color(0.30, 0.30, 0.36), true))
 		label.text = "—"
 		label.add_theme_color_override("font_color", Color(0.45, 0.45, 0.50))
 		name_label.text = ""
+		_set_icon(icon, label, "")
 		return
 	label.text = skill.short_label()
 	label.add_theme_color_override("font_color", skill.color)
 	name_label.text = skill.display_name
+	_set_icon(icon, label, skill.icon)
+
+
+## 有真图标就显示图标、藏起首字占位；icon 为空或加载失败则反过来 —— 保证槽位里永远有一个可见。
+func _set_icon(icon: TextureRect, label: Label, path: String) -> void:
+	var tex: Texture2D = null
+	if not path.is_empty():
+		if ResourceLoader.exists(path):
+			tex = load(path) as Texture2D
+		else:
+			push_warning("技能图标路径不存在：%s（见 data/skills.json 的 icon）" % path)
+	icon.texture = tex
+	icon.visible = tex != null
+	label.visible = tex == null

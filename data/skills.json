@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "_note": "⚠️ 数值为自行设计的占位值，待原作资料校准。half_angle_deg = 180 表示 360° 全方位命中。icon 留空则用程序化占位图标。",
+    "_note": "⚠️ 数值为自行设计的占位值，待原作资料校准。half_angle_deg = 180 表示 360° 全方位命中。icon 填 res:// 路径则用真图标，留空则用程序化占位图标（技能名首字 + 技能色）。图标由 tools/lora-compare/gen_icons.py 生成。",
     "skills": [
         {
             "id": "warrior_slash",
@@ -13,7 +13,7 @@
             "cast_range": 88.0,
             "half_angle_deg": 60.0,
             "color": [1.00, 0.90, 0.62],
-            "icon": ""
+            "icon": "res://assets/icons/skill_warrior_slash_icon.png"
         },
         {
             "id": "warrior_whirlwind",
@@ -26,7 +26,7 @@
             "cast_range": 112.0,
             "half_angle_deg": 180.0,
             "color": [1.00, 0.72, 0.40],
-            "icon": ""
+            "icon": "res://assets/icons/skill_warrior_whirlwind_icon.png"
         },
         {
             "id": "mage_fireball",
@@ -39,7 +39,7 @@
             "cast_range": 150.0,
             "half_angle_deg": 28.0,
             "color": [1.00, 0.55, 0.25],
-            "icon": ""
+            "icon": "res://assets/icons/skill_mage_fireball_icon.png"
         },
         {
             "id": "mage_meteor",
@@ -52,7 +52,7 @@
             "cast_range": 170.0,
             "half_angle_deg": 80.0,
             "color": [1.00, 0.40, 0.15],
-            "icon": ""
+            "icon": "res://assets/icons/skill_mage_meteor_icon.png"
         },
         {
             "id": "ranger_arrow",
@@ -65,7 +65,7 @@
             "cast_range": 170.0,
             "half_angle_deg": 24.0,
             "color": [0.75, 0.95, 0.55],
-            "icon": ""
+            "icon": "res://assets/icons/skill_ranger_arrow_icon.png"
         },
         {
             "id": "ranger_multishot",
@@ -78,7 +78,7 @@
             "cast_range": 145.0,
             "half_angle_deg": 90.0,
             "color": [0.55, 0.90, 0.45],
-            "icon": ""
+            "icon": "res://assets/icons/skill_ranger_multishot_icon.png"
         }
     ]
 }

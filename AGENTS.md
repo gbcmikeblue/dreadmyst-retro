@@ -222,8 +222,10 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 并加了 **Git LFS** 规则（**按类型 / 目录**圈：源图 `assets/concepts/**` + 字体 + 音频走 LFS，
 `assets/{sprites,tilesets,icons,ui}/` 的游戏内小图直存；⚠️ MB 级源图必须放 `concepts/`）。
 接入口径与导入参数见 [`docs/modules/render3d.md`](docs/modules/render3d.md)。
-⏳ **仍待素材**：图标类（装备 / 技能，`data/*.json` 的 `icon`）、中文字体 `.ttf`（HUD 与伤害数字当前用
-引擎回退字体，但实测中文显示正常）、音频。
+✅ **技能图标已接（2026-10-13）**：6 个技能各一张 128²，走 `data/skills.json` 的 `icon`（`SkillBar` 渲染，
+留空退回「技能名首字」占位；生成脚本 `tools/lora-compare/gen_icons.py`）。
+⏳ **仍待素材**：装备 / 物品图标（`data/loot.json` 的 `icon`，需先给 `ItemDef` 加字段 + 改三处 UI）、
+地砖 tileset（替换 `DungeonRoom` 的程序化网格）、中文字体 `.ttf`（HUD 当前用引擎回退字体，实测中文显示正常）、音频。
 细节见 [`docs/roadmap.md`](docs/roadmap.md) 与 [`docs/tasks/`](docs/tasks/)。
 
 > ⚠️ **范围决定（别再主动提议）**
@@ -270,3 +272,4 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 | 2026-10-10 | **美术风格基线改为"不做像素风"**（保留低分辨率 + 复古观感）：§1 的「美术」行由"**逐像素生成**"改为"代码生成（占位用、**无固定风格**）"，指向新基线；素材规格整体上调一档（角色 128² / 地砖 64² / 图标 64²），导入滤波由 Nearest 改 **Linear + Mipmaps**；`assets/_PROMPTS.md` 的 A–F 模板去像素化并加负向 `pixel art`，新增「后期统一规范」；**LoRA 改为可选**（先不加跑通一轮）。同步：`docs/reference/ai-asset-generation.md`、`docs/tasks/{README,_template,M7,M10,M11}`、`docs/modules/render3d.md`、`docs/reference/mmo-opensource/{intersect-engine,kaetram-open}.md` |
 | 2026-10-13 | **M15 第一步：敌人 sprite 接入链路跑通（游戏侧代码零改动）**。新增 A4「角色多视角设定图」模板 + 对比台一键裁切（`crop_sheet.py`）；`assets/sprites/enemy_slime_{front,iso,side,back}.png`（各 128²）+ `slime.sprite_path` 指向 `_iso`；`SpriteFactory.billboard_sprite()` 的 `texture_filter` 改为按来源分流（真素材 `LINEAR` / 占位 `NEAREST`）；新增 `.gitattributes`（**按类型 / 目录**圈 LFS：源图/概念图 + 字体 + 音频；游戏内小图直存）；sprite 的 `.import` 打开 mipmaps + 关掉 `detect_3d` 自动压缩；`test_data_layer.gd` 增加「非空 `sprite_path` 必须能加载成 Texture2D」断言。§6 状态更新（「素材没到就先做 M16」这句已过时，M16 早已完成） |
 | 2026-10-13 | **M15 角色 sprite 批次接入（4 敌人 + 3 职业，共 28 张 128²）**：`Profession` 新增 `sprite_path` 字段 + `Player._refresh_sprite()`（转职即时换图，并重算 `pixel_size` —— 占位 64px / 真素材 128px）；`enemies.json` 补齐 `brute` / `wisp` / `bone_lord`（`slime` 换成真正的史莱姆美术）；`professions.json` 三职业全部接图；`test_data_layer.gd` 的素材断言扩展到职业。§3 新增一条**静默陷阱**：`Enemy` 必须先 `setup()` 再 `add_child()`，否则 `_ready()` 里读到空 `archetype`、静默退回占位贴图。10 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING，另跑真窗口截图确认四种敌人 + 主角精灵在游戏内正确渲染 |
+| 2026-10-13 | **M15 技能图标接入（6 张 128²）—— E 模板首个落地产物**：新增 `tools/lora-compare/gen_icons.py`（提示词拼装与网页端同源：直接读 `prompts.json` 的 E 模板与要求块 → 1024² 透明底 → **去 alpha 噪声地板** → 抠边 → LANCZOS 128²）；`SkillBar` 加真图标渲染（`_set_icon()`：有图显图、无图退回「技能名首字」占位；路径缺失只 `push_warning` 不白屏；蓝/冷却不足时图标压暗 0.45）；`data/skills.json` 6 个 `icon` 全填；`test_data_layer.gd` 的素材断言扩展到技能图标。另：**对比台编码器默认改指 nvfp4**（T-22 ①，`app.js` 把 `S.aux.clip` 排成 nvfp4 优先）、**A2 模板标记废弃**（i2i 已结案 → 改用 A3/A4）。10 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING，真窗口截图确认技能栏两个图标正确渲染 |

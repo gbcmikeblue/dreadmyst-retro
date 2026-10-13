@@ -156,6 +156,7 @@ D:\AI\venv-comfy\Scripts\python.exe crop_sheet.py images\_mv_1536.png --name ene
 | `RESULTS.md` | 由记录生成的结论文档（分组对比 + 建议保留哪些） | ✅ **这才是可交付物** |
 | `images/*.png` | 生成的对比图（过程产物，体积大） | ❌ 已被 `.gitignore` 排除 |
 | `crop_sheet.py` | **A4 设定图 → 单视角 sprite 裁切**（2×2 切格 + alpha 收紧 + 共用缩放 + 底对齐，只依赖 Pillow） | ✅ |
+| `gen_icons.py` | **技能图标批量出图**（读 `prompts.json` 的 E 模板 → 1024² 透明底 → 去 alpha 噪声地板 → 抠边 → 128² 落 `assets/icons/`） | ✅ |
 
 ---
 
@@ -188,10 +189,10 @@ python _check_static.py
 
 ## 已知限制
 
-- **图生图未接**：模板 A2（视角转换）目前只能按**文生图**跑（界面会提示）。2026-10-13 已用
-  `TextEncodeQwenImage21` 手工跑通 i2i：**保人没问题**（剪影 IoU 0.97 / 画面相关 0.97），但
-  **转视角几乎不动**（改提示词、cfg 1→3.5、8→25 步、挂不挂 Turbo 全都一样；而「换背景」这类
-  内容编辑是正常生效的）→ 视角改走 **A4 一图流**（让模型直接多画几个视角）或 ControlNet-Union（T-24）。
+- **图生图（i2i）不接 —— 已实测结案（backlog T-20）**：手工用 `TextEncodeQwenImage21` 跑通 i2i 后
+  **保人没问题**（剪影 IoU 0.97 / 画面相关 0.97），但**转视角几乎不动**（改提示词、cfg 1→3.5、8→25 步、
+  挂不挂 Turbo 全都一样；而「换背景」这类内容编辑是正常生效的）→ **A2 模板已标记废弃**，
+  视角改走 **A4 一图流**（让模型直接多画几个视角）或 ControlNet-Union（T-24）。
 - ~~单张耗时 3~12 分钟~~ → **2026-10-13 起为 12~37 秒**（见上"显存 / 速度"一节）。
 - `data/loras.json` 里那 50+ 个 SD LoRA **在 Qwen 上不可用**，只剩 1 个（Turbo）。
 
@@ -208,6 +209,7 @@ tools/lora-compare/
 ├── start.bat         一键启动（自动找 python）
 ├── _check_static.py  静态自检（替代 node 语法检查）
 ├── crop_sheet.py     A4 设定图 → 单视角 sprite 裁切（只依赖 Pillow）
+├── gen_icons.py      技能图标批量出图（读 prompts.json 的 E 模板 → 去 alpha 噪声地板 → 抠边 → 128²）
 ├── data/            prompts.json · loras.json · results.json
 ├── images/          生成的对比图（不入库）
 └── RESULTS.md       导出的结论文档

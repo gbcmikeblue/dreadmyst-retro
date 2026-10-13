@@ -81,10 +81,16 @@
 | A3 | 3/4 俯视立绘（一步出图） | 文生图 | 1024² | **transparency** · viewshift · guofeng · style · composition · viewneg · commonneg（**不要勾 `portrait`**） |
 | **A4** | **角色多视角设定图（一图流）** | 文生图 | **1536²**（1024² 也能出 4 格 / 2048² 可行 +57 s） | **transparency** · style · guofeng · commonneg（**不要勾 `composition`** —— 与 2×2 版面冲突） |
 | B | 场景 tileset | 文生图 | 1024²（切 64²） | guofeng · style · commonneg（**去掉 composition**，无缝/正交词写在模板自己的「要求」里） |
-| C | 装备图标 | 文生图 | 1024² → 64² | **transparency** · guofeng · style · composition · commonneg |
+| C | 装备图标 | 文生图 | 1024² → 128² | **transparency** · guofeng · style · composition · commonneg |
 | D | Boss 概念图 / 立绘 | 文生图 | 1024² | guofeng · style · commonneg（**去掉 composition** —— 概念图要场景背景） |
-| E | 技能图标 | 文生图 | 1024² → 64² | **transparency** · style · composition · commonneg |
+| E | 技能图标 | 文生图 | 1024² → 128² | **transparency** · style · composition · commonneg |
 | F | UI 元素 | 文生图 | 512²/1024² | **transparency** · style · composition · commonneg |
+
+> ✅ **E 已落地（2026-10-13）**：6 张技能图标 128²，走 `data/skills.json` 的 `icon`（`SkillBar` 渲染）。
+> 管线 = E 模板 → 1024² 透明底 → **去 alpha 噪声地板** → 抠边 → LANCZOS 降到 128²；
+> 脚本 `tools/lora-compare/gen_icons.py`。
+> ⚠️ **2.1 的 VAE 在"透明区"会留 alpha 1~2 的噪声地板**（实测占画幅 45~66%，四角像素就是 a1）——
+> 抠边前必须先掐掉，否则 alpha 包围盒永远等于整幅、永远抠不出边。
 
 **透明底（2026-10-13 改）**：官方模型卡给定写法，已固化成 `transparency` 块，**排第一位**：
 
@@ -182,3 +188,4 @@ preserve the original proportions and silhouette
 | 2026-10-13 | **整篇按 Qwen-Image 2.1 重写**：删除全部 SD 口径（SD 1.5/SDXL 尺寸、ControlNet tile、LoRA 权重规则、去背流程）；补参数纪律、nvfp4 编码器、原生透明底、指令式编辑与 T-21/T-24 |
 | 2026-10-13 | **全量提示词规范化（8 模板 + 8 块）**：① 确立「**正向自足**」第一原则（Turbo/cfg1 下负向全失效）；② 新增 `transparency` 块（官方 RGBA 句式），删掉所有 `plain background` 冲突；③ 修 `viewshift` 的 `facing the viewer` 自相矛盾 + 否定式改正向；④ `composition` 去掉背景词，B/D 不再勾；⑤ 8 个模板的中文短语清零、改具象材质描述；⑥ A2 改官方祈使句 + `<image1>`；⑦ `commonneg` 按三类护栏重排、`guofeng` 去重加引号；⑧ 语言纪律 = 统一英文 + 专有名词加引号。校验：JSON 合法 / 8 模板拼装通过 / 冲突检查 0 告警 |
 | 2026-10-13 | **新增 A4「角色多视角设定图（一图流）」+ 分辨率上限实测**：① 联网核实两套社区范式（版式锁定法 / 单次提示词式，见 §7），落地成 A4 = 2×2 格（正面 / **3-4 俯视** / 侧面 / 背面）；② 实测 **1024² / 1536² / 2048² 都能稳定出满 4 格**（alpha 连通域计数 = 4，每格人物尺寸一致），耗时 16 / 24 / **57** s；③ **2048²（2.1 原生上限）在 8GB 上实测可行** —— 旧文档「1536² 会 OOM」的 SD 时代结论作废；④ A4 **不勾 `composition`**（居中留白与多格版面冲突）；⑤ 方案动机：i2i 转视角实测剪影 IoU 0.97 ≈ 几乎不动 → 改为「让模型直接多画几个视角」 |
+| 2026-10-13 | **E 模板落地：技能图标 6 张（128²）**。脚本 `tools/lora-compare/gen_icons.py`（提示词拼装与网页端同源 → 1024² 透明底 → 去 alpha 噪声地板 → 抠边 → LANCZOS 128²）；`SkillBar` 支持真图标（无图退回「技能名首字」占位）；`data/skills.json` 6 个 `icon` 全填。同时：图标尺寸口径 **64² → 128²**（UI 槽位 56px 留 2× 余量）、**A2 模板标记废弃**（i2i 结案 → 改用 A3/A4）、对比台编码器默认改指 **nvfp4**（T-22 ①）。⚠️ 实测坑：**2.1 的 VAE 在透明区会留 alpha 1~2 的噪声地板**（占画幅 45~66%）→ 抠边前必须掐掉，否则包围盒永远等于整幅 |

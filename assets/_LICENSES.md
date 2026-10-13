@@ -38,6 +38,7 @@
 | 名称 | 来源 | 用途 | License | 作者署名要求 | 项目内路径 |
 | --- | --- | --- | --- | --- | --- |
 | **AI 出图角色 sprite（4 敌人 + 3 职业主角，各 4 视角，共 28 张，128²）** —— 敌人 `slime` / `brute` / `wisp` / `bone_lord`；主角 `warrior` / `mage` / `ranger` | 本机 **Qwen-Image 2.1** 生成（见 §1）+ 对比台裁切（`tools/lora-compare/crop_sheet.py`）；每张取自 1536² 的 2×2 多视角设定图 | billboard 精灵。敌人走 `data/enemies.json` 的 `sprite_path`，主角走 `data/professions.json` 的 `sprite_path`（当前都只用 `_iso` 那张，其余 3 视角备用） | **随底模**：Qwen Research License（非商用可用；转商用需申请） | 否（自己生成，无第三方作者） | `res://assets/sprites/enemy_{slime,brute,wisp,bone_lord}_{front,iso,side,back}.png`、`res://assets/sprites/player_{warrior,mage,ranger}_{front,iso,side,back}.png` |
+| **AI 出图技能图标（6 张，128²）** —— `warrior_slash` 裂颅斩 / `warrior_whirlwind` 旋风斩 / `mage_fireball` 火球术 / `mage_meteor` 陨石术 / `ranger_arrow` 穿刺箭 / `ranger_multishot` 箭雨 | 本机 **Qwen-Image 2.1** 生成（见 §1，E 模板：透明底官方句式 + 图标语言）+ `tools/lora-compare/gen_icons.py` 后处理（去 alpha 噪声地板 → 抠边 → LANCZOS 降到 128²） | 技能栏图标：`data/skills.json` 的 `icon` → `SkillBar._set_icon()`；留空则退回程序化占位（技能名首字） | **随底模**：Qwen Research License（非商用可用；转商用需申请） | 否（自己生成，无第三方作者） | `res://assets/icons/skill_{warrior_slash,warrior_whirlwind,mage_fireball,mage_meteor,ranger_arrow,ranger_multishot}_icon.png` |
 
 > ⚠️ 本项目**不用第三方现成素材**（不做像素风 + 只走 AI 出图）；本表登记的是 **AI 出图产物**，
 > 许可**随底模**（见 §1）。每张图要能追溯到生成用的模型与提示词（提示词见 `assets/_PROMPTS.md`）。
