@@ -4,66 +4,85 @@
   "global": {
     "组装顺序": "<lora:名:权重> + 触发词 + [模板勾选的要求块·正向…] + 模板·要求 + 模板·正向　｜　负向 = [模板勾选的要求块·负向…] + 模板·负向",
     "要求块": {
+      "transparency": {
+        "名称": "透明底（官方句式 · 正向）",
+        "类型": "正向",
+        "用途": "要原生 RGBA 透明底的模板（A1 / A2 / A3 / C / E / F）。⚠️ 必须留在本对象的第一位：拼装顺序 = 【要求块键顺序】，模板里那个 `套用要求` 数组只决定「勾不勾」，不决定先后",
+        "文本": "This is an RGBA image with transparency. The image has alpha channel and the background is transparent."
+      },
       "portrait": {
         "名称": "立绘要求（阶段1）",
         "类型": "正向",
-        "用途": "阶段1 文生图出角色立绘 —— 底模最擅长的形态，命中率高",
-        "文本": "full body character, standing pose, front view, plain background, entire figure head to toe, nothing cropped, clear margin around the figure"
+        "用途": "阶段1 文生图出角色立绘 —— 底模最擅长的形态，命中率高（背景交 transparency 块，不要在这里写 plain background）",
+        "文本": "full body character, standing pose, front view facing the camera, entire figure visible from head to toe, generous clear margin around the figure, centered in the frame, game sprite proportions"
       },
       "viewshift": {
         "名称": "视角转换要求（阶段2）",
         "类型": "正向",
-        "用途": "阶段2 把立绘转成 3/4 俯视 —— 不要写进阶段1",
-        "文本": "isometric view, 30 degree angle, no perspective, orthographic, parallel projection, full body, standing upright, facing the viewer, whole figure inside the frame"
+        "用途": "阶段2 把立绘转成 3/4 俯视 —— 不要写进阶段1。⚠️ 绝不能再写「facing the viewer / front view」，与俯视互斥",
+        "文本": "isometric view, 30 degree downward camera tilt, orthographic projection, parallel projection, camera above and in front of the character, looking down onto the head and shoulders, body receding toward the bottom of the frame, upright standing pose, consistent sprite scale"
       },
       "style": {
         "名称": "风格要求",
         "类型": "正向",
         "用途": "所有模板",
-        "文本": "2.5D oriental fantasy RPG style, painted illustration, rich vivid colors, high saturation, smooth soft shading, clean readable shapes, cohesive color palette, hand painted texture"
+        "文本": "painted 2D game illustration, stylized 2.5D rendering, handmade brush strokes with visible texture, soft airbrushed gradients over cel-shaded planes, saturated jewel tones, warm gold and jade green accent palette, clean readable shapes, unified limited color palette, polished game art finish"
       },
       "composition": {
         "名称": "构图要求",
         "类型": "正向",
-        "用途": "所有模板",
-        "文本": "centered composition, plain background, simple background, game asset"
+        "用途": "角色 / 物体 / 图标类模板（⚠️ 场景 tileset 与 Boss 概念图不要勾 —— 它们要的是满幅纹理与场景背景，与本块的居中留白冲突）",
+        "文本": "centered composition, single subject filling the frame with a generous margin, clean readable silhouette, readable at small size, game asset"
       },
       "viewneg": {
         "名称": "视角转换负向（阶段2）",
         "类型": "负向",
-        "用途": "阶段2 转视角时排除俯视/正面立绘",
-        "文本": "bird's eye view, directly overhead, flat top-down layout, only the top of the head visible, extreme foreshortening, front view standing portrait, perspective, vanishing point, tilted camera, wide angle lens, photographic"
+        "用途": "阶段2 转视角时排除俯视/正面立绘。⚠️ 仅在 cfg>1 时生效（Turbo/cfg1 下负向整段失效）",
+        "文本": "directly overhead flat lay, pure 90 degree bird's eye view, only the top of the head visible, extreme foreshortening, eye level front view, flat frontal portrait, perspective convergence, vanishing point, tilted horizon, wide angle distortion"
       },
       "commonneg": {
         "名称": "通用负向",
         "类型": "负向",
-        "用途": "所有模板",
-        "文本": "monochrome, greyscale, grayscale, line art, sketch, ink outline, black outline, flat color, pixel art, 8-bit, hard pixel edges, photorealistic 3d render, plastic 3d model, photo, watermark, text, signature, blurry, deformed, extra limbs, ugly, chibi, big head, super deformed"
+        "用途": "所有模板。三类护栏：结构安全 / 质感防护 / 干扰过滤。⚠️ 仅在 cfg>1 时生效（Turbo/cfg1 下负向整段失效）",
+        "文本": "deformed hands, fused fingers, extra limbs, disfigured face, plastic skin, wax figure, doll-like, cgi render, photorealistic 3d render, photographic, monochrome, line art, sketch, black outline, flat color, pixel art, 8-bit, hard pixel edges, blurry, jpeg artifacts, watermark, signature, text, chibi, big head, super deformed"
       },
       "guofeng": {
         "名称": "国风符号（东方玄幻）",
         "类型": "正向",
-        "用途": "角色 / 场景 / 装备 / Boss 勾选；技能与 UI 图标不勾（词不搭）",
-        "文本": "chinese decorative motifs, ruyi cloud pattern, jade ornaments, gold trim, embroidered silk, brocade texture, tassel, paper lantern glow, traditional chinese ornamentation"
+        "用途": "角色 / 场景 / 装备 / Boss 勾选；技能与 UI 图标不勾（词不搭）。只放【对象无关】的装饰 / 工艺词 —— 服饰词进各模板自己的正向",
+        "文本": "\"ruyi\" cloud pattern, jade ornaments, gold trim, silk brocade texture, tassel details, carved wood lattice, chinese decorative motifs"
       }
     },
     "其他规范": [
-      "**题材不转，只借风格**（2026-10-12 决定）：本项目内容仍是**中世纪奇幻**（模板里的 `fantasy medieval dungeon` / `dark fantasy creature` 等题材词**不动**）—— 只借梦幻西游方向的**渲染风格（2.5D 高饱和手绘）+ 投影语言 + 中式装饰符号**。因此 `guofeng` 块**只保留装饰 / 工艺词**；通用负向里那句 `western fantasy` 已删除（它与中世纪题材自相矛盾）",
-      "**投影词是硬需求，不要写相机术语**（2026-10-12 联网查证）：`isometric` 必须放**开头**（权重最高）+ `no perspective` / `orthographic` + `30 degree angle` —— 缺一个只会得到「稍微倾斜的 3D 渲染图」；负向必须压 `perspective, vanishing point, tilted camera, wide angle lens, photographic`",
-      "**国风不要写抽象词**：`chinese style` / `oriental aesthetics` 这类抽象概念模型没学过 → 要写**具体符号**（云纹 `ruyi cloud pattern` / 玉佩 `jade` / 披帛 `silk ribbons` / 流苏 `tassel` / 描金 `gold trim`），即 `guofeng` 块",
-      "**不要 Q 版**（2026-10-12 决定）：保持正常头身比 → 通用负向固定压 `chibi, big head, super deformed`；`style` 块用 `rich vivid colors, high saturation`，并用 `photorealistic 3d render, plastic 3d model` 保住 2.5D 手绘质感",
-      "**构图要写「不许裁」**：只写 `full body` 仍可能把头顶裁出画框 → 立绘要求里补 `entire figure head to toe, nothing cropped, clear margin around the figure`",
-      "⭐ **Qwen-Image 2.1 参数纪律（2026-10-13 实测）**：① **挂 Turbo LoRA 必须 cfg=1 + 8 步**（cfg>1 会直接崩）；② **不挂 LoRA** 用官方口径 **steps 25 / cfg 1**（官方模板默认值），想更细可 30~40 步；③ **提高 cfg（2.5~4）才能让负向提示词生效** —— 这是「要速度」和「要可控」的取舍（见 backlog 的 T-21）；④ 尺寸必须 **32 的倍数**，1024² 是 8GB 显存的舒适档",
-      "⭐ **不要再去背**：2.1 的 VAE 是 4 通道，**原生输出 RGBA 透明底**（实测 32~34% 全透明像素）→ 提示词里写一句 `transparent background / alpha channel` 即可，后期抠图这一步可以省掉",
-      "⭐ **图生图（编辑）与旧 img2img 不是一回事**：2.1 是**指令式编辑**（官方模板 KSampler 的 `denoise` 恒为 1.0），「强度」由指令本身决定，不是靠 denoise 旋钮。所以旧的「denoise 0.7 转视角」思路在 2.1 上不成立 —— 要转视角就**在提示词里直说**（配 `viewshift` 块）。⚠️ 对比台目前还没接 i2i（见 backlog T-20）",
+      "⭐ **第一原则：正向自足（2026-10-13 定）**。本机主路径是 Turbo LoRA / 8 步 / **cfg=1** —— 而 **cfg=1 时 ComfyUI 会跳过 negative conditioning，负向提示词完全不生效**（ComfyUI 官方文档）。所以：**所有要求必须能用正向词写出来**，负向块只当 cfg>1 时的护栏。绝不允许再出现「靠负向压住某效果」的设计（旧版的 `chibi` / `pixel art` / `photo` / 视角负向都属于这一类）",
+      "⭐ **拼装顺序 = 要求块的【键顺序】，不是模板里 `套用要求` 数组的顺序**（2026-10-13 查明）：前端 `renderBlocksPick()` 按 `Object.entries(要求块)` 渲染勾选框，`editorTpl()` 再按勾选框的 DOM 顺序取用 → `套用要求` 数组只决定「勾不勾」。想调块的位置就改 `要求块` 里 key 的顺序（当前：transparency → portrait → viewshift → style → composition → viewneg → commonneg → guofeng）。⚠️ 改完要在对比台刷新页面才生效",
+      "**题材不转，只借风格**（2026-10-12 决定）：本项目内容仍是**中世纪奇幻**（模板里的 `fantasy medieval dungeon` / `dark fantasy creature` 等题材词**不动**）—— 只借梦幻西游方向的**渲染风格（2.5D 高饱和手绘）+ 投影语言 + 中式装饰符号**。因此 `guofeng` 块**只放对象无关的装饰 / 工艺词**（服饰词进各模板自己的正向）",
+      "**投影词是硬需求，且必须正向化**：`isometric` 放**开头**（权重最高）+ `orthographic projection` / `parallel projection` + `30 degree downward camera tilt`（带参照，不要只写 `30 degree angle`）。⚠️ **禁止在正向里写 `no perspective` / `no X` 这类否定式**（cfg1 下无效，正向里也弱）；⚠️ **禁止出现 `facing the viewer` / `front view` 与俯视同框** —— 这是旧版视角转不出来的头号原因",
+      "**国风不要写抽象词**：`chinese style` / `oriental aesthetics` 这类抽象概念模型没学过 → 要写**具体符号**（云纹 `\"ruyi\" cloud pattern` / 玉佩 `jade` / 流苏 `tassel` / 描金 `gold trim` / 花窗 `carved wood lattice`），即 `guofeng` 块；专有名词按规范**加引号**",
+      "**不要 Q 版**（2026-10-12 决定）：保持正常头身比 → 正向靠 `game sprite proportions`，负向固定压 `chibi, big head, super deformed`；`style` 块用 `saturated jewel tones` + 具象笔触词保住 2.5D 手绘质感（不再用抽象的 `2.5D RPG style`）",
+      "**构图要写「不许裁」，但要正向写**：只写 `full body` 仍可能把头顶裁出画框 → 立绘要求里写 `entire figure visible from head to toe, generous clear margin around the figure`（旧版的 `nothing cropped` 是否定式，已删）",
+      "⭐ **Qwen-Image 2.1 参数纪律（2026-10-13 实测）**：① **挂 Turbo LoRA 必须 cfg=1 + 8 步**（cfg>1 会直接崩）；② **不挂 LoRA** 用官方口径 **steps 25 / cfg 1**（官方模板默认值），想更细可 30~40 步；③ **提高 cfg（2.5~4）才能让负向提示词生效** —— 这是「要速度」（12 s/张）和「要可控」的取舍（见 backlog 的 T-21）；④ 尺寸必须 **32 的倍数**，1024² 是 8GB 显存的舒适档；⑤ 官方模型卡推荐 40 步、ComfyUI 文档说**整图重绘类编辑要完整 25 步**",
+      "⭐ **分辨率上限（2026-10-13 实测，8GB + int8 + Turbo 8 步）**：1024² = **16 s** / 1536² = **24 s** / **2048² = 57 s 且不 OOM**（2048² 是 2.1 的原生分辨率）。旧文档里「1536² 会 OOM」是 SD 时代的结论，**已作废**。尺寸仍必须 32 的倍数；>2K 才会损失提示词遵循度",
+      "⭐ **多视角一图流（A4）—— 绕开「编辑转视角」的路子**（2026-10-13 实测）：不要让模型去改造同一视角（i2i 实测 IoU 0.97 = 几乎不动），而是让它**在一张图里直接多画几个视角**（正面 / 3-4 俯视 / 侧面 / 背面）。实测 1024² / 1536² / 2048² 都能稳定出满 4 格、每格人物尺寸一致。版面纪律：**先在「要求」里锁死版式与每格视角 → 再在「正向」里写角色 → 最后逐项枚举一致性**（社区两套范式的共识，见 `assets/_PROMPTS.md` §7）。⚠️ 多视角模板**不要勾 `composition`**",
+      "⭐ **透明底用官方句式，不要再写 `transparent background` 一句话**（官方模型卡给定格式）：`This is an RGBA image with transparency. The image has alpha channel and the background is transparent.` —— 已固化成 `transparency` 块，**必须排在该模板块列表第一位**。2.1 的 VAE 是 4 通道，实测 **32~34% 全透明像素**，后期抠图这一步可以省掉",
+      "⭐ **图生图（编辑）与旧 img2img 不是一回事**：2.1 是**指令式编辑**（官方模板 KSampler 的 `denoise` 恒为 1.0），「强度」由指令本身决定，不是靠 denoise 旋钮。规范写法 = **英文祈使句 + `<image1>` 引用**（官方示例：`Keep the character and pose in <image1> unchanged, put this shirt from <image2> on the character, preserve the original facial features…`），并显式列出「什么保持不变」。⚠️ 对比台目前还没接 i2i（见 backlog T-20）",
+      "**提示词结构（社区经验，可信度中）**：写成逗号分隔的**扁平标签流**，顺序按 `主体 + 环境 + 光影 + 材质 + 风格 + 质量`；抽象词换成**具象物理特征**（`brushed steel blade with nicks` 胜于 `detailed sword`）；风格锚定要具体。⚠️ 光影 / 材质词属**未实测新增变量**，一次只开一个做 A/B",
+      "**语言纪律**：统一英文输出（中文构思 → 英文标签），仅专有名词加引号保留中文/拼音（`\"ruyi\"` / `\"hanfu\"`）。正向上限 800 token（2.0 系 1300）、负向 500 字符 —— 当前拼装约 150 token，**远未触顶**，不必为省 token 牺牲描述",
       "角色 sprite 仍建议两阶段：① 文生图出立绘（正面全身）② 编辑/转视角。不要把视角要求塞进阶段1，那是抽卡地狱",
-      "**视角（3/4 俯视）仍是未解问题**：2026-10-12 在 SD 上实测失败，换 Qwen 后仍未验证 → 优先用 ControlNet-Union 补丁或指令式编辑（见 backlog §2 与 T-24）",
-      "不做像素风：走「低分辨率 + 复古观感」的平滑手绘路线（通用负向已压 `pixel art, 8-bit`）",
+      "**视角（3/4 俯视）仍是未解问题**：2026-10-12 在 SD 上实测失败，换 Qwen 后仍未验证。本轮已修掉 `viewshift` 里的自相矛盾（`facing the viewer`）；若仍不行 → ControlNet-Union 补丁（官方 `qwen_image_2.1_fun_controlnet_union_int8_convrot`，本机节点已具备，见 T-24）或指令式编辑",
+      "不做像素风：走「低分辨率 + 复古观感」的平滑手绘路线（负向已压 `pixel art, 8-bit`；正向靠 `painted 2D game illustration` + 具象笔触词）",
       "后期用平滑降采样（Area / Lanczos3），不做最近邻硬像素化",
-      "调色板收敛到同一套 32~48 色 —— 这是「看起来像一套」的主要来源"
+      "调色板收敛到同一套 32~48 色 —— 这是「看起来像一套」的主要来源",
+      "**本轮暂缓项**（等 A/B 数据再决定）：`tileset` 可平铺块（现写在 B 模板自己的要求里）、`lighting` 光影块（社区称最大质量杠杆，但会引入变量）、`text` 图内文字块（官方 2.1 的排版强项，F 模板可用）"
     ],
     "checkpointDefaults": {
-      "Qwen-Image": { "label": "Qwen-Image 2.1", "width": 1024, "height": 1024, "steps": 8, "cfg": 1 }
+      "Qwen-Image": {
+        "label": "Qwen-Image 2.1",
+        "width": 1024,
+        "height": 1024,
+        "steps": 8,
+        "cfg": 1
+      }
     },
     "history": []
   },
@@ -75,12 +94,34 @@
       "用途": "先出一个满意的角色全身立绘，作为阶段2 的底图",
       "出图尺寸": "1024×1024（32 的倍数）",
       "base建议": "Qwen-Image",
-      "套用要求": ["portrait", "guofeng", "style", "composition", "commonneg"],
-      "要求": "single character, clean readable silhouette, equipment clearly readable",
-      "positive": "full body character, painted 2D game sprite",
-      "negative": "multiple characters, two people, full scene, cropped",
-      "备注": "⚠️ 这里绝对不要写俯视/视角要求 —— 视角交给阶段2。抽卡不满意就把「每项出 N 张」调大，一次看多张再挑",
-      "history": []
+      "套用要求": [
+        "transparency",
+        "portrait",
+        "guofeng",
+        "style",
+        "composition",
+        "commonneg"
+      ],
+      "要求": "single character, clear equipment details, readable silhouette at a glance",
+      "positive": "male spellcaster, layered silk robe with brocade collar and sash, rune-carved wooden staff held in one hand, tasseled jade pendant at the waist, robe drapery in motion, calm confident expression",
+      "negative": "multiple characters, two people, full scene, cropped, busy background",
+      "备注": "✅ 透明底改由 transparency 块（官方句式）负责，本模板不再写 plain background。⚠️ 绝对不要写俯视/视角要求 —— 视角交给阶段2。⚠️ 负向在 Turbo/cfg1 下整段失效 →「单人 / 不许裁」只能靠 portrait 块的正向词 + 调大抽卡数量",
+      "history": [
+        {
+          "at": "2026-10-13 06:23:43",
+          "note": "人工编辑",
+          "positive": "full body character, painted 2D game sprite",
+          "negative": "multiple characters, two people, full scene, cropped",
+          "要求": "single character, clean readable silhouette, equipment clearly readable",
+          "套用要求": [
+            "portrait",
+            "guofeng",
+            "style",
+            "composition",
+            "commonneg"
+          ]
+        }
+      ]
     },
     {
       "id": "A2",
@@ -90,12 +131,52 @@
       "用途": "把阶段1 选中的立绘（或任何角色图）转成本作要的 3/4 俯视 sprite",
       "出图尺寸": "跟随底图",
       "base建议": "Qwen-Image",
-      "套用要求": ["viewshift", "guofeng", "style", "composition", "viewneg", "commonneg"],
+      "套用要求": [
+        "transparency",
+        "viewshift",
+        "guofeng",
+        "style",
+        "viewneg",
+        "commonneg"
+      ],
       "要求": "same character, same outfit, same colors, keep the original silhouette",
-      "positive": "painted 2D game sprite",
-      "negative": "different character, different outfit",
-      "备注": "⚠️ 2.1 的编辑是**指令式**（denoise 恒 1.0），旧的「denoise 0.7 转视角」不适用 → 要在正向里**直说**「turn this into an isometric 30-degree top-down game sprite」。denoise 滑块目前只作记录。⚠️ 对比台尚未接 i2i（backlog T-20）",
-      "history": []
+      "positive": "Turn <image1> into an isometric 3/4 view game sprite, rotate the camera downward and in front of the character, keep the character identity, outfit, colors and equipment unchanged, keep the transparent background, preserve the original proportions and silhouette",
+      "negative": "different character, different outfit, different color scheme, changed face",
+      "备注": "✅ 已按官方规范改成**英文祈使句 + `<image1>` 引用**（旧版是中文「以图片1为参考」）；✅ 去掉 composition —— 编辑要「保持背景」，不能再让它重绘纯色底。⚠️ 旧版「正面面对镜头」与俯视互斥，已删。denoise 滑块只作记录（KSampler 恒 1.0）。⚠️ 对比台尚未接 i2i（backlog T-20）",
+      "history": [
+        {
+          "at": "2026-10-13 06:26:09",
+          "note": "人工编辑",
+          "positive": "painted 2D game sprite",
+          "negative": "different character, different outfit",
+          "要求": "same character, same outfit, same colors, keep the original silhouette",
+          "套用要求": [
+            "viewshift",
+            "guofeng",
+            "style",
+            "composition",
+            "viewneg",
+            "commonneg"
+          ],
+          "denoise": 0.7
+        },
+        {
+          "at": "2026-10-13 06:26:26",
+          "note": "人工编辑",
+          "positive": "painted 2D game sprite，以图片1为参考，结果为图片1的俯视图",
+          "negative": "different character, different outfit",
+          "要求": "same character, same outfit, same colors, keep the original silhouette",
+          "套用要求": [
+            "viewshift",
+            "style",
+            "composition",
+            "viewneg",
+            "commonneg",
+            "guofeng"
+          ],
+          "denoise": 0.7
+        }
+      ]
     },
     {
       "id": "A3",
@@ -104,11 +185,42 @@
       "用途": "**一步到位**直接文生图出 3/4 俯视角色 —— A1→A2 两阶段转视角在 SD 上实测失败后的替代路线，换 Qwen 后仍未验证",
       "出图尺寸": "1024×1024（32 的倍数）",
       "base建议": "Qwen-Image",
-      "套用要求": ["viewshift", "guofeng", "style", "composition", "viewneg", "commonneg"],
-      "要求": "single character, clean readable silhouette, equipment clearly readable",
-      "positive": "painted 2D game sprite",
-      "negative": "multiple characters, two people, full scene, cropped",
-      "备注": "⚠️ **不要勾 `portrait` 块** —— 它含 `front view`，与俯视直接冲突。⚠️ 视角命中率低，把「每项出 N 张」调到 4~8 靠数量挑。若仍不行：① ControlNet-Union 补丁（官方 `qwen_image_2.1_fun_controlnet_union_int8_convrot`，本机节点已具备，见 T-24）② 3D 渲染 sprite（工程本就是 3D + billboard）。⚠️ 挂 Turbo LoRA 时 cfg 必须 1 → 负向失效，「压视角」这类负向要求用不了（见 T-21）",
+      "套用要求": [
+        "transparency",
+        "viewshift",
+        "guofeng",
+        "style",
+        "composition",
+        "viewneg",
+        "commonneg"
+      ],
+      "要求": "single character, clear equipment details, readable silhouette at a glance",
+      "positive": "full body male spellcaster, layered silk robe with brocade collar and sash, rune-carved wooden staff held in one hand, tasseled jade pendant at the waist, steady standing pose with weight evenly balanced",
+      "negative": "multiple characters, two people, full scene, cropped, busy background",
+      "备注": "⚠️ **不要勾 `portrait` 块** —— 它含 `front view facing the camera`，与俯视直接冲突（`viewshift` 里的同类矛盾已在 2026-10-13 清除）。✅ 透明底由 transparency 块给。⚠️ 视角命中率低，把「每项出 N 张」调到 4~8 靠数量挑。若仍不行：① ControlNet-Union 补丁（官方 `qwen_image_2.1_fun_controlnet_union_int8_convrot`，本机节点已具备，见 T-24）② 3D 渲染 sprite（工程本就是 3D + billboard）。⚠️ 挂 Turbo LoRA 时 cfg 必须 1 → 负向整段失效，「压视角」这类要求只能用正向词（见 T-21）",
+      "history": []
+    },
+    {
+      "id": "A4",
+      "name": "角色多视角设定图（一图流 · 文生图）",
+      "阶段": "txt2img",
+      "用途": "**一张图里出同角色的 4 个视角**（正面 / 3-4 俯视 / 侧面 / 背面）—— 绕开「编辑转不动视角」的死结：不要求模型改造同一视角，而是让它**直接多画三个视角**（这是它擅长的任务）。2026-10-13 实测：1024² / 1536² / 2048² 都能稳定出满 4 格",
+      "出图尺寸": "1536×1536 —— 选中本模板会**自动**把宽高设为 1536²（1024² 也能出 4 格；2048² 实测可行 +57 s）",
+      "默认尺寸": {
+        "width": 1536,
+        "height": 1536
+      },
+      "base建议": "Qwen-Image",
+      "套用要求": [
+        "transparency",
+        "style",
+        "guofeng",
+        "commonneg"
+      ],
+      "要求": "character reference sheet on one large canvas, four full body views of the same character arranged in a 2 by 2 grid with even spacing, each figure centered in its own cell with generous margin, top left cell: front view facing the camera, top right cell: three quarter top-down view, isometric view, 30 degree downward camera tilt, orthographic projection, head and shoulders uppermost, body receding toward the bottom of the cell, bottom left cell: left side profile view, bottom right cell: back view seen from behind, all four figures are the same character with identical outfit, identical colors, identical face and identical proportions in every cell, four separate figures, evenly lit",
+      "positive": "male spellcaster, layered silk robe with brocade collar and sash, rune-carved wooden staff held in one hand, tasseled jade pendant at the waist, calm confident expression, game character design sheet",
+      "negative": "different characters in each cell, inconsistent outfit between views, collage of small detail crops, extreme close up, camera zoom, cropped figure, text, watermark, signature",
+      "备注": "⚠️ **不要勾 `composition`** —— 它的「居中构图 + 单主体留白」会与 2×2 版面直接冲突。⚠️ 版面纪律（据两套社区范式）：**先在「要求」里锁死版式与每格视角，再在「正向」里写角色，最后逐项枚举一致性**（`identical outfit / colors / face / proportions`）。人物词改一处会同时作用于 4 格。格子越多每格越小：4 格 = 1536² 下每格约 768²；若要 6~8 格，建议 2048²。**右上格就是游戏内要的 3/4 俯视** —— 出图后直接裁切即可。后续可升级为「版式锁定法」：拿一张空白版式图 + 已有立绘，走 i2i 多图槽（需先接 i2i，见 T-20）",
       "history": []
     },
     {
@@ -118,11 +230,15 @@
       "用途": "地面、墙、装饰等可平铺素材",
       "出图尺寸": "1024×1024（再切 64×64）",
       "base建议": "Qwen-Image",
-      "套用要求": ["guofeng", "style", "composition", "commonneg"],
-      "要求": "seamless tileset, 64x64 grid, ground and wall pieces, tileable edges, no characters, no UI",
-      "positive": "grass stone dirt path tiles, fantasy medieval dungeon floor and walls, orthographic view",
-      "negative": "characters, perspective, isometric",
-      "备注": "无缝性靠网格底图 + 指令式编辑拿（原方案的 ControlNet tile 是 SD 时代的，已随 SD 弃用）",
+      "套用要求": [
+        "guofeng",
+        "style",
+        "commonneg"
+      ],
+      "要求": "seamless tileable texture, repeating pattern, edge-to-edge coverage, orthographic top-down view, evenly lit with no directional shadow, uniform density with no focal point, terrain source sheet",
+      "positive": "grass with scattered pebbles and dirt patches, cracked stone dungeon floor, moss growing in stone crevices, carved wood lattice wall panel",
+      "negative": "characters, ui elements, perspective vanishing point, dramatic shadow, single focal object, text",
+      "备注": "✅ **去掉 composition 是硬修** —— 它的「居中构图 + 留白」会把 tileset 变成「一块地板特写」，与无缝平铺直接冲突。✅ 旧版的 `64x64 grid` 删了（模型画不出精确网格，网格靠后期切）。⚠️ 旧版靠负向压 `characters`，cfg1 下失效 → 改由 `terrain source sheet` / `uniform density with no focal point` 正向表达。无缝仍需「网格底图 + 指令式编辑」补（原 ControlNet tile 是 SD 时代方案，已弃用）；透明底对 tileset 无意义，故不勾 transparency",
       "history": []
     },
     {
@@ -132,11 +248,17 @@
       "用途": "武器、护甲、药水、材料等物品图标",
       "出图尺寸": "1024×1024 → 平滑降到 64×64",
       "base建议": "Qwen-Image",
-      "套用要求": ["guofeng", "style", "composition", "commonneg"],
-      "要求": "single game item icon, transparent background, front view",
-      "positive": "painted 2D game icon, fantasy [sword/axe/potion/helmet], RPG inventory icon",
-      "negative": "multiple items, character, scene",
-      "备注": "`[sword/axe/potion/helmet]` 每次只替换一个词。透明底直接用 2.1 的 RGBA 输出（不必后期抠图）。若出成错误物品，改用指令式编辑在原图上改",
+      "套用要求": [
+        "transparency",
+        "guofeng",
+        "style",
+        "composition",
+        "commonneg"
+      ],
+      "要求": "single game item icon, centered, front view, isolated subject",
+      "positive": "painted 2D game icon, ornate longsword with brushed steel blade, leather-wrapped grip, tarnished gold crossguard",
+      "negative": "multiple items, character, scene, frame border, text",
+      "备注": "✅ 透明底改由 transparency 块给（官方句式；旧版 `transparent background` 一句话不合规）。✅ **一次只留一件物品 + 写具象材质**（社区经验：`brushed steel blade with nicks` 这类材质词效力远高于 `fantasy sword`）。物品词按需替换：`axe` / `potion` / `helmet` / `armor`…。可选微调：图标通常微微俯视更好看（`three-quarter view of the object`），但要与正向 `front view` 二选一。若出成错误物品，改用指令式编辑在原图上改",
       "history": []
     },
     {
@@ -146,11 +268,15 @@
       "用途": "Boss 立绘、战斗场景背景、过场插画",
       "出图尺寸": "1024×1024（32 的倍数）",
       "base建议": "Qwen-Image",
-      "套用要求": ["guofeng", "style", "composition", "commonneg"],
+      "套用要求": [
+        "guofeng",
+        "style",
+        "commonneg"
+      ],
       "要求": "full body boss character, dramatic pose, dark fantasy creature",
-      "positive": "concept art, detailed, painterly, game key art",
-      "negative": "chibi, cute, low quality",
-      "备注": "立绘直接用，不切帧。若要游戏内 Boss sprite，再走一次转视角。2.1 原生最高 2048²，本机 8GB 显存建议 ≤1024²",
+      "positive": "concept art key frame, colossal armored boss silhouette, ruined dungeon hall background, drifting embers and dust motes, low camera looking up at the boss",
+      "negative": "chibi, cute, low quality, flat even lighting, plain background",
+      "备注": "✅ **去掉 composition** —— 它与 A1/B 的取舍相反：概念图要的是**场景背景**，不是居中留白 + 纯色底。✅ `detailed` / `painterly` 两个空泛词已删（`painterly` 与 style 块重复），改为具象场景与构图（仰视衬托体量）。立绘直接用，不切帧；若要游戏内 Boss sprite，再走一次转视角（A2/A3）。2.1 原生最高 2048²，本机 8GB 显存建议 ≤1024²。⚠️ 负向在 cfg1 下失效 →「不要 chibi / 不要平光」要靠 style 块与抽卡",
       "history": []
     },
     {
@@ -160,11 +286,16 @@
       "用途": "M7 职业技能的图标",
       "出图尺寸": "1024×1024 → 平滑降到 64×64",
       "base建议": "Qwen-Image",
-      "套用要求": ["style", "composition", "commonneg"],
-      "要求": "single game skill icon, transparent background, front view",
-      "positive": "painted 2D game icon, [fireball/heal/dash/shield/slash/burst], RPG skill icon",
-      "negative": "multiple icons, character, scene",
-      "备注": "每次只替换一个技能词；透明底由 2.1 的 RGBA 输出直接给",
+      "套用要求": [
+        "transparency",
+        "style",
+        "composition",
+        "commonneg"
+      ],
+      "要求": "single game skill icon, centered, symbolic glyph, front view",
+      "positive": "painted 2D game icon, glowing fireball core with radial flame arcs, swirling ember particles",
+      "negative": "multiple icons, character, scene, text, frame border, photorealistic",
+      "备注": "✅ 加了**图标语言**：要「符号化 + 中心发光」，否则 2.1 容易画成一张小插画。✅ 透明底改由 transparency 块给（官方句式）。技能词一次只换一个：`heal` / `dash` / `shield` / `slash` / `burst`…（替换时连视觉化词一起改，如 heal → `soft green healing glow with rising light motes`）。不勾 `guofeng`：装饰词与技能符号不搭",
       "history": []
     },
     {
@@ -174,11 +305,16 @@
       "用途": "按钮、边框、菜单、提示框",
       "出图尺寸": "512×512（小元素）/ 1024×1024（边框）",
       "base建议": "Qwen-Image",
-      "套用要求": ["style", "composition", "commonneg"],
-      "要求": "single UI element, transparent background, front view",
-      "positive": "painted fantasy game UI, fantasy [button/border/frame/icon], RPG game UI asset",
-      "negative": "multiple elements, character, scene",
-      "备注": "UI 类没有专用 LoRA；2.1 的强项是**图内文字/排版**，做带文字的 UI 稿可以更省事",
+      "套用要求": [
+        "transparency",
+        "style",
+        "composition",
+        "commonneg"
+      ],
+      "要求": "single UI element, isolated, front view, stretchable layout with ornate corners and flat center",
+      "positive": "painted fantasy game UI, gold-bordered ornate panel, dark lacquer finish with subtle wood grain",
+      "negative": "multiple elements, character, scene, text, photorealistic, jpeg artifacts",
+      "备注": "✅ 加了 **UI 工程性描述**（四角装饰 + 中心留白 = 9-slice 思路），否则会出来一整张「带花纹的图」而不是可拉伸边框。✅ 透明底由 transparency 块给（官方句式）。元素词按需换：`button` / `border` / `frame` / `panel`。⚠️ **图内文字本轮暂缓**（未启用 `text` 块）—— 2.1 的排版强项可用双引号写文字，如 `a title label that reads \"Inventory\"`，日后单独开一轮 A/B。UI 类没有专用 LoRA",
       "history": []
     }
   ]

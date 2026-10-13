@@ -90,6 +90,10 @@
 **Godot 3D**
 
 - **必须先 `add_child()` 才能写 `global_position`**，否则报 `Condition "!is_inside_tree()" is true`。
+- ⚠️ **但 `add_child()` 与 `setup()` 的先后要分开看**：`Enemy` / `Player` 的视觉是在 `_ready()`（入树时）
+  按 `archetype` / `profession` 建的，所以必须**先 `setup(level, archetype)` 再 `add_child()`**
+  （`main.gd::_spawn_enemy` 就是这个顺序）。反了不报错，但会**静默退回「默认配色的程序化占位贴图」**
+  —— 症状是「真素材填了却像没生效」，极难查。
 - `Camera3D` **没有** `limit_left/right/top/bottom`，边界钳制要手写（见 `main.gd::_clamp_focus()`）。
 - 顶视角用 `CharacterBody3D` 时要设 `motion_mode = MOTION_MODE_FLOATING`（关掉重力 / 贴地）。
 - billboard 精灵**不要投射阴影**（会变成薄片），改用脚下的平躺圆盘做影斑。
@@ -211,9 +215,15 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 **M16 相机微调（参数进 `data/camera.json` + `CameraRig`：滚轮缩放 / 旋转 / 俯角 / 含旋转的边界钳制）**。
 
 下一步：**M15 素材接入**（真实 sprite / 中文字体 / 音频）。
-⚠️ **它阻塞在素材上**：代码侧管线早就留好了（`data/*.json` 的 `sprite_path` / `icon` +
-`SpriteFactory` 的加载分支），但没有出图、没有中文字体 `.ttf` 就无从接入；
-**素材没到的话可以先做纯代码的 M16 相机微调**（`CAMERA_ORTHO_SIZE` / 俯角 / 滚轮缩放 / 视角旋转）。
+✅ **2026-10-13 角色 sprite 链路全部跑通**：出图（A4 多视角设定图）→ 对比台一键裁切 4 张 128² →
+`assets/sprites/` → 填 JSON 的 `sprite_path` → 游戏内生效，**渲染代码零改动**。
+已接入 **4 个敌人**（走 `data/enemies.json`）与 **3 个职业主角**（走 `data/professions.json`，转职即时换图），
+共 28 张；同时把 billboard 的 `texture_filter` 改为按「真素材 / 程序化占位」分流（Linear / Nearest），
+并加了 **Git LFS** 规则（**按类型 / 目录**圈：源图 `assets/concepts/**` + 字体 + 音频走 LFS，
+`assets/{sprites,tilesets,icons,ui}/` 的游戏内小图直存；⚠️ MB 级源图必须放 `concepts/`）。
+接入口径与导入参数见 [`docs/modules/render3d.md`](docs/modules/render3d.md)。
+⏳ **仍待素材**：图标类（装备 / 技能，`data/*.json` 的 `icon`）、中文字体 `.ttf`（HUD 与伤害数字当前用
+引擎回退字体，但实测中文显示正常）、音频。
 细节见 [`docs/roadmap.md`](docs/roadmap.md) 与 [`docs/tasks/`](docs/tasks/)。
 
 > ⚠️ **范围决定（别再主动提议）**
@@ -258,3 +268,5 @@ M6 工程规范 / **M7 职业与技能（3 职业 + 6 技能 + 冷却 / 蓝条 +
 | 2026-10-10 | §5 索引加 [`docs/tasks/backlog.md`](docs/tasks/backlog.md)（**跨里程碑待办 / 未决 / 已作废清单**）：固化三条口径（非商用 / 不做像素风 / **Forge 未开 CORS，网页工具必须自带本地代理**），列 T-01~T-13 待办、4 条未决、7 条已作废，并附 Forge API 的 checkpoint 标识与 LoRA 命名等接口事实 |
 | 2026-10-10 | §1 登记开源项目清单 **`bobeff/open-source-games`**：记下约 8 个同构候选（Abyss Engine / DCSS / 像素地牢 / Unknown Horizons godot-port / Liblast / Veloren / OpenKO / OpenKore）与「其余无关」的结论；补一条**代码许可 ≠ 素材许可**（DCSS 代码 GPLv2+ 但 tiles 是 CC0），重申**不复制 GPL 代码与素材** |
 | 2026-10-10 | **美术风格基线改为"不做像素风"**（保留低分辨率 + 复古观感）：§1 的「美术」行由"**逐像素生成**"改为"代码生成（占位用、**无固定风格**）"，指向新基线；素材规格整体上调一档（角色 128² / 地砖 64² / 图标 64²），导入滤波由 Nearest 改 **Linear + Mipmaps**；`assets/_PROMPTS.md` 的 A–F 模板去像素化并加负向 `pixel art`，新增「后期统一规范」；**LoRA 改为可选**（先不加跑通一轮）。同步：`docs/reference/ai-asset-generation.md`、`docs/tasks/{README,_template,M7,M10,M11}`、`docs/modules/render3d.md`、`docs/reference/mmo-opensource/{intersect-engine,kaetram-open}.md` |
+| 2026-10-13 | **M15 第一步：敌人 sprite 接入链路跑通（游戏侧代码零改动）**。新增 A4「角色多视角设定图」模板 + 对比台一键裁切（`crop_sheet.py`）；`assets/sprites/enemy_slime_{front,iso,side,back}.png`（各 128²）+ `slime.sprite_path` 指向 `_iso`；`SpriteFactory.billboard_sprite()` 的 `texture_filter` 改为按来源分流（真素材 `LINEAR` / 占位 `NEAREST`）；新增 `.gitattributes`（**按类型 / 目录**圈 LFS：源图/概念图 + 字体 + 音频；游戏内小图直存）；sprite 的 `.import` 打开 mipmaps + 关掉 `detect_3d` 自动压缩；`test_data_layer.gd` 增加「非空 `sprite_path` 必须能加载成 Texture2D」断言。§6 状态更新（「素材没到就先做 M16」这句已过时，M16 早已完成） |
+| 2026-10-13 | **M15 角色 sprite 批次接入（4 敌人 + 3 职业，共 28 张 128²）**：`Profession` 新增 `sprite_path` 字段 + `Player._refresh_sprite()`（转职即时换图，并重算 `pixel_size` —— 占位 64px / 真素材 128px）；`enemies.json` 补齐 `brute` / `wisp` / `bone_lord`（`slime` 换成真正的史莱姆美术）；`professions.json` 三职业全部接图；`test_data_layer.gd` 的素材断言扩展到职业。§3 新增一条**静默陷阱**：`Enemy` 必须先 `setup()` 再 `add_child()`，否则 `_ready()` 里读到空 `archetype`、静默退回占位贴图。10 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING，另跑真窗口截图确认四种敌人 + 主角精灵在游戏内正确渲染 |

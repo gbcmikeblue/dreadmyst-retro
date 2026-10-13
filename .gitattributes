@@ -1,0 +1,32 @@
+# 版本控制策略：**按类型 / 目录圈 LFS 范围**，不按文件大小
+#
+# 为什么不能按体积：git 只做「文件名 / 路径」匹配，没有「超过 100 KB 自动走 LFS」这回事。
+# 所以用「会到 MB 级的类型 + 唯一放源图的目录」来等价表达。
+#
+# 走 LFS（真会到 MB 级）：
+#   · 源图 / 概念图 —— assets/concepts/**（1024²~2048²，1~3 MB/张）
+#   · 字体 —— *.ttf / *.otf（中文字体 5~15 MB）
+#   · 音频 —— *.wav / *.ogg
+#   · 浮点图 —— *.exr
+#
+# 直存 git（游戏内导入素材，本来只有几 KB~几十 KB，PNG 已压过、没得再压）：
+#   · assets/sprites/ · tilesets/ · icons/ · ui/ 下的 *.png / *.jpg / *.webp
+#     → 走 LFS 反而逼协作者装 git-lfs，且 GitHub「Download ZIP」拿到的是指针文本
+#
+# ⚠️ 由此得出硬约束：**MB 级源图必须放 `assets/concepts/`** —— 放到别处会直存进 git 对象，
+#    而 git 历史删不掉，仓库就永久膨胀了（届时只能 git lfs migrate 重写历史）。
+#
+# 素材规格与放置路径见 docs/reference/ai-asset-generation.md §5.3；许可登记见 assets/_LICENSES.md §4。
+#
+# 注意：Godot 自动生成的 `*.png.import` 是**文本**，不命中下面任何规则（保持普通存储）——
+#       它记录 mipmaps / 无损 / fix_alpha_border 等导入参数，必须能被人直接读到。
+
+# 源图 / 概念图（唯一会放 MB 级大图的目录）
+assets/concepts/**  filter=lfs diff=lfs merge=lfs -text
+
+# 字体 / 音频 / 浮点图
+*.ttf  filter=lfs diff=lfs merge=lfs -text
+*.otf  filter=lfs diff=lfs merge=lfs -text
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.ogg  filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text

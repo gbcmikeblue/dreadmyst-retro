@@ -108,6 +108,44 @@
 
 ---
 
+## ✂️ A4 设定图裁切（`crop_sheet.py`）
+
+A4 模板出的是一张 **2×2 多视角设定图**（正面 / 3-4 俯视 / 侧面 / 背面）。
+
+**方式一：界面里一键裁切（推荐）** —— 结果卡片上点「**裁 sprite →**」→ 弹窗里填**输出名前缀**、
+选**输出边长**（128 / 256 / 384 / 768，也可手填 32~1024）→ 就地在卡片里出 4 张缩略图。
+走 `/api/crop` → `crop_sheet.py`，参数与下面的命令行完全一致；**尺寸会记住上次用的值**。
+
+> 💡 选中 A4 模板时，**宽高会自动变成 1536²**（模板里的 `默认尺寸` 字段）—— 别再手动改了。
+> 裁切用的解释器由后端自动探测（`CROP_PYTHON` 环境变量可覆盖），因为 start.bat 默认挑的
+> `D:\AI\python-full\python.exe` **没有 Pillow**；探测顺序：
+> `CROP_PYTHON` → `D:\AI\venv-comfy\Scripts\python.exe` → 跑 serve.py 的解释器 → `python`。
+
+**方式二：命令行**（只依赖 Pillow，产物与一键裁切相同）：
+
+```powershell
+D:\AI\venv-comfy\Scripts\python.exe crop_sheet.py images\_mv_1536.png --name enemy_slime
+# → images\_mv_1536_crops\enemy_slime_front.png / _iso.png / _side.png / _back.png   （128²，RGBA）
+```
+
+| 选项 | 默认 | 说明 |
+| --- | --- | --- |
+| `--size` | `128` | 输出 sprite 边长（正方形画布，等比缩放进框） |
+| `--mode` | `grid` | `grid` = 按 2×2 直接切；`auto` = **每格内** alpha 连通域定位（更抗偏移，需 numpy） |
+| `--pad` | `0.04` | 人物 bbox 外再留的余量（占长边比例） |
+| `--anchor` | `bottom` | 底对齐（脚底对齐）；`center` = 居中 |
+| `--views` | `front,iso,side,back` | 按 **左上 / 右上 / 左下 / 右下** 顺序命名 |
+| `--no-common-scale` | 关 | 关掉「四格共用缩放」→ 每格各自满框（**视角间比例会失真，不建议**） |
+| `--out` / `--name` | `<图名>_crops` / 图名 | 输出目录 / 文件名前缀 |
+
+要点：
+
+- **默认四格共用同一缩放系数**（以最高的那个人形为基准）→ 正面/侧/背/3-4 俯视的**相对身高一致**，可直接进游戏；
+- 每格按 alpha 收紧到人物 bbox（去掉空格与多余透明边），**透明底原样保留**；
+- 每格空着就跳过并提示；auto 若认不到 4 个主体会**自动退回 grid** 模式（不会静默出错）。
+
+---
+
 ## 文件说明
 
 | 路径 | 说明 | 入库？ |
@@ -117,6 +155,7 @@
 | `data/results.json` | 全部对比记录（含评分与结论） | ❌ **本地专用**，已在 `.gitignore`；首次保存时自动生成 |
 | `RESULTS.md` | 由记录生成的结论文档（分组对比 + 建议保留哪些） | ✅ **这才是可交付物** |
 | `images/*.png` | 生成的对比图（过程产物，体积大） | ❌ 已被 `.gitignore` 排除 |
+| `crop_sheet.py` | **A4 设定图 → 单视角 sprite 裁切**（2×2 切格 + alpha 收紧 + 共用缩放 + 底对齐，只依赖 Pillow） | ✅ |
 
 ---
 
@@ -149,8 +188,10 @@ python _check_static.py
 
 ## 已知限制
 
-- **图生图未接**：模板 A2（视角转换）目前只能按**文生图**跑（界面会提示）。
-  要接需要另做一版 Qwen-Edit 图结构。
+- **图生图未接**：模板 A2（视角转换）目前只能按**文生图**跑（界面会提示）。2026-10-13 已用
+  `TextEncodeQwenImage21` 手工跑通 i2i：**保人没问题**（剪影 IoU 0.97 / 画面相关 0.97），但
+  **转视角几乎不动**（改提示词、cfg 1→3.5、8→25 步、挂不挂 Turbo 全都一样；而「换背景」这类
+  内容编辑是正常生效的）→ 视角改走 **A4 一图流**（让模型直接多画几个视角）或 ControlNet-Union（T-24）。
 - ~~单张耗时 3~12 分钟~~ → **2026-10-13 起为 12~37 秒**（见上"显存 / 速度"一节）。
 - `data/loras.json` 里那 50+ 个 SD LoRA **在 Qwen 上不可用**，只剩 1 个（Turbo）。
 
@@ -166,7 +207,7 @@ tools/lora-compare/
 ├── serve.py          本地服务：静态 + /comfy 反代 + /api/save|image|delete|list
 ├── start.bat         一键启动（自动找 python）
 ├── _check_static.py  静态自检（替代 node 语法检查）
-├── _import_results.py 把脚本产物补登进 results.json 的幂等导入工具
+├── crop_sheet.py     A4 设定图 → 单视角 sprite 裁切（只依赖 Pillow）
 ├── data/            prompts.json · loras.json · results.json
 ├── images/          生成的对比图（不入库）
 └── RESULTS.md       导出的结论文档

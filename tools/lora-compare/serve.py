@@ -10,8 +10,9 @@
 1. **静态文件服务** —— 前端就是纯 HTML/CSS/JS，没有构建步骤。
 2. **`/comfy/*` 反向代理** —— 把请求转给 ComfyUI；线程池处理，
    所以出图期间还能同时轮询进度条。
-3. **`/api/save`、`/api/image`、`/api/delete`、`/api/list`** —— 提示词 / 对比记录 /
-   生成图 / 图生图底图列表的落盘与读取。
+3. **`/api/save`、`/api/image`、`/api/delete`、`/api/list`、`/api/crop`** —— 提示词 / 对比记录 /
+   生成图 / 图生图底图列表的落盘与读取；`/api/crop` 调 `crop_sheet.py` 把 A4 的
+   2×2 设定图裁成单视角 sprite（子进程会用自带探测挑一个装了 Pillow 的解释器）。
 
 用法
 ----
@@ -24,6 +25,7 @@ import argparse
 import base64
 import json
 import os
+import subprocess
 import sys
 import threading
 import webbrowser
@@ -38,6 +40,35 @@ COMFY = "http://127.0.0.1:8188"      # 后端：ComfyUI + Qwen-Image 2.1
 MAX_BODY = 64 * 1024 * 1024   # 64MB：base64 图片够用
 PROXY_TIMEOUT = 3600          # 出图 / 切模型都可能很久，别让代理先超时
 ALLOWED_EXT = {".json", ".md", ".png", ".txt", ".csv", ".webp", ".jpg", ".jpeg"}
+
+# 裁切（A4 设定图 → 单视角 sprite）：脚本只依赖 Pillow，而 start.bat 默认挑的
+# `D:\AI\python-full\python.exe` **没有 Pillow** → 不能直接用 sys.executable，得自己探测。
+CROP_SCRIPT = os.path.join(ROOT, "crop_sheet.py")
+CROP_PY_CANDIDATES = [
+    os.environ.get("CROP_PYTHON"),                 # 1) 环境变量优先
+    r"D:\AI\venv-comfy\Scripts\python.exe",        # 2) 本机 ComfyUI venv（确定装了 Pillow）
+    sys.executable,                                # 3) 跑 serve.py 的这个解释器
+    "python",
+]
+_CROP_PY = None      # 探测结果缓存（None = 还没探过）
+
+
+def crop_python():
+    """找一个能 `import PIL.Image` 的解释器；都找不到返回 None。"""
+    global _CROP_PY
+    if _CROP_PY:
+        return _CROP_PY
+    for cand in CROP_PY_CANDIDATES:
+        if not cand:
+            continue
+        try:
+            subprocess.run([cand, "-c", "import PIL.Image"],
+                           capture_output=True, timeout=60, check=True)
+            _CROP_PY = cand
+            return cand
+        except Exception:
+            continue
+    return None
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -120,6 +151,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._save_text()
         if self.path == "/api/image":
             return self._save_image()
+        if self.path == "/api/crop":
+            return self._crop()
         return self._json(404, {"ok": False, "error": "未知接口: " + self.path})
 
     def do_DELETE(self):
@@ -237,6 +270,59 @@ class Handler(SimpleHTTPRequestHandler):
         with open(target, "wb") as fp:
             fp.write(raw)
         return self._json(200, {"ok": True, "path": "images/" + name, "bytes": len(raw)})
+
+    def _crop(self):
+        """/api/crop —— 把 2×2 设定图裁成单视角 sprite（调 crop_sheet.py）。
+
+        body: {path:"images/xxx.png", name?:"enemy_slime", size?:128, mode?:"grid|auto", pad?:0.04}
+        """
+        try:
+            payload = json.loads(self._body() or b"{}")
+        except Exception as exc:
+            return self._json(400, {"ok": False, "error": "JSON 解析失败: %s" % exc})
+        target = self._resolve(payload.get("path", ""))
+        if target is None or not os.path.isfile(target):
+            return self._json(403, {"ok": False, "error": "路径非法或文件不存在: %s" % payload.get("path")})
+        if not os.path.isfile(CROP_SCRIPT):
+            return self._json(500, {"ok": False, "error": "缺少 crop_sheet.py: %s" % CROP_SCRIPT})
+        py = crop_python()
+        if py is None:
+            return self._json(500, {"ok": False, "error":
+                                    "找不到带 Pillow 的解释器（可设环境变量 CROP_PYTHON 指定，"
+                                    "或用 D:\\AI\\venv-comfy\\Scripts\\python.exe 重启本服务）"})
+        stem = os.path.splitext(os.path.basename(target))[0]
+        name = str(payload.get("name") or stem)
+        mode = "auto" if str(payload.get("mode", "")).lower() == "auto" else "grid"
+        cmd = [py, CROP_SCRIPT, target,
+               "--name", name,
+               "--size", str(int(payload.get("size") or 128)),
+               "--mode", mode,
+               "--pad", str(float(payload.get("pad") if payload.get("pad") is not None else 0.04))]
+        # 子进程强制 UTF-8 输出，否则 Windows 上按 cp936 打印、这里按 utf-8 解会变乱码
+        env = dict(os.environ, PYTHONIOENCODING="utf-8")
+        try:
+            proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=300, env=env)
+        except Exception as exc:
+            return self._json(500, {"ok": False, "error": "裁切进程启动失败: %s" % exc})
+        out = proc.stdout.decode("utf-8", "ignore")
+        err = proc.stderr.decode("utf-8", "ignore")
+        if proc.returncode != 0:
+            return self._json(500, {"ok": False, "error": (err or out or "裁切失败").strip()[-400:],
+                                    "log": (out + err).strip()})
+        crop_dir = os.path.join(os.path.dirname(target), stem + "_crops")
+        rel_dir = os.path.relpath(crop_dir, ROOT).replace("\\", "/")
+        files = []
+        if os.path.isdir(crop_dir):
+            # 只回报**本次**前缀的产物（同目录里可能还留着别的批次的文件）
+            for nm in sorted(os.listdir(crop_dir)):
+                p = os.path.join(crop_dir, nm)
+                if not os.path.isfile(p) or os.path.splitext(nm)[1].lower() not in ALLOWED_EXT:
+                    continue
+                if not nm.lower().startswith(name.lower() + "_"):
+                    continue
+                files.append({"name": nm, "url": rel_dir + "/" + nm, "bytes": os.path.getsize(p)})
+        return self._json(200, {"ok": True, "dir": rel_dir, "files": files,
+                                "mode": mode, "python": py, "log": out.strip()})
 
 
 def main():

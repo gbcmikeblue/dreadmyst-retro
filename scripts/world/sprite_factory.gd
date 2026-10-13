@@ -121,7 +121,12 @@ static func billboard_sprite(tex: Texture2D, world_height: float) -> Sprite3D:
 	s.shaded = false
 	s.double_sided = true
 	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	# 滤波按贴图来源分流：从文件加载的真素材（resource_path 非空）用 Linear —— 非像素风用
+	# Nearest 会把边缘切成硬锯齿；程序化占位贴图（resource_path 为空）仍用 Nearest，
+	# 它本来就是按像素格生成的，Linear 反而糊。
+	var smooth := not tex.resource_path.is_empty()
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR if smooth \
+		else BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	var tex_h := maxf(1.0, float(tex.get_height()))
 	s.pixel_size = world_height / tex_h
 	s.position.y = world_height * 0.5

@@ -328,6 +328,7 @@ func set_profession(id: String) -> void:
 	_attack_anim = 0.0
 
 	_rebuild_skill_arcs()
+	_refresh_sprite()
 	_emit_profession()
 	_emit_skills()
 	_emit_mana()
@@ -728,6 +729,18 @@ func _build_visuals() -> void:
 	_dash_fx = SpriteFactory.flat_disc(BODY_RADIUS * 1.5, Color(0.6, 0.8, 1.0, 0.25), 0.08)
 	_dash_fx.visible = false
 	add_child(_dash_fx)
+
+
+## 按当前职业换精灵贴图（真素材缺失 / 路径为空时自动退回程序化占位贴图）。
+## ⚠️ 必须重算 pixel_size：占位贴图 64px、真素材 128px，沿用旧值会让角色尺寸差一倍。
+func _refresh_sprite() -> void:
+	if _sprite == null:
+		return
+	var path: String = profession.sprite_path if profession != null else ""
+	var tex: Texture2D = SpriteFactory.actor_texture(path, SPRITE_PIXELS,
+		Color(0.86, 0.86, 0.96), Color(0.14, 0.14, 0.20))
+	_sprite.texture = tex
+	_sprite.pixel_size = SPRITE_WORLD_HEIGHT / maxf(1.0, float(tex.get_height()))
 
 
 ## 按当前职业技能重建弧光网格（转职时调用，运行时零分配）。

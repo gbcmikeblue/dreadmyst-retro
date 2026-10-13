@@ -364,8 +364,11 @@ function applyDefaults(resetSeed) {
   // ⚠️ 以**实际在跑的底模**的默认值为准：模板建议与实际底模不一致时听底模的 ——
   // steps/cfg 配错在 Qwen 上直接出废图（挂 Turbo LoRA 时 cfg>1 会崩）。
   const def = Object.keys(live).length ? live : sug;
-  $('#w').value = def.width || sug.width || 512;
-  $('#h').value = def.height || sug.height || 512;
+  // 模板级覆盖：模板自己声明了 `默认尺寸` 就听模板的（例：A4 一图流需要 1536² 才画得清 4 格）。
+  // 放在底模默认值之后 → 换底模不会把 A4 的尺寸冲掉。
+  const tplSize = (t && t.默认尺寸) || {};
+  $('#w').value = tplSize.width || def.width || sug.width || 512;
+  $('#h').value = tplSize.height || def.height || sug.height || 512;
   $('#steps').value = def.steps || sug.steps || 25;
   $('#cfg').value = def.cfg || sug.cfg || 7;
   if (resetSeed !== false && !$('#seed').value) $('#seed').value = -1;
@@ -1264,6 +1267,12 @@ function renderResults() {
       stars, ver, notes,
       h('details', {}, h('summary', { text: '最终提示词' }),
         h('pre', { text: r.final_prompt + '\n\n[负向]\n' + (r.negative_prompt || '') })),
+      (r.crops && r.crops.length) ? h('div', { class: 'crop-row' },
+        h('span', { class: 'crop-cap', text: '已裁 sprite（' + r.crops.length + '）：' }),
+        ...r.crops.map((c) => h('a', {
+          class: 'crop-thumb', href: c.url, target: '_blank',
+          title: c.url + '（' + Math.round((c.bytes || 0) / 1024) + ' KB）',
+        }, h('img', { src: c.url, alt: c.name })))) : null,
       h('div', { class: 'acts' },
         copyBtn(() => r.final_prompt, '复制正向'),
         copyBtn(() => r.negative_prompt || '', '复制负向'),
@@ -1274,6 +1283,11 @@ function renderResults() {
           onclick: () => setInitImage(String(r.image || '').split('images/').pop()),
         }),
         h('button', {
+          class: 'del', text: '裁 sprite →',
+          title: '把这张 2×2 设定图裁成 4 张单视角 sprite（front / iso / side / back）',
+          onclick: () => cropRecord(r),
+        }),
+        h('button', {
           class: 'del danger', text: '删除',
           onclick: async () => {
             S.records = S.records.filter((x) => x.id !== r.id);
@@ -1282,6 +1296,48 @@ function renderResults() {
           },
         }))));
     box.append(card);
+  }
+}
+
+/* 裁切：A4 的 2×2 设定图 → 4 张单视角 sprite（弹窗选名称与尺寸 → /api/crop → crop_sheet.py） */
+let cropTarget = null;
+
+/** 打开裁切弹窗（尺寸记住上次用的值，默认 128 = 项目规范） */
+function cropRecord(r) {
+  if (!r || !r.image) { banner('err', '这条记录没有图片路径'); return; }
+  cropTarget = r;
+  const guess = String(r.template || 'sheet').toLowerCase() + '_s' + (r.seed == null ? 'x' : r.seed);
+  $('#crop-name').value = r.crop_name || guess;
+  $('#crop-size').value = r.crop_size || S.cropSize || 128;
+  $('#crop-src').textContent = `${r.image}（${r.width}×${r.height}）`;
+  $('#crop-hint').textContent = '';
+  $('#crop-dlg').hidden = false;
+  $('#crop-name').focus();
+  $('#crop-name').select();
+}
+
+/** 执行裁切（弹窗「开始裁切」或回车触发） */
+async function doCrop() {
+  const r = cropTarget;
+  if (!r) return;
+  const name = ($('#crop-name').value || '').trim();
+  const size = Math.round(Number($('#crop-size').value) || 128);
+  if (size < 32 || size > 1024) { $('#crop-hint').textContent = '边长要在 32 ~ 1024 之间'; return; }
+  $('#crop-dlg').hidden = true;
+  S.cropSize = size;
+  banner('info', `正在裁切…（2×2 四格 → ${size}² sprite）`);
+  try {
+    const res = await post('/api/crop', { path: r.image, name: name || 'sheet', size, mode: 'auto' }, 300000);
+    r.crops = res.files || [];
+    r.crop_dir = res.dir;
+    r.crop_name = name;
+    r.crop_size = size;
+    renderResults();
+    await persist();
+    if (!r.crops.length) banner('err', '裁切完成但没产出文件：\n' + (res.log || '（无日志）'));
+    else banner('info', `已裁出 ${r.crops.length} 张 → ${res.dir}（${size}²，点缩略图看大图）`);
+  } catch (e) {
+    banner('err', '裁切失败：' + e.message);
   }
 }
 
@@ -1703,6 +1759,14 @@ function bind() {
   });
   $('#btn-export').addEventListener('click', exportReport);
   $('#lightbox').addEventListener('click', () => { $('#lightbox').hidden = true; $('#lightbox-img').src = ''; });
+  // 裁切弹窗：点「开始裁切」/ 回车 执行；点「取消」/ 点遮罩 / Esc 关闭
+  $('#crop-go').addEventListener('click', doCrop);
+  $('#crop-cancel').addEventListener('click', () => { $('#crop-dlg').hidden = true; });
+  $('#crop-dlg').addEventListener('click', (e) => { if (e.target.id === 'crop-dlg') $('#crop-dlg').hidden = true; });
+  $('#crop-dlg').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); doCrop(); }
+    else if (e.key === 'Escape') $('#crop-dlg').hidden = true;
+  });
 }
 
 async function savePrompt() {

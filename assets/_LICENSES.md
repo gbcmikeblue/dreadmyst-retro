@@ -37,9 +37,10 @@
 
 | 名称 | 来源 | 用途 | License | 作者署名要求 | 项目内路径 |
 | --- | --- | --- | --- | --- | --- |
-| _待填_ | _URL/作者_ | _敌人/装备/UI_ | _Qwen Research / CC0 / 等_ | _是/否_ | `res://assets/...` |
+| **AI 出图角色 sprite（4 敌人 + 3 职业主角，各 4 视角，共 28 张，128²）** —— 敌人 `slime` / `brute` / `wisp` / `bone_lord`；主角 `warrior` / `mage` / `ranger` | 本机 **Qwen-Image 2.1** 生成（见 §1）+ 对比台裁切（`tools/lora-compare/crop_sheet.py`）；每张取自 1536² 的 2×2 多视角设定图 | billboard 精灵。敌人走 `data/enemies.json` 的 `sprite_path`，主角走 `data/professions.json` 的 `sprite_path`（当前都只用 `_iso` 那张，其余 3 视角备用） | **随底模**：Qwen Research License（非商用可用；转商用需申请） | 否（自己生成，无第三方作者） | `res://assets/sprites/enemy_{slime,brute,wisp,bone_lord}_{front,iso,side,back}.png`、`res://assets/sprites/player_{warrior,mage,ranger}_{front,iso,side,back}.png` |
 
-> ⚠️ 本项目**不用第三方现成素材**（不做像素风 + 只走 AI 出图），本表预计长期为空。
+> ⚠️ 本项目**不用第三方现成素材**（不做像素风 + 只走 AI 出图）；本表登记的是 **AI 出图产物**，
+> 许可**随底模**（见 §1）。每张图要能追溯到生成用的模型与提示词（提示词见 `assets/_PROMPTS.md`）。
 
 ---
 
@@ -94,4 +95,6 @@
 | 2026-10-12 | **新增「国风 / 西游 / 等距」批次 9 项**（含国风3 底模，**必须署名**）→ 登记行见 git 历史 |
 | 2026-10-12 | **生图后端换代：SD → Qwen-Image 2.1 + ComfyUI**。登记 Qwen 三件套 + Turbo LoRA + ComfyUI 本体；SD 系整体弃用 |
 | 2026-10-13 | **文本编码器加登记 `qwen3vl_8b_nvfp4`（5.87 GiB）**：252 层 nvfp4 + 2 层 fp8，与 int8 版热态速度打平、体积小 2.84 GiB → 定为现用编码器；**`qwen3vl_8b_w4a8` 删除**（实测无用） |
+| 2026-10-13 | **§2 首次登记 AI 出图素材**：粘液怪 4 视角 sprite（`enemy_slime_{front,iso,side,back}.png`，各 128²）—— 本机 Qwen-Image 2.1 生成 + 对比台 `crop_sheet.py` 裁切，**许可随底模**（Qwen Research，非商用）；同时给 `.gitattributes` 加上素材的 **Git LFS** 规则（**按类型 / 目录**圈：源图/概念图 + 字体 + 音频走 LFS，游戏内小图直存） |
+| 2026-10-13 | **§2 扩展为 7 套 28 张角色 sprite**：4 敌人（`slime` / `brute` / `wisp` / `bone_lord`）+ 3 职业主角（`warrior` / `mage` / `ranger`），各 4 视角 128² —— 全部由本机 Qwen-Image 2.1 出 2×2 多视角设定图后裁切；主角改为走 `data/professions.json` 的 `sprite_path`（原硬编码为空） |
 | 2026-10-13 | **SD 内容整体清除（本文件重写）**：删掉 §1 的 SDXL / SD 1.5 / 45 个 SD LoRA / 国风批次共 56 行登记，以及基于 Civitai 的下载口径整段（登录墙 / `allowCommercialUse` 筛选细则）；§3 速查里的 `Open RAIL-M` 换成 `Qwen Research License`；§4 SOP 去掉 Forge 步骤。**磁盘侧同步核实**：`D:\AI\models`、`stable-diffusion-webui-forge` 均已不存在，全盘无 SD 权重残留 |

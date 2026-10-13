@@ -8,6 +8,8 @@ extends RefCounted
 var id: String = ""
 var display_name: String = "未知职业"
 var color: Color = Color.WHITE
+## 真美术精灵路径（res://...）。留空则用 SpriteFactory 的程序化占位贴图（M15）。
+var sprite_path: String = ""
 ## 基础属性。键与 Player.total_stats() 的键一致：
 ## attack / max_hp / armor / crit / speed / max_mana / mana_regen
 var base_stats: Dictionary = {}
@@ -22,6 +24,7 @@ static func from_dict(d: Dictionary) -> Profession:
 	p.id = String(d.get("id", ""))
 	p.display_name = String(d.get("display_name", "未知职业"))
 	p.color = _parse_color(d.get("color", [1.0, 1.0, 1.0]))
+	p.sprite_path = String(d.get("sprite_path", ""))
 	p.base_stats = d.get("base_stats", {})
 	var raw_skills: Array = d.get("skills", [])
 	for s in raw_skills:

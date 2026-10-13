@@ -321,6 +321,33 @@
   <div class="lightbox-cap" id="lightbox-cap"></div>
 </div>
 
+<!-- 裁切对话框：A4 的 2×2 设定图 → 单视角 sprite（尺寸可选，默认 128=项目规范） -->
+<div class="modal" id="crop-dlg" hidden>
+  <div class="modal-box">
+    <h3>裁 sprite —— A4 2×2 设定图 → 4 张单视角</h3>
+    <p class="modal-sub" id="crop-src"></p>
+    <label class="field">
+      <span>输出名前缀（生成 <b>&lt;前缀&gt;_front / _iso / _side / _back.png</b>）</span>
+      <input type="text" id="crop-name" spellcheck="false" autocomplete="off">
+    </label>
+    <label class="field">
+      <span>输出边长（正方形；128 = 项目规范，游戏里显示偏大就升档）</span>
+      <input type="number" id="crop-size" list="crop-sizes" min="32" max="1024" step="32" value="128">
+      <datalist id="crop-sizes">
+        <option value="128">128（项目规范）</option>
+        <option value="256">256</option>
+        <option value="384">384</option>
+        <option value="768">768（≈每格原始像素）</option>
+      </datalist>
+    </label>
+    <div class="row">
+      <button id="crop-go" class="primary">开始裁切</button>
+      <button id="crop-cancel" class="mini">取消</button>
+      <span class="hint" id="crop-hint"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 /* 前端兜底：任何脚本异常 / 未捕获 Promise 都直接显示在顶部横幅，
    避免出现"页面看着正常但其实早就挂了"这种最难查的情况。 */

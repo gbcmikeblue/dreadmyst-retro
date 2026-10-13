@@ -118,7 +118,7 @@ LoRA 还要同步 `tools/lora-compare/data/loras.json`（用途 / 分组 / base 
 | --- | --- | --- | --- |
 | **挂 Turbo LoRA**（默认） | **8** | **1** | cfg>1 会直接崩；此时**负向提示词完全失效** |
 | 不挂 LoRA（基础模型） | 25（官方模板默认）/ 30–40 | 1 | 想让**负向生效**必须把 cfg 提到 2.5~4（见 backlog T-21） |
-| 尺寸 | —— | —— | **必须 32 的倍数**；1024² 是 8GB 的舒适档（2.1 原生上限 2048²） |
+| 尺寸 | —— | —— | **必须 32 的倍数**；1024² 舒适 · 1536² 可行 · **2048²（2.1 原生上限）实测也可行**（8 步 Turbo 下 16 / 24 / 57 s） |
 | Sampler / Scheduler | `euler` / `simple` | | 官方模板默认值 |
 | Batch | 1 | | —— |
 | Seed | -1 或固定 | | 复现关键图要固定；对比台会「本批锁一个 seed 家族」 |
@@ -128,11 +128,28 @@ LoRA 还要同步 `tools/lora-compare/data/loras.json`（用途 / 分组 / base 
 ### 4.2 提示词（**以 `data/prompts.json` 为唯一权威**）
 
 模板与要求块都放在 [`tools/lora-compare/data/prompts.json`](../../tools/lora-compare/data/prompts.json)：
-- 对比台【提示词 → 模板】：8 个生成项目（A1 立绘 / A2 视角转换 / A3 一步出图 / B 地砖 / C 装备图标 /
-  D Boss / E 技能图标 / F UI），每个含正向、要求、负向、勾选的要求块
-- 对比台【提示词 → 要求 / 规范】：7 个全局要求块（`portrait` / `viewshift` / `style` / `composition` /
-  `viewneg` / `commonneg` / `guofeng`）+ 其他规范，改一处所有勾了它的模板一起变
-- **只读速查**：[`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)（三条铁律、参数纪律、项目清单）
+- 对比台【提示词 → 模板】：9 个生成项目（A1 立绘 / A2 视角转换 / A3 一步出图 / **A4 多视角设定图** /
+  B 地砖 / C 装备图标 / D Boss / E 技能图标 / F UI），每个含正向、要求、负向、勾选的要求块
+- **模板可声明 `默认尺寸`**（`{"width":…, "height":…}`）：选中该模板时前端自动套用（例：A4 = 1536²）；
+  没写就按底模的 `checkpointDefaults` 走
+- 对比台【提示词 → 要求 / 规范】：**8 个**全局要求块（`transparency` / `portrait` / `viewshift` / `style` /
+  `composition` / `viewneg` / `commonneg` / `guofeng`）+ 其他规范，改一处所有勾了它的模板一起变
+- **只读速查**：[`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)（四条铁律、参数纪律、项目清单）
+
+⭐ **第一原则：正向自足（2026-10-13 定）**。主路径是 Turbo LoRA / 8 步 / **cfg=1**，而
+**cfg=1 时 ComfyUI 跳过 negative conditioning → 负向提示词完全不生效**（ComfyUI 官方文档）。
+因此所有要求都必须能用正向词表达，负向块只在 cfg 2.5~4 时当护栏。
+
+⭐ **透明底用官方句式**（官方模型卡给定格式，已固化成 `transparency` 块，并放在 `要求块` 的第一个键）：
+
+```
+This is an RGBA image with transparency. The image has alpha channel and the background is transparent.
+```
+
+⚠️ 因此正向里**不再写 `plain background` / `simple background`**（会画纯色底，与透明底冲突）。
+
+⭐ **图生图 = 指令式编辑**，规范写法是**英文祈使句 + `<image1>` 引用 + 显式列出保持不变项**
+（官方示例：`Keep the character and pose in <image1> unchanged, put this shirt from <image2> on the character…`）。
 
 拼装顺序：`<lora:名:权重> + 触发词 + [勾选的正向块…] + 模板·要求 + 模板·正向`
 负向：`[勾选的负向块…] + 模板·负向`
@@ -149,7 +166,10 @@ LoRA 还要同步 `tools/lora-compare/data/loras.json`（用途 / 分组 / base 
 ### 5.1 流程总览
 
 ```
-对比台 / ComfyUI 出图（RGBA png，1024²）
+对比台 / ComfyUI 出图（RGBA png）
+  ├─ 单视角（A1/A3/B/C/D/E/F）：1024²
+  └─ 多视角设定图（A4「一图流」）：1536² / 2048²，2×2 四格
+       → crop_sheet.py 裁切成 4 张单视角 sprite（共用缩放 + 底对齐 + 保留 alpha）
   → 图像编辑器：平滑降采样（Area / Lanczos3）、对齐、调色板收敛、拼 spritesheet
     （⚠️ 去背这一步**通常可以省掉** —— 2.1 原生输出带 alpha）
   → Real-ESRGAN（可选）：2x 放大低清图
@@ -157,6 +177,18 @@ LoRA 还要同步 `tools/lora-compare/data/loras.json`（用途 / 分组 / base 
   → Godot：导入 .png / TileSet / .tscn
   → GDScript：填 `sprite_path` / `icon` 字段（**不改渲染路径**）
 ```
+
+**A4 一图流的裁切（2026-10-13 起为正式步骤）** —— 只依赖 Pillow：
+
+```powershell
+# 默认输出 <图名>_crops/<name>_front|iso|side|back.png（128²，RGBA 原样保留）
+D:\AI\venv-comfy\Scripts\python.exe tools\lora-compare\crop_sheet.py <设定图.png> --name enemy_slime
+```
+
+默认 **四格共用同一缩放系数 + 底对齐（脚底对齐）** → 四个视角进游戏时相对身高一致，
+可直接当 sprite 用；`--mode auto` 用 alpha 连通域定位（更抗偏移），`--size` 改输出边长。
+对比台结果卡片上还有「**裁 sprite →**」按钮可一键完成（等价于上面的命令），
+且**选中 A4 时宽高会自动设为 1536²**（模板里的 `默认尺寸` 字段）。
 
 ### 5.2 与现有代码的衔接
 
@@ -174,7 +206,10 @@ LoRA 还要同步 `tools/lora-compare/data/loras.json`（用途 / 分组 / base 
 2. **导入设置**：**`Filter = Linear`、`Mipmaps = on`**（非像素风不要 Nearest，否则边缘硬锯齿）
    ⚠️ 代码当前是 `TEXTURE_FILTER_NEAREST`（`scripts/world/sprite_factory.gd`），出图接入后按实际观感切换
 3. **文件命名**：`{类别}_{id}_{姿态}.png`，例 `enemy_slime_idle.png`、`item_sword_iron_icon.png`
-4. **版本控制**：素材走 **Git LFS**（单文件 > 100KB 都要 LFS），否则仓库会爆
+4. **版本控制（2026-10-13 改口径）**：**按类型 / 目录**圈 LFS（git 只匹配文件名，做不到按体积判断）——
+   `assets/concepts/**`（源图 / MB 级大图）+ 字体 `.ttf`/`.otf` + 音频 `.wav`/`.ogg` + `.exr` 走 **Git LFS**；
+   `assets/{sprites,tilesets,icons,ui}/` 的游戏内小图**直存 git**。
+   ⚠️ **MB 级源图必须放 `concepts/`**，放别处会直存进 git、历史删不掉。规则见仓库根 `.gitattributes`
 
 ---
 
@@ -221,6 +256,9 @@ LoRA 还要同步 `tools/lora-compare/data/loras.json`（用途 / 分组 / base 
 | 2026-10-10 | **端到端跑通 + 实测结论入档**（当时的 SD 环境：torch 2.7.0+cu128 / 交大镜像 / junction / 代理 7890 等） |
 | 2026-10-12 | **提示词拆成「模板 + 要求」两层**，落到可编辑的 `data/prompts.json`；更正 A 模板视角写法为投影词 |
 | 2026-10-13 | **生图后端换代 + 本文档整体重写**：**SD 1.5 / SDXL / Forge 全部删除**（底模、45 个 LoRA、ControlNet、整棵 `D:\AI\models\`），改为 **ComfyUI 0.39 + Qwen-Image 2.1**；§1 选型表换成 Qwen 三件套 + Turbo LoRA（含 nvfp4 编码器说明）；§1.3 部署现状重写（torch 2.11.0+cu130 / comfy-kitchen 启用 / DynamicVRAM / **`--lowvram` 已失效** / 交大镜像有 cu130）；§2 删掉 SD LoRA 关键词列，换成 Qwen 实测结论（**12 s 出图 + 原生透明底 + 速度瓶颈消失**）；§3 换成 ModelScope/HF 获取；§4 换成对比台工作流 + Qwen 参数纪律；§6 换成 Qwen 显存纪律；§7 注明"出图不再是瓶颈、人工后期才是"。SD 时代的细节（img2img denoise 扫档、圆底图/纯色块底图的坑、Civitai 登录墙）随 SD 方案一并删除，需要追溯请查 git 历史 |
+| 2026-10-13 | **提示词全量规范化（8 模板 + 8 块）**：确立「**正向自足**」第一原则（Turbo/cfg1 下负向全失效）；新增 `transparency` 块（官方 RGBA 句式）并清除所有 `plain background` 冲突；修 `viewshift` 的 `facing the viewer` 自相矛盾；`composition` 去掉背景词、B/D 不再勾；8 个模板中文短语清零改具象材质；A2 改官方祈使句 + `<image1>`；`commonneg` 按三类护栏重排；语言统一英文 + 专有名词加引号 |
+| 2026-10-13 | **新增 A4「角色多视角设定图（一图流）」+ 分辨率上限实测**：联网核实两套社区范式（GitHub `Pyrolistical/qwen-image-2.1-workflows` 的**版式锁定法** / Wikiprompt 收录 `@junwatu` 的**单次提示词式**）并落地为 A4 = 2×2 格（正面 / **3-4 俯视** / 侧面 / 背面）；实测 **1024² / 1536² / 2048² 都能稳定出满 4 格**（16 / 24 / 57 s），**2048²（2.1 原生上限）在 8GB 上可行** → 作废旧「1536² 会 OOM」结论；动机：i2i 转视角实测剪影 IoU 0.97 ≈ 几乎不动 → 改为「让模型直接多画几个视角」 |
+| 2026-10-13 | **新增 `tools/lora-compare/crop_sheet.py`（A4 设定图 → sprite 裁切）**：2×2 切格 + 每格 alpha 收紧 + **四格共用缩放 + 底对齐** + 保留 alpha，输出 128²；只依赖 Pillow。实测 1024²/1536²/2048² 的设定图都能正确裁出 4 张（`--mode auto` 用格内连通域定位，认不到 4 个主体会自动退回 grid）。§5.1 流程总览改为「单视角 1024² / A4 设定图 1536²→裁切」两条支线 |
 
 ---
 
@@ -235,18 +273,21 @@ LoRA 还要同步 `tools/lora-compare/data/loras.json`（用途 / 分组 / base 
 
 **Q: 出图很快但图不对，该先调什么？**
 A: ① 确认 **cfg=1**（挂了 Turbo LoRA 时 cfg>1 会崩）；② 尺寸是 32 的倍数且 ≤1024²；③
-换提示词前先看对比台【提示词检查】里的拼装结果，确认要求块勾对了。
+换提示词前先看对比台【提示词检查】里的拼装结果，确认要求块勾对了；④
+**别指望负向**（cfg=1 下负向整段失效）—— 要什么就写进正向。
 
 **Q: 想要负向提示词生效怎么做？**
-A: **不挂 Turbo LoRA**，并把 cfg 提到 2.5~4（步数 25~40）。挂 Turbo 时 cfg 恒 1，负向被完全忽略。
+A: **不挂 Turbo LoRA**，并把 cfg 提到 2.5~4（步数 25~40）。挂 Turbo 时 cfg 恒 1，负向被完全忽略
+（ComfyUI 跳过 negative conditioning 通道）。所以提示词设计按「**正向自足**」写。
 
 **Q: 换文本编码器会更快吗？**
 A: 不会。2026-10-13 实测 **nvfp4（5.87 GiB）与 int8_convrot（8.71 GiB）热态都是 12 s**；
 换 nvfp4 只是为了省 2.84 GiB 磁盘 / 内存。
 
 **Q: 透明底还要抠图吗？**
-A: 不用。2.1 的 VAE 是 4 通道，**原生输出 RGBA**（实测 32~34% 全透明像素），提示词写
-`transparent background / alpha channel` 即可。
+A: 不用。2.1 的 VAE 是 4 通道，**原生输出 RGBA**（实测 32~34% 全透明像素）。提示词用官方句式
+（已固化成 `transparency` 块）：`This is an RGBA image with transparency. The image has alpha channel
+and the background is transparent.` —— 注意**不要再写 `plain background`**，那会画出纯色底。
 
 **Q: 出图有版权风险吗？**
 A: 底模是 **Qwen Research License（非商用）** —— 本项目自用没问题，**转商用必须申请授权**；

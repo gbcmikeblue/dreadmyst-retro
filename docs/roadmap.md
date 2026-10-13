@@ -22,8 +22,14 @@
   顺带：PVP（M12）也等着它
 - [ ] **M15 素材接入**：真实 sprite（`sprite_path`）/ 中文字体 / 音频 ← *当前最高优先级*  
   ↳ 出图任务卡片见 [`docs/tasks/`](tasks/)；完整方案见 [`docs/reference/ai-asset-generation.md`](reference/ai-asset-generation.md)  
-  ⚠️ **这一半阻塞在「素材」上**：代码侧管线早就留好了（`data/*.json` 的 `sprite_path` / `icon`
-  + `SpriteFactory` 的加载分支），但没有出图 / 没有中文字体 `.ttf` 就无从接入。
+  ✅ **2026-10-13 角色 sprite 链路全部跑通**：Qwen-Image 2.1 出 2×2 多视角设定图（1536²）→
+  对比台「裁 sprite」切成 4 张 128² → `assets/sprites/` → 填 JSON 的 `sprite_path` → **游戏内生效，
+  渲染代码零改动**。已接入 **4 个敌人**（`slime` / `brute` / `wisp` / `bone_lord`，走 `data/enemies.json`）
+  与 **3 个职业主角**（`warrior` / `mage` / `ranger`，走 `data/professions.json` 的 `sprite_path`，
+  `Player._refresh_sprite()` 在转职时换图并重算 `pixel_size`），各 4 视角共 **28 张**。
+  顺带把 billboard 的 `texture_filter` 按「真素材 / 占位贴图」分流，并加了 **Git LFS** 规则（**按类型 / 目录**圈：源图 `assets/concepts/**` + 字体 + 音频走 LFS，`assets/{sprites,tilesets,icons,ui}/` 的小图直存）。  
+  ⏳ **仍待素材**：图标类（装备 / 技能 `/data/*.json` 的 `icon`）、中文字体 `.ttf`
+  （HUD 与伤害数字当前用引擎回退字体）、音频；以及「方向性精灵」（billboard 目前只用 `_iso` 一张）。
 - [x] **M16 相机微调**：参数进 `data/camera.json`（`CameraConfig`），相机逻辑独立成 `CameraRig`；
       滚轮/`=`·`-` 缩放、`,`·`.` 旋转、`PageUp/Down` 俯角、`R` 重置；含旋转的边界钳制（斜矩形的 AABB）。
       **代码完成**；`size` / `tilt_deg` 的数值仍待目视校准（游戏内调完抄回 JSON 即可）。
@@ -101,4 +107,6 @@
 | 2026-10-10 | **M13 存档（代码完成）**：`SaveData` / `SaveService` / `TitleScreen`；`Player` 的 `export_state`/`import_state`/`reset_state` 与 `Game` 的 `load_progress`/`reset_progress`；`GearItem` 序列化 + 枚举键映射收敛到唯一一份（`LootConfig` 转发）；**标题界面用 `get_tree().paused` 冻结世界**（已实测暂停时 `process_frame` 仍触发，帧驱动的自测不会被挂住）；新增 `F5` 存 / `F9` 读；新增 `tests/test_save.gd`（9 用例），9 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。附：`test_input_move.gd` 需在启动时替玩家选槽位（世界初始是暂停的） |
 | 2026-10-10 | **M16 相机微调（代码完成）**：`data/camera.json` + `CameraConfig` + `CameraRig`；缩放 / 旋转 / 俯角 / 重置 / 瞬移自动对齐；边界钳制改成「斜矩形 AABB」以支持旋转；新增 `tests/test_camera.gd`（10 用例），10 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING。**size / tilt 的具体数值仍待目视校准**（游戏内调完抄回 JSON） |
 | 2026-10-10 | **范围决定：M14 联机暂不做**。ENet 联机的前置是「把权威模拟层从表现层抽出来」，是一整块重构；当前最高优先级改为 **M15 素材接入**（注意它阻塞在素材上，素材没到可以先做**纯代码的 M16 相机微调**） |
+| 2026-10-13 | **M15 第一步：敌人 sprite 接入链路跑通（游戏侧代码零改动）**。出图侧：新增 A4「角色多视角设定图」模板（2×2 一图流）+ 对比台一键裁切 `tools/lora-compare/crop_sheet.py`（四格共用缩放 / 底对齐 / 保 alpha，尺寸 128~1024 可选）。游戏侧：`assets/sprites/enemy_slime_{front,iso,side,back}.png`（各 128²，取自 1536² 设定图）+ `slime.sprite_path` 指向 `_iso`；`SpriteFactory.billboard_sprite()` 的 `texture_filter` 改为**按贴图来源分流**（真素材 `LINEAR` / 占位贴图 `NEAREST`）；新增 `.gitattributes`（**按类型 / 目录**圈 LFS：源图/概念图 + 字体 + 音频；游戏内小图直存）；4 张 sprite 的 `.import` 打开 mipmaps 并关掉 `detect_3d` 自动有损压缩；`tests/test_data_layer.gd` 增加「JSON 里非空 `sprite_path` 必须能加载成 Texture2D」的断言。**10 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING** |
+| 2026-10-13 | **M15 角色 sprite 批次接入（4 敌人 + 3 职业，28 张）**：`data/enemies.json` 的 `brute` / `wisp` / `bone_lord`（`slime` 已接且本次换成真正的史莱姆美术）与 `data/professions.json` 三个职业的 `sprite_path`；`Profession` 增加 `sprite_path` 字段，`Player._refresh_sprite()` 在 `set_profession()` 里换图并**重算 `pixel_size`**（占位 64px / 真素材 128px，不重算尺寸差一倍）；`tests/test_data_layer.gd` 的素材断言扩展到职业。另修/记两条坑：**`Enemy` 必须先 `setup()` 再 `add_child()`**（否则静默退回占位贴图，已记入 `AGENTS.md` §3）、`--script` 入口脚本要用 `load()` 动态取类名（否则因依赖链引用 `Game` 而编译失败）。10 条验证命令全过、主场景 900 帧 0 ERROR / 0 WARNING；另跑真窗口截图确认四种敌人 + 主角精灵在游戏内正确渲染（图存 `tools/lora-compare/images/_game_shot_*.png`，不入库） |
 

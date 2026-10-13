@@ -83,14 +83,22 @@ ext.y  = |right.y| * half_w + |up.y| * half_h
 ```gdscript
 sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 sprite.shaded = false            # 不受光照影响，保持 2D 观感
-sprite.alpha_cut = ALPHA_CUT_DISCARD         # ⚠️ 会硬切羽化边，见下方
-sprite.texture_filter = TEXTURE_FILTER_NEAREST   # ⚠️ 非像素风下应为 LINEAR_WITH_MIPMAPS
-
-> ⚠️ **风格基线已改为"不做像素风"**（2026-10-10，见 [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)）：
-> 真素材接入后这两行都要改 —— `texture_filter` 应为 **Linear + Mipmaps**（Nearest 用在非像素图上会硬锯齿），
-> `alpha_cut` 应从 `ALPHA_CUT_DISCARD` 改成 `ALPHA_CUT_DISABLED` 才能保住 1px 羽化边。
-> 两者都**待出图跑通后按实际观感定**，当前代码保持原样。
+sprite.alpha_cut = ALPHA_CUT_DISCARD         # ⚠️ 仍会硬切羽化边，见下方
+# 滤波按贴图来源分流（2026-10-13 M15 起）：真素材 Linear / 程序化占位 Nearest
+sprite.texture_filter = LINEAR if not tex.resource_path.is_empty() else NEAREST
 ```
+
+**真素材 vs 程序化占位贴图（2026-10-13 起）**：
+
+| | 程序化占位贴图 | 从文件加载的真素材 |
+| --- | --- | --- |
+| 来源 | `Image.set_pixel` 生成（`resource_path` 为空） | `data/*.json` 的 `sprite_path`（`resource_path` 非空） |
+| `texture_filter` | `NEAREST`（本来就按像素格生成，Linear 反而糊） | **`LINEAR`**（非像素风用 Nearest 会硬锯齿） |
+| 导入参数 | — | `mipmaps/generate=true` · `detect_3d/compress_to=0`（防被自动改成 VRAM 有损压缩） · `compress/mode=0` 无损 · `process/fix_alpha_border=true` |
+
+> ⚠️ **仍待办**：`alpha_cut` 两边都还是 `ALPHA_CUT_DISCARD`，会**硬切 1px 羽化边**。
+> 真素材要不要改成 `ALPHA_CUT_DISABLED` 得看实际观感 —— 代价是透明物**不写深度**，
+> 多个精灵重叠时可能出现排序闪烁。**先看到渲染效果再定。**
 
 完全 billboard 的精灵永远正对相机，所以固定俯角下**看起来是直立的、无畸变的 2D 图**。
 
@@ -111,7 +119,33 @@ node.position = Vector3(facing.x, 0, facing.y).normalized() * offset
 
 推导：绕 Y 旋转 θ 把 +X 映射到 `(cosθ, 0, -sinθ)`，令其等于 `(fx, 0, fy)` 得 `θ = atan2(-fy, fx) = -angle()`。
 
-## 零素材：程序化占位贴图
+## 素材：占位贴图与真素材（M15）
+
+**第一张真素材已接入**（2026-10-13）：`assets/sprites/enemy_slime_{front,iso,side,back}.png` ——
+Qwen-Image 2.1 出 2×2 多视角设定图 → [`tools/lora-compare/crop_sheet.py`](../../tools/lora-compare/README.md)
+裁成 4 张 128²；`data/enemies.json` 的 `slime.sprite_path` 指向 `_iso`（3/4 俯视）那张，**渲染代码零改动**。
+
+> 接入口径：出图 → 裁切 → 拷进 `assets/sprites/`（命名 `{类别}_{id}_{视角}.png`）→ 填 `data/*.json` 的
+> `sprite_path`。⚠️ 4 个视角目前只用 1 张 —— billboard 永远正对相机，多视角要等「方向性精灵」需求出现再接。
+> `assets/sprites/` 的 sprite 只有 128²（十几 KB），**直存 git**；走 **Git LFS** 的只有源图 / 概念图
+> （`assets/concepts/**`，MB 级）、字体与音频（规则见仓库根 `.gitattributes`）。
+> ⚠️ 所以 **MB 级源图必须放 `assets/concepts/`**。许可登记见 [`assets/_LICENSES.md`](../../assets/_LICENSES.md)。
+
+**已接入的真素材（2026-10-13）**：4 个敌人（`slime` / `brute` / `wisp` / `bone_lord`）+ 3 个职业主角
+（`warrior` / `mage` / `ranger`），各 4 个视角共 **28 张 128²**，全部取自 1536² 的 2×2 设定图。
+实机验证截图存 `tools/lora-compare/images/_game_shot_*.png`（过程产物，**不入库**）。
+
+| 谁 | 路径来源 | 用的是哪一张 |
+| --- | --- | --- |
+| 敌人 | `data/enemies.json` 的 `archetype.sprite_path`（`enemy.gd::_build_visuals` 读取） | `_iso`（3/4 俯视） |
+| 主角 | `data/professions.json` 的 `profession.sprite_path`（`Player._refresh_sprite()` 读取） | `_iso` |
+
+- 主角**转职即时换图**：`set_profession()` 会调 `_refresh_sprite()`；
+  ⚠️ 换图必须重算 `pixel_size = SPRITE_WORLD_HEIGHT / 贴图高度` —— 占位贴图 64px、真素材 128px，不重算角色尺寸会差一倍。
+- ⚠️ 敌人**必须先 `setup(level, archetype)` 再 `add_child()`**：视觉是在 `_ready()` 里按 `archetype` 建的，
+  顺序反了会静默退回占位贴图（见 `AGENTS.md` §3）。
+- 尺寸：`sprite_world_height = radius * 2.4`（敌人，Boss 自然更大）/ `SPRITE_WORLD_HEIGHT = 44`（主角）；
+  贴图只影响清晰度，不影响世界尺寸（`pixel_size` 按贴图高度反算）。
 
 `SpriteFactory` 用 `Image.set_pixel` 逐像素生成贴图（带静态缓存）：
 
@@ -154,7 +188,8 @@ godot --headless --path . --script res://tests/test_camera.gd
 
 - [ ] **数值仍需目视校准**：`size` / `tilt_deg` 的当前值是照 2D 版推的（我无法看到渲染结果）。
       现在可以在游戏里调好再抄回 `data/camera.json`（见上「操作」）
-- [ ] 网格贴图未生成 mipmap，远处可能有轻微摩尔纹
+- [ ] 地面 / 墙体等**网格**贴图未生成 mipmap，远处可能有轻微摩尔纹（角色精灵已开 mipmaps）
+- [ ] 真素材的 `alpha_cut` 仍是 `ALPHA_CUT_DISCARD`（羽化边被硬切）—— 看渲染效果后决定是否改 `DISABLED`
 - [ ] 玩家朝向指示仍是几何体（金色长条），接入真美术后可换成精灵
 - [ ] 旋转后**阴影方向不变**（`DirectionalLight3D` 是固定朝向）：如果将来要「阳光跟着镜头转」，
       让光的 yaw 跟随相机 yaw 即可

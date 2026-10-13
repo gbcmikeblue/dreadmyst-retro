@@ -59,7 +59,10 @@
   [`assets/_PROMPTS.md`](../../assets/_PROMPTS.md)），导入规范改为 **`Filter = Linear` + `Mipmaps = on`**
   （Nearest 用非像素图会硬锯齿）。素材尺寸也整体上调一档：角色 128²、地砖 64²、图标 64²。
 - **每次出图后及时归档**到 `assets/_wip/<类别>/<名称>.png`，避免 `D:\AI\outputs` 爆炸。
-- **Git LFS**：单张素材 > 100KB 都要 LFS，否则仓库会爆。
+- **Git LFS（2026-10-13 改口径）**：按**类型 / 目录**圈范围（git 只匹配文件名，做不到「按体积判断」）——
+  **走 LFS**：`assets/concepts/**`（源图 / 概念图，MB 级）+ 字体 `.ttf`/`.otf` + 音频 `.wav`/`.ogg` + `.exr`；
+  **直存 git**：`assets/{sprites,tilesets,icons,ui}/` 的 PNG 等游戏内小图（几 KB~几十 KB，压过没得再压）。
+  ⚠️ 所以 **MB 级源图必须放 `assets/concepts/`** —— 放别处会直存进 git，历史删不掉。规则见仓库根 `.gitattributes`。
 
 ---
 

@@ -36,6 +36,28 @@ func _initialize() -> void:
 			"  atk(1)=", a.compute_attack(1),
 			"  weight=", a.spawn_weight)
 
+	# ---------- 真素材引用（M15）：JSON 里填了 sprite_path 就必须真的能加载 ----------
+	# 这是「出图 → 裁切 → 落 assets/ → 填 JSON」链路的回归保护：
+	# 路径打错、文件漏拷、asset 没被 Godot 导入，都会在这里立刻失败（否则只会在游戏里静默退回占位贴图）。
+	var sprite_count := 0
+	for a in archs:
+		if String(a.sprite_path).is_empty():
+			continue
+		sprite_count += 1
+		if not ResourceLoader.exists(a.sprite_path):
+			print("FAIL: 敌人 ", a.id, " 的 sprite_path 不存在或未被导入：", a.sprite_path)
+			failed = true
+			continue
+		var tex: Resource = load(a.sprite_path)
+		if tex is Texture2D:
+			print("[OK] 敌人 ", a.id, " 已接真素材：", a.sprite_path,
+				"  ", (tex as Texture2D).get_width(), "×", (tex as Texture2D).get_height())
+		else:
+			print("FAIL: 敌人 ", a.id, " 的 sprite_path 不是纹理资源：", a.sprite_path)
+			failed = true
+	if sprite_count == 0:
+		print("[OK] 暂无真素材：sprite_path 全为空，全部走 SpriteFactory 程序化占位贴图")
+
 	# ---------- 抽样生成 8 件装备 ----------
 	print("[OK] 随机生成 8 件装备（lv=3）：")
 	for i in range(8):
@@ -68,6 +90,20 @@ func _initialize() -> void:
 	for p in profs:
 		var prof_skills: Array = p.skills()
 		print("     - ", p.id, " / ", p.display_name, "  base=", p.base_stats)
+		# 真素材（M15）：职业精灵路径填了就必须能加载（主角贴图随职业切换）
+		var prof_path := String(p.sprite_path)
+		if not prof_path.is_empty():
+			if not ResourceLoader.exists(prof_path):
+				print("FAIL: 职业 ", p.id, " 的 sprite_path 不存在或未被导入：", prof_path)
+				failed = true
+			else:
+				var ptex: Resource = load(prof_path)
+				if ptex is Texture2D:
+					print("       ↳ 真素材 ", prof_path, "  ",
+						(ptex as Texture2D).get_width(), "×", (ptex as Texture2D).get_height())
+				else:
+					print("FAIL: 职业 ", p.id, " 的 sprite_path 不是纹理资源：", prof_path)
+					failed = true
 		# 约定：下标 0 = 普攻，1 = 大招
 		if prof_skills.size() < 2:
 			print("FAIL: 职业 ", p.id, " 的技能不足 2 个（约定 0=普攻、1=大招）")
