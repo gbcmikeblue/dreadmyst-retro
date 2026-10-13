@@ -69,11 +69,17 @@ F1 / F2 / F3    ──> set_profession(ids[0..2])   原型期切职业
 
 ### 命中判定
 
+**时序（2026-10-13 改：伤害挪到「挥出帧」）**：`cast_skill()` **不当场结算伤害** —— 它只扣蓝 / 起冷却 /
+起挥砍动作，并记下 `_pending_skill` 与**出手瞬间锁定的朝向** `_attack_dir`（挥砍途中转身不改变这次判定）；
+伤害在动作进度到达 **`ATTACK_IMPACT_AT = 0.62`（挥出帧）** 时由 `_fire_attack_impact()` 结算**一次**
+（`_tick_attack()` 每物理帧推进），随后进入 **0.05 s 命中顿帧**（只冻自己，不动 `Engine.time_scale`）。
+效果 = "刀挥到才掉血"，而不是按下即掉血。⚠️ `_tick_attack()` 必须排在 `dead` / 模态 UI 的提前 return 之前。
+
 沿用「距离 + 朝向夹角」的手写判定，不用 `Area3D`，行为可预测：
 
 ```gdscript
-to_enemy.length() > skill.cast_range                          → 不命中
-not is_full_circle() and absf(facing.angle_to(to_enemy)) > half_angle → 不命中
+to_enemy.length() > skill.cast_range                                → 不命中
+not is_full_circle() and absf(dir.angle_to(to_enemy)) > half_angle   → 不命中   # dir = 出手瞬间锁定的朝向
 ```
 
 伤害：`attack力 × damage_mult × (暴击 ? 1.6 : 1.0) × randf_range(0.9, 1.1)`，
@@ -87,8 +93,18 @@ not is_full_circle() and absf(facing.angle_to(to_enemy)) > half_angle → 不命
 
 ## 5. 表现
 
-- **弧光**：每个技能槽一个 `SpriteFactory.arc_fx()` 网格，在**转职时**按该技能的射程/扇角/颜色重建
-  （运行时零分配）；施放时只把对应那个槽的弧光放大淡出。
+- **弧光（2026-10-13 升级为「刀光扫过」）**：每个技能槽一个 `SpriteFactory.arc_fx()` 网格，在**转职时**
+  按该技能的射程/扇角/颜色重建（运行时零分配）。施放时：
+  - 非 360° 技能 → 弧光是**窄弧**（`arc_fx` 的 `width_half_angle`），在挥出段**从 `-half_angle` 扫到 `+half_angle`**
+    —— 看起来就是刀锋扫过整个扇形；
+  - 360° 技能（旋风斩）→ 保留整片圆环，只做放大。
+- **挥砍动作（程序化，零素材，2026-10-13）**：`_attack_anim = 0.30 s` 分三段，只作用于 `_sprite`：
+  1. **蓄力**（0~28%）：沿朝向**后撤 7 单位** + 压扁（`sx 1.00→1.08` / `sy 1.00→0.92`）；
+  2. **挥出**（28~62%）：**前冲 13 单位**（缓出）+ 拉长（`sx 1.08→0.94` / `sy 0.92→1.08`）；
+  3. **收势**（62~100%）：回位、缩放回 1.00；位移方向用**出手瞬间锁定的朝向**（挥砍途中转身不改变）。
+  ⚠️ 缩放**以脚为锚**（`position.y = 脚底基准 × sy`），否则压扁/拉长会让角色陷地或浮空。
+  ⚠️ billboard 精灵的 `rotation` 会被相机朝向覆盖（`billboard_sprite()` 设了 `BILLBOARD_ENABLED`），
+  所以"倾斜"类旋转用不了 —— 形变只能靠**位移 + 缩放**。
 - **技能栏**（`scripts/ui/skill_bar.gd`）：底部居中两个槽位，锚点跟随窗口尺寸。
   - 冷却遮罩 `ColorRect` 从顶部向下退去，叠加剩余秒数文本；
   - 蓝不足 / 冷却中把槽位压暗；

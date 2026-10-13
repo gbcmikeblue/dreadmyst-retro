@@ -61,8 +61,11 @@ func _case_basic_hit() -> void:
 		return
 	var before: float = enemy.hp
 	var ok: bool = _player.cast_slot(0)
-	_log.append("普攻 裂颅斩 -> cast=%s   敌人 hp %.1f -> %.1f" % [ok, before, enemy.hp])
 	_check(ok, "普攻应当施放成功")
+	# M7 手感改动（2026-10-13）：伤害从「按下即结算」挪到「挥出帧」→ 按下瞬间不该掉血
+	_check(enemy.hp >= before, "按下瞬间不应立刻掉血（伤害应在挥出帧结算）")
+	_check(_player.resolve_attack_now(), "挥出帧应当有一笔待结算的伤害")
+	_log.append("普攻 裂颅斩 -> cast=%s   敌人 hp %.1f -> %.1f（经挥出帧结算）" % [ok, before, enemy.hp])
 	_check(enemy.hp < before, "正前方的敌人应当被普攻命中")
 
 
@@ -81,8 +84,9 @@ func _case_full_circle() -> void:
 		return
 	var before: float = enemy.hp
 	var ok: bool = _player.cast_slot(1)
-	_log.append("大招 旋风斩（敌在身后）-> cast=%s   敌人 hp %.1f -> %.1f" % [ok, before, enemy.hp])
 	_check(ok, "旋风斩应当施放成功")
+	_check(_player.resolve_attack_now(), "挥出帧应当有一笔待结算的伤害")
+	_log.append("大招 旋风斩（敌在身后）-> cast=%s   敌人 hp %.1f -> %.1f" % [ok, before, enemy.hp])
 	_check(enemy.hp < before, "旋风斩是 360°，应当打到身后的敌人")
 
 

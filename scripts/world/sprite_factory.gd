@@ -172,13 +172,18 @@ static func box_marker(size: Vector3, color: Color) -> MeshInstance3D:
 
 
 ## 平躺的扇形弧光（挥砍特效）。在 XZ 平面上，本地 +X 为弧心方向。
-static func arc_fx(inner_r: float, outer_r: float, half_angle: float, segments: int, color: Color) -> MeshInstance3D:
+##
+## `width_half_angle` 供「刀光扫过」用：传一个远小于 `half_angle` 的值就得到一条**窄弧**，
+## 由调用方在动作过程中旋转它 = 刀锋扫过整个扇形；默认 -1 保持原来的整片扇形。
+static func arc_fx(inner_r: float, outer_r: float, half_angle: float, segments: int, color: Color,
+		width_half_angle: float = -1.0) -> MeshInstance3D:
+	var half := half_angle if width_half_angle < 0.0 else minf(width_half_angle, half_angle)
 	var verts := PackedVector3Array()
 	var indices := PackedInt32Array()
 	var seg := maxi(2, segments)
 	for i in range(seg):
-		var a0 := lerpf(-half_angle, half_angle, float(i) / float(seg))
-		var a1 := lerpf(-half_angle, half_angle, float(i + 1) / float(seg))
+		var a0 := lerpf(-half, half, float(i) / float(seg))
+		var a1 := lerpf(-half, half, float(i + 1) / float(seg))
 		var base := verts.size()
 		verts.append(Vector3(cos(a0) * inner_r, 0.0, sin(a0) * inner_r))
 		verts.append(Vector3(cos(a0) * outer_r, 0.0, sin(a0) * outer_r))

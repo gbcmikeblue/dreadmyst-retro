@@ -26,7 +26,20 @@ const FALLBACK_STATS := {
 ## 职业注册表读不到任何数据时的兜底职业 id。
 const DEFAULT_PROFESSION := "warrior"
 
-const ATTACK_ANIM_TIME := 0.18     # 技能挥砍动画时长（秒）
+## 挥砍动作时长（秒）。三段：蓄力后撤 → 前冲挥出 → 收势。0.30 s 刚好塞在 0.45 s 普攻冷却内。
+const ATTACK_ANIM_TIME := 0.30
+## 伤害在动作进度的哪一点结算（0~1）—— 挪到「挥出」段，避免按下即掉血、动画还没挥到
+const ATTACK_IMPACT_AT := 0.62
+## 蓄力后撤 / 前冲挥出的位移（世界单位，沿出手瞬间锁定的朝向）
+const ATTACK_BACKSTEP := 7.0
+const ATTACK_LUNGE := 13.0
+## 命中顿帧（秒）：只冻**自己**的动作进度与前冲，不动 Engine.time_scale
+## —— 全局时间缩放会干扰存档防抖与 900 帧自测的时间口径。
+const ATTACK_HITSTOP := 0.05
+## 挥砍三段的分界（动作进度 0~1）：蓄力段 = [0, SWING_WINDUP)，挥出段 = [SWING_WINDUP, SWING_RECOVER)，
+## 收势段 = [SWING_RECOVER, 1]。SWING_RECOVER 与 ATTACK_IMPACT_AT 对齐 = 伤害正好在挥出结束的瞬间结算。
+const SWING_WINDUP := 0.28
+const SWING_RECOVER := 0.62
 const DASH_SPEED := 780.0
 const DASH_TIME := 0.16
 const DASH_COOLDOWN := 1.1
@@ -62,6 +75,14 @@ var _skills: Array = []
 ## 正在播放挥砍动画的技能槽下标
 var _active_slot: int = 0
 var _attack_anim: float = 0.0
+## 出手瞬间锁定的朝向：挥砍途中转身不该改变这次判定
+var _attack_dir: Vector2 = Vector2.RIGHT
+## 本次挥砍待结算的技能（命中帧到达时结算一次）
+var _pending_skill: SkillDef = null
+## 本次挥砍的伤害是否已结算（防止命中帧重复触发）
+var _impact_fired: bool = true
+## 命中顿帧剩余时间：> 0 时冻结自己的动作进度
+var _hitstop: float = 0.0
 var _dash_cd: float = 0.0
 var _dash_time: float = 0.0
 var _dash_dir: Vector2 = Vector2.RIGHT
@@ -125,7 +146,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_tick_cooldowns(delta)
-	_attack_anim = maxf(0.0, _attack_anim - delta)
+	_tick_attack(delta)
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	_dash_time = maxf(0.0, _dash_time - delta)
 	_hit_flash = maxf(0.0, _hit_flash - delta)
@@ -398,9 +419,12 @@ func cast_skill(skill_id: String) -> bool:
 
 	_cooldowns[skill_id] = skill.cooldown
 	mana = maxf(0.0, mana - skill.mana_cost)
+	# 伤害不在这里结算：只起动作 + 记下待结算技能与出手朝向，等挥出帧再打
 	_attack_anim = ATTACK_ANIM_TIME
+	_attack_dir = facing
 	_active_slot = maxi(0, _skills.find(skill))
-	_apply_skill_damage(skill)
+	_pending_skill = skill
+	_impact_fired = false
 
 	_emit_mana()
 	Events.skill_cooldowns_changed.emit(_cooldowns.duplicate())
@@ -425,12 +449,14 @@ func _tick_cooldowns(delta: float) -> void:
 
 ## 按技能自身的扇形参数判定命中，返回命中敌人数。
 ## 判定全部在 Vector2 玩法平面上做（距离 + 朝向夹角），不用 Area3D，行为可预测。
-func _apply_skill_damage(skill: SkillDef) -> int:
+## `aim` 留空（`Vector2.INF`）时用当前 facing；正常施放走「命中帧」并显式传入出手瞬间锁定的朝向。
+func _apply_skill_damage(skill: SkillDef, aim: Vector2 = Vector2.INF) -> int:
 	var stats := total_stats()
 	var attack_power: float = float(stats.get("attack", 0.0))
 	var crit_chance: float = clampf(float(stats.get("crit", 0.0)), 0.0, 0.9)
 
 	var my_plane := Game.plane(global_position)
+	var dir := facing if aim == Vector2.INF else aim
 	var hits := 0
 	# 用无类型 Array 承载，避免静态类型分析把元素推断为 Node 而报「找不到成员」
 	var enemies: Array = get_tree().get_nodes_in_group("enemies")
@@ -443,7 +469,7 @@ func _apply_skill_damage(skill: SkillDef) -> int:
 		if to_enemy.length() > skill.cast_range:
 			continue
 		# half_angle >= PI 视为 360°（旋风斩这类），不做夹角限制
-		if not skill.is_full_circle() and absf(facing.angle_to(to_enemy)) > skill.half_angle:
+		if not skill.is_full_circle() and absf(dir.angle_to(to_enemy)) > skill.half_angle:
 			continue
 		var is_crit := randf() < crit_chance
 		var damage := attack_power * skill.damage_mult * (1.6 if is_crit else 1.0)
@@ -451,6 +477,37 @@ func _apply_skill_damage(skill: SkillDef) -> int:
 		enemy.take_damage(damage, is_crit)
 		hits += 1
 	return hits
+
+
+## 挥砍动作推进：顿帧期间原地冻结；到达命中帧时结算一次伤害。
+## ⚠️ 必须排在 `dead` / 模态 UI 的提前 return **之前** —— 否则挥到一半被打断时那笔伤害会永远挂着。
+func _tick_attack(delta: float) -> void:
+	if _hitstop > 0.0:
+		_hitstop = maxf(0.0, _hitstop - delta)
+		return
+	if _attack_anim <= 0.0:
+		return
+	_attack_anim = maxf(0.0, _attack_anim - delta)
+	if not _impact_fired and 1.0 - _attack_anim / ATTACK_ANIM_TIME >= ATTACK_IMPACT_AT:
+		_fire_attack_impact()
+
+
+## 命中帧：真正结算伤害（「按下即结算」会让刀还没挥到怪、怪就已经掉血）。
+func _fire_attack_impact() -> void:
+	_impact_fired = true
+	if dead or _pending_skill == null:
+		return
+	_apply_skill_damage(_pending_skill, _attack_dir)
+	_hitstop = ATTACK_HITSTOP
+
+
+## 立刻推进到命中帧。**自测用**：技能自测在同一个 process_frame 内同步跑完，等不到物理帧。
+## 返回是否真的结算了一笔。
+func resolve_attack_now() -> bool:
+	if _impact_fired or _pending_skill == null:
+		return false
+	_fire_attack_impact()
+	return true
 
 
 # ---------------------------------------------------------------- 受伤 / 死亡
@@ -744,18 +801,23 @@ func _refresh_sprite() -> void:
 
 
 ## 按当前职业技能重建弧光网格（转职时调用，运行时零分配）。
+## 非 360° 技能建成**窄弧**（挥出时旋转它 = 刀锋扫过）；360° 技能保持整片圆环。
 func _rebuild_skill_arcs() -> void:
 	for old in _arcs:
 		if is_instance_valid(old):
 			old.queue_free()
 	_arcs.clear()
 	for skill in _skills:
+		var sweep := -1.0
+		if not skill.is_full_circle():
+			sweep = minf(skill.half_angle, deg_to_rad(22.0))
 		var arc := SpriteFactory.arc_fx(
 			skill.cast_range * 0.30,
 			skill.cast_range,
 			skill.half_angle,
 			24,
-			Color(skill.color.r, skill.color.g, skill.color.b, 0.75))
+			Color(skill.color.r, skill.color.g, skill.color.b, 0.75),
+			sweep)
 		arc.position.y = 0.12
 		arc.visible = false
 		add_child(arc)
@@ -768,32 +830,91 @@ func _update_visuals() -> void:
 		body_color = Color(1.0, 0.5, 0.5)
 	if dead:
 		body_color = Color(0.4, 0.4, 0.42)
-	if _sprite != null:
-		_sprite.modulate = body_color
 
-	var dir3 := Vector3(facing.x, 0.0, facing.y)
+	# 挥砍期间一切按「出手瞬间锁定的朝向」表现（挥到一半转身也不该改判定/朝向）
+	var swinging := _attack_anim > 0.0
+	var aim := _attack_dir if swinging else facing
+	var t := _swing_progress()
+	var back := _swing_back(t)
+	var squash := _swing_squash(t)
+	var dir3 := Vector3(aim.x, 0.0, aim.y)
 	if dir3.length_squared() > 0.0001:
 		dir3 = dir3.normalized()
+
+	if _sprite != null:
+		_sprite.modulate = body_color
+		# 缩放**以脚为锚**：贴图底部贴地，所以 position.y 要跟着 sy 走
+		# （否则压扁会陷地、拉长会浮空）。位移沿朝向做前冲 / 后撤。
+		_sprite.position = Vector3(dir3.x * back, SPRITE_WORLD_HEIGHT * 0.5 * squash.y, dir3.z * back)
+		_sprite.scale = Vector3(squash.x, squash.y, 1.0)
+
 	if _marker != null:
 		_marker.position = dir3 * 12.0 + Vector3(0.0, BODY_HEIGHT * 0.45, 0.0)
-		_marker.rotation.y = -facing.angle()
+		_marker.rotation.y = -aim.angle()
 
-	var playing := _attack_anim > 0.0
 	for i in range(_arcs.size()):
 		var arc: MeshInstance3D = _arcs[i]
 		if arc == null or not is_instance_valid(arc):
 			continue
-		if playing and i == _active_slot:
-			var p := 1.0 - _attack_anim / ATTACK_ANIM_TIME
-			var s := lerpf(0.80, 1.06, p)
+		if not swinging or i != _active_slot or i >= _skills.size():
+			arc.visible = false
+			continue
+		var skill: SkillDef = _skills[i]
+		if skill.is_full_circle():
+			# 整片圆环（旋风斩）：只放大
+			var s := lerpf(0.86, 1.06, t)
 			arc.visible = true
-			arc.rotation.y = -facing.angle()
+			arc.rotation.y = -aim.angle()
 			arc.scale = Vector3(s, 1.0, s)
+		elif t >= SWING_WINDUP and t <= SWING_RECOVER:
+			# 窄弧扫过：在挥出段从 -half_angle 扫到 +half_angle
+			var k := (t - SWING_WINDUP) / (SWING_RECOVER - SWING_WINDUP)
+			var s2 := lerpf(0.94, 1.04, k)
+			arc.visible = true
+			arc.rotation.y = -aim.angle() + lerpf(-skill.half_angle, skill.half_angle, k)
+			arc.scale = Vector3(s2, 1.0, s2)
 		else:
 			arc.visible = false
 
 	if _dash_fx != null:
 		_dash_fx.visible = _dash_time > 0.0
+
+
+## 挥砍动作进度（0~1）；没在挥砍时返回 0。
+func _swing_progress() -> float:
+	if _attack_anim <= 0.0:
+		return 0.0
+	return clampf(1.0 - _attack_anim / ATTACK_ANIM_TIME, 0.0, 1.0)
+
+
+## 沿出手朝向的位移：蓄力后撤 → 前冲挥出 → 收势回位。
+func _swing_back(t: float) -> float:
+	if t <= 0.0:
+		return 0.0
+	if t < SWING_WINDUP:
+		var k := t / SWING_WINDUP
+		return -ATTACK_BACKSTEP * k * k
+	if t < SWING_RECOVER:
+		var k := (t - SWING_WINDUP) / (SWING_RECOVER - SWING_WINDUP)
+		# 缓出：起手快、收手慢 —— 挥出去才有"干脆"的感觉
+		return lerpf(-ATTACK_BACKSTEP, ATTACK_LUNGE, 1.0 - pow(1.0 - k, 2.0))
+	var k2 := (t - SWING_RECOVER) / (1.0 - SWING_RECOVER)
+	return ATTACK_LUNGE * (1.0 - k2 * k2 * (3.0 - 2.0 * k2))
+
+
+## 挤压 / 拉长（x = 横向、y = 纵向）：蓄力压扁 → 挥出拉长 → 收势回正。
+func _swing_squash(t: float) -> Vector2:
+	if t <= 0.0:
+		return Vector2.ONE
+	if t < SWING_WINDUP:
+		var k := t / SWING_WINDUP
+		return Vector2(lerpf(1.0, 1.08, k), lerpf(1.0, 0.92, k))
+	if t < SWING_RECOVER:
+		var k := (t - SWING_WINDUP) / (SWING_RECOVER - SWING_WINDUP)
+		return Vector2(lerpf(1.08, 0.94, k), lerpf(0.92, 1.08, k))
+	var k2 := (t - SWING_RECOVER) / (1.0 - SWING_RECOVER)
+	var s := k2 * k2 * (3.0 - 2.0 * k2)
+	return Vector2(lerpf(0.94, 1.0, s), lerpf(1.08, 1.0, s))
 
 
 func _clamp_to_arena() -> void:
